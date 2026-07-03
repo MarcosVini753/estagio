@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protótipo - Controle de Uso da Sala de Informática</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <main class="app-shell" aria-label="Protótipo do sistema da Sala de Informática">
+    <header class="app-header">
+      <section class="header-top">
+        <div>
+          <p class="eyebrow">Biblioteca UFAC</p>
+          <h1 id="screenTitle">Sala de Informática</h1>
+        </div>
+        <button id="resetStateBtn" class="icon-button" title="Reiniciar dados simulados" aria-label="Reiniciar dados simulados">↻</button>
+      </section>
+
+      <section class="role-switch" aria-label="Alternar perfil de acesso">
+        <button class="role-option active" data-role="usuario">Usuário da Sala</button>
+        <button class="role-option" data-role="supervisor">Supervisor</button>
+      </section>
+
+      <section class="search-box" aria-label="Busca simulada">
+        <span aria-hidden="true">⌕</span>
+        <input id="searchInput" type="search" placeholder="Pesquisar computador, horário, relatório..." />
+      </section>
+    </header>
+
+    <section id="appContent" class="app-content" aria-live="polite"></section>
+
+    <nav id="bottomNav" class="bottom-nav" aria-label="Navegação principal"></nav>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="modalRoot" class="modal-root hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-header">
+        <h2 id="modalTitle">Detalhes</h2>
+        <button class="icon-button" data-close-modal aria-label="Fechar">×</button>
+      </header>
+      <div id="modalBody" class="modal-body"></div>
+    </section>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+@startuml
+left to right direction
+
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Estagiario" as Estagiario
+
+rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC" {
+
+  package "Acompanhamento da sala" {
+    usecase "Consultar sessões ativas" as UC01
+    usecase "Consultar computadores disponíveis,\nocupados ou indisponíveis" as UC02
+  }
+
+  package "Controle de computadores" {
+    usecase "Alterar status\ndo computador" as UC03
+  }
+
+  package "Ocorrências" {
+    usecase "Registrar ocorrência" as UC04
+    usecase "Consultar ocorrências" as UC05
+  }
+
+  package "Registros e relatórios" {
+    usecase "Consultar histórico\nde uso da sala" as UC06
+    usecase "Corrigir registro\nde uso" as UC07
+    usecase "Gerar relatório\noperacional" as UC08
+    usecase "Exportar relatório" as UC09
+  }
+}
+
+Estagiario --> UC01
+Estagiario --> UC02
+Estagiario --> UC03
+Estagiario --> UC04
+Estagiario --> UC05
+Estagiario --> UC06
+Estagiario --> UC07
+Estagiario --> UC08
+Estagiario --> UC09
+
+UC09 .> UC08 : <<include>>
+
+@enduml

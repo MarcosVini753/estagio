@@ -1,0 +1,57 @@
+@startuml
+left to right direction
+
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Supervisor da Biblioteca" as Supervisor
+
+rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC" {
+
+  package "Configuração do sistema" {
+    usecase "Cadastrar computadores" as UC01
+    usecase "Configurar turnos" as UC02
+    usecase "Configurar parâmetros\nde relatório" as UC03
+  }
+
+  package "Acompanhamento gerencial" {
+    usecase "Analisar uso da sala\npor período" as UC04
+    usecase "Analisar uso da sala\npor turno" as UC05
+    usecase "Analisar uso por\ncurso ou setor" as UC06
+    usecase "Analisar uso por\ncomputador" as UC07
+  }
+
+  package "Indicadores da sala" {
+    usecase "Identificar dias de\nmaior movimento" as UC08
+    usecase "Identificar horários de\nmaior demanda" as UC09
+    usecase "Acompanhar taxa de\nocupação dos computadores" as UC10
+  }
+
+  package "Relatórios consolidados" {
+    usecase "Gerar relatório diário\nconsolidado" as UC11
+    usecase "Gerar relatório semanal\nconsolidado" as UC12
+    usecase "Gerar relatório mensal\nconsolidado" as UC13
+    usecase "Gerar relatório anual\nconsolidado" as UC14
+  }
+
+}
+
+Supervisor --> UC01
+Supervisor --> UC02
+Supervisor --> UC03
+Supervisor --> UC04
+Supervisor --> UC05
+Supervisor --> UC06
+Supervisor --> UC07
+Supervisor --> UC08
+Supervisor --> UC09
+Supervisor --> UC10
+Supervisor --> UC11
+Supervisor --> UC12
+Supervisor --> UC13
+Supervisor --> UC14
+
+UC08 .> UC04 : <<include>>
+UC09 .> UC05 : <<include>>
+
+@enduml
