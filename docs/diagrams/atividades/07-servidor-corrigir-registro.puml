@@ -1,0 +1,34 @@
+@startuml
+title Fluxo de Atividade - Corrigir registro de uso
+
+|Servidor da Biblioteca|
+start
+:Acessa historico de uso da sala;
+:Define filtros de busca;
+
+|Sistema|
+:Busca registros conforme filtros;
+:Exibe registros encontrados;
+
+|Servidor da Biblioteca|
+:Seleciona registro com erro;
+:Altera os dados necessarios;
+:Informa justificativa da correcao;
+:Confirma alteracao;
+
+|Sistema|
+:Valida consistencia dos dados;
+
+if (Dados consistentes?) then (Sim)
+  :Salva correcao;
+  :Registra responsavel pela alteracao;
+  :Mantem historico de auditoria;
+  :Exibe confirmacao;
+  stop
+else (Nao)
+  :Exibe inconsistencias encontradas;
+  :Solicita ajuste dos dados;
+  stop
+endif
+
+@enduml

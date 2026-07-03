@@ -1,0 +1,37 @@
+@startuml
+title Fluxo de Atividade - Servidor acompanha sala e altera status de computador
+
+|Servidor da Biblioteca|
+start
+:Acessa painel de acompanhamento da sala;
+
+|Sistema|
+:Carrega sessoes ativas;
+:Carrega computadores cadastrados;
+:Exibe computadores disponiveis, ocupados e indisponiveis;
+
+|Servidor da Biblioteca|
+:Seleciona um computador;
+:Solicita alteracao de status;
+
+|Sistema|
+:Exibe status atual e opcoes permitidas;
+
+|Servidor da Biblioteca|
+:Seleciona novo status;
+:Informa justificativa, se necessario;
+:Confirma alteracao;
+
+|Sistema|
+if (Alteracao permitida?) then (Sim)
+  :Atualiza status do computador;
+  :Registra historico da alteracao;
+  :Atualiza painel da sala;
+  :Exibe confirmacao;
+  stop
+else (Nao)
+  :Informa motivo da rejeicao;
+  stop
+endif
+
+@enduml

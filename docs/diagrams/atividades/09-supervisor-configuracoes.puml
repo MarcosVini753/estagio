@@ -1,0 +1,54 @@
+@startuml
+title Fluxo de Atividade - Configuracao do sistema pelo Supervisor
+
+|Supervisor da Biblioteca|
+start
+:Acessa area de configuracao do sistema;
+
+if (Deseja cadastrar computador?) then (Sim)
+  :Informa numero, identificacao e status inicial;
+
+  |Sistema|
+  :Valida se o numero do computador e unico;
+  if (Dados validos?) then (Sim)
+    :Cadastra computador;
+    :Exibe confirmacao;
+  else (Nao)
+    :Exibe erro de validacao;
+  endif
+
+else (Nao)
+endif
+
+|Supervisor da Biblioteca|
+if (Deseja configurar turnos?) then (Sim)
+  :Informa horarios de inicio e fim dos turnos;
+
+  |Sistema|
+  :Valida horarios e sobreposicao;
+  if (Turnos validos?) then (Sim)
+    :Salva configuracao de turnos;
+    :Exibe confirmacao;
+  else (Nao)
+    :Exibe erro de configuracao;
+  endif
+
+else (Nao)
+endif
+
+|Supervisor da Biblioteca|
+if (Deseja configurar parametros de relatorio?) then (Sim)
+  :Define criterios de agrupamento e totalizacao;
+
+  |Sistema|
+  :Valida parametros;
+  :Salva configuracao;
+  :Exibe confirmacao;
+  stop
+
+else (Nao)
+  :Encerra configuracao;
+  stop
+endif
+
+@enduml

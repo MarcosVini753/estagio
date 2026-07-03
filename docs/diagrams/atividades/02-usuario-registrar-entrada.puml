@@ -1,0 +1,41 @@
+@startuml
+title Fluxo de Atividade - Registrar entrada na Sala de Informatica
+
+|Usuario da Sala|
+start
+:Acessa a opcao "Registrar entrada";
+:Informa ou confirma seus dados;
+:Seleciona computador desejado;
+
+|Sistema|
+:Verifica se o usuario ja possui sessao ativa;
+
+if (Usuario ja possui sessao ativa?) then (Sim)
+  :Informa que ja existe uma sessao em aberto;
+  stop
+else (Nao)
+  :Verifica status do computador selecionado;
+
+  if (Computador disponivel?) then (Sim)
+    :Registra data e hora de entrada;
+    :Cria sessao de uso;
+    :Marca computador como ocupado;
+    :Exibe confirmacao de entrada;
+    stop
+
+  else (Nao)
+    if (Computador reservado para o proprio usuario?) then (Sim)
+      :Confirma comparecimento ao agendamento;
+      :Registra data e hora de entrada;
+      :Cria sessao de uso;
+      :Marca computador como ocupado;
+      :Exibe confirmacao de entrada;
+      stop
+    else (Nao)
+      :Informa que o computador nao esta disponivel;
+      stop
+    endif
+  endif
+endif
+
+@enduml

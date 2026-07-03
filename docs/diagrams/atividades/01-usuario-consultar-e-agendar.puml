@@ -1,0 +1,43 @@
+@startuml
+title Fluxo de Atividade - Consultar disponibilidade e agendar computador
+
+|Usuario da Sala|
+start
+:Acessa a area de computadores;
+:Escolhe consultar dia atual ou dia seguinte;
+
+|Sistema|
+:Carrega computadores cadastrados;
+:Verifica status dos computadores;
+:Verifica horarios ocupados e agendados;
+:Exibe computadores e horarios disponiveis;
+
+|Usuario da Sala|
+if (Deseja agendar?) then (Sim)
+  :Seleciona computador;
+  :Seleciona horario disponivel;
+
+  |Sistema|
+  :Valida se a data e o dia seguinte;
+  if (Data valida?) then (Sim)
+    :Verifica conflito de agendamento;
+    if (Horario ainda disponivel?) then (Sim)
+      :Registra agendamento;
+      :Exibe confirmacao;
+      stop
+    else (Nao)
+      :Informa que o horario ficou indisponivel;
+      :Retorna a consulta de horarios;
+      stop
+    endif
+  else (Nao)
+    :Informa que agendamento so e permitido para o dia seguinte;
+    stop
+  endif
+
+else (Nao)
+  :Encerra consulta;
+  stop
+endif
+
+@enduml

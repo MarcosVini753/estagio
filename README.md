@@ -1,10 +1,24 @@
-# Protótipo - Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC
+# Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC
 
-Protótipo navegável feito apenas com HTML, CSS e JavaScript puros.
+Repositório com documentação, diagramas UML e protótipo navegável para o sistema web de controle de uso da Sala de Informática da Biblioteca da UFAC.
 
-## Como executar
+## Estrutura
 
-Abra o arquivo `index.html` no navegador.
+- `docs/contexto.txt`: contexto geral do sistema, atores, regras e entidades recomendadas.
+- `docs/casos-de-uso.md`: descrições textuais dos casos de uso.
+- `docs/diagrams/casos-de-uso/`: diagramas de casos de uso em PlantUML.
+- `docs/diagrams/atividades/`: diagramas de atividades dos principais fluxos.
+- `prototipos/`: protótipo navegável em HTML, CSS e JavaScript puros.
+
+## Como executar o protótipo
+
+Abra o arquivo `prototipos/index.html` no navegador.
+
+## Diagramas
+
+Os diagramas estão em arquivos `.puml` e podem ser abertos em qualquer ferramenta compatível com PlantUML.
+
+Índice dos diagramas: [`docs/diagrams/README.md`](docs/diagrams/README.md).
 
 ## O que está simulado
 
@@ -19,6 +33,13 @@ Abra o arquivo `index.html` no navegador.
 - Registrar saída.
 - Trocar de computador durante sessão ativa.
 - Informar problema no computador.
+
+### Servidor da Biblioteca
+- Consultar sessões ativas.
+- Acompanhar computadores disponíveis, ocupados e indisponíveis.
+- Alterar status operacional de computadores.
+- Corrigir registros de uso.
+- Gerar e exportar relatórios operacionais.
 
 ### Supervisor da Biblioteca
 - Cadastrar computadores.

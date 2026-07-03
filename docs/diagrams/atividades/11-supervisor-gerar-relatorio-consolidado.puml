@@ -1,0 +1,49 @@
+@startuml
+title Fluxo de Atividade - Gerar relatorio consolidado
+
+|Supervisor da Biblioteca|
+start
+:Acessa relatorios consolidados;
+:Seleciona tipo de relatorio;
+
+if (Relatorio diario?) then (Sim)
+  :Informa data;
+elseif (Relatorio semanal?) then (Sim)
+  :Informa semana ou intervalo;
+elseif (Relatorio mensal?) then (Sim)
+  :Informa mes e ano;
+elseif (Relatorio anual?) then (Sim)
+  :Informa ano;
+endif
+
+|Sistema|
+:Valida periodo informado;
+:Busca registros de uso correspondentes;
+:Consolida totais por turno;
+:Consolida totais por data;
+:Calcula total geral do periodo;
+
+if (Existem dados?) then (Sim)
+  :Gera relatorio consolidado;
+  :Exibe pre-visualizacao;
+
+  |Supervisor da Biblioteca|
+  :Analisa relatorio;
+
+  if (Relatorio aprovado?) then (Sim)
+    |Sistema|
+    :Marca relatorio como validado;
+    :Disponibiliza para exportacao ou arquivamento;
+    stop
+  else (Nao)
+    |Sistema|
+    :Mantem relatorio como nao validado;
+    stop
+  endif
+
+else (Nao)
+  :Informa ausencia de registros no periodo;
+  stop
+endif
+
+@enduml

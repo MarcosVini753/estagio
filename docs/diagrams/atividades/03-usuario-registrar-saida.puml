@@ -1,0 +1,31 @@
+@startuml
+title Fluxo de Atividade - Registrar saida da Sala de Informatica
+
+|Usuario da Sala|
+start
+:Acessa a opcao "Registrar saida";
+
+|Sistema|
+:Busca sessao ativa do usuario;
+
+if (Existe sessao ativa?) then (Sim)
+  :Exibe dados da sessao;
+  :Exibe computador utilizado e hora de entrada;
+
+  |Usuario da Sala|
+  :Confirma encerramento do uso;
+
+  |Sistema|
+  :Registra hora de saida;
+  :Calcula tempo de permanencia;
+  :Libera computador;
+  :Encerra sessao de uso;
+  :Exibe confirmacao de saida;
+  stop
+
+else (Nao)
+  :Informa que nao ha sessao ativa para encerrar;
+  stop
+endif
+
+@enduml

@@ -1,0 +1,40 @@
+@startuml
+title Fluxo de Atividade - Trocar de computador durante sessao ativa
+
+|Usuario da Sala|
+start
+:Acessa sua sessao atual;
+:Solicita troca de computador;
+
+|Sistema|
+:Verifica se o usuario possui sessao ativa;
+
+if (Possui sessao ativa?) then (Sim)
+  :Consulta computadores disponiveis;
+  :Exibe lista de computadores disponiveis;
+
+  |Usuario da Sala|
+  :Seleciona novo computador;
+
+  |Sistema|
+  :Verifica se o novo computador continua disponivel;
+
+  if (Computador disponivel?) then (Sim)
+    :Registra troca no historico da sessao;
+    :Libera computador anterior;
+    :Marca novo computador como ocupado;
+    :Atualiza sessao ativa;
+    :Exibe confirmacao da troca;
+    stop
+  else (Nao)
+    :Informa que o computador nao esta mais disponivel;
+    :Retorna a lista de computadores;
+    stop
+  endif
+
+else (Nao)
+  :Informa que nao ha sessao ativa para troca;
+  stop
+endif
+
+@enduml

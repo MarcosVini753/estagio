@@ -1,0 +1,35 @@
+@startuml
+title Fluxo de Atividade - Gerar e exportar relatorio operacional
+
+|Servidor da Biblioteca|
+start
+:Acessa area de relatorios;
+:Seleciona tipo de relatorio operacional;
+:Informa periodo e filtros;
+
+|Sistema|
+:Busca registros de uso;
+:Calcula totais por data, turno e computador;
+:Identifica registros incompletos;
+:Gera pre-visualizacao do relatorio;
+
+|Servidor da Biblioteca|
+if (Deseja exportar?) then (Sim)
+  :Seleciona formato de exportacao;
+
+  |Sistema|
+  if (Formato valido?) then (Sim)
+    :Gera arquivo do relatorio;
+    :Disponibiliza download;
+    stop
+  else (Nao)
+    :Informa formato invalido;
+    stop
+  endif
+
+else (Nao)
+  :Consulta relatorio na tela;
+  stop
+endif
+
+@enduml

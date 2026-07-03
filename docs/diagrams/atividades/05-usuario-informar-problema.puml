@@ -1,0 +1,27 @@
+@startuml
+title Fluxo de Atividade - Informar problema no computador
+
+|Usuario da Sala|
+start
+:Acessa a opcao "Informar problema";
+:Seleciona computador;
+:Descreve o problema encontrado;
+:Envia ocorrencia;
+
+|Sistema|
+:Valida se o computador existe;
+:Valida se a descricao foi preenchida;
+
+if (Dados validos?) then (Sim)
+  :Registra ocorrencia;
+  :Associa ocorrencia ao computador;
+  :Notifica area de acompanhamento da biblioteca;
+  :Exibe confirmacao ao usuario;
+  stop
+else (Nao)
+  :Exibe mensagem de erro;
+  :Solicita correcao dos dados;
+  stop
+endif
+
+@enduml

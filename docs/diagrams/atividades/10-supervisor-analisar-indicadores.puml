@@ -1,0 +1,40 @@
+@startuml
+title Fluxo de Atividade - Analisar indicadores gerenciais da sala
+
+|Supervisor da Biblioteca|
+start
+:Acessa painel gerencial;
+:Seleciona periodo de analise;
+:Escolhe tipo de analise;
+
+|Sistema|
+if (Analise por periodo?) then (Sim)
+  :Consolida uso por data;
+elseif (Analise por turno?) then (Sim)
+  :Agrupa registros por turno;
+elseif (Analise por curso ou setor?) then (Sim)
+  :Agrupa registros por curso ou setor;
+elseif (Analise por computador?) then (Sim)
+  :Agrupa registros por computador;
+else
+  :Carrega indicadores gerais;
+endif
+
+:Calcula totais, percentuais e medias;
+:Identifica dias ou horarios de maior demanda;
+:Calcula taxa de ocupacao dos computadores;
+:Exibe graficos e tabelas gerenciais;
+
+|Supervisor da Biblioteca|
+:Analisa os indicadores apresentados;
+
+if (Deseja gerar relatorio consolidado?) then (Sim)
+  |Sistema|
+  :Gera relatorio consolidado com os dados da analise;
+  :Exibe relatorio;
+  stop
+else (Nao)
+  stop
+endif
+
+@enduml
