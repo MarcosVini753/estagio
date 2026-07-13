@@ -21,22 +21,6 @@ else (Nao)
 endif
 
 |Supervisor da Biblioteca|
-if (Deseja configurar turnos?) then (Sim)
-  :Informa horarios de inicio e fim dos turnos;
-
-  |Sistema|
-  :Valida horarios e sobreposicao;
-  if (Turnos validos?) then (Sim)
-    :Salva configuracao de turnos;
-    :Exibe confirmacao;
-  else (Nao)
-    :Exibe erro de configuracao;
-  endif
-
-else (Nao)
-endif
-
-|Supervisor da Biblioteca|
 if (Deseja configurar parametros de relatorio?) then (Sim)
   :Define criterios de agrupamento e totalizacao;
 

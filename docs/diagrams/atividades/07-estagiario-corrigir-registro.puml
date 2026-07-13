@@ -1,7 +1,7 @@
 @startuml
-title Fluxo de Atividade - Corrigir registro de uso
+title Fluxo de Atividade - Estagiario corrige registro de uso
 
-|Servidor da Biblioteca|
+|Estagiario|
 start
 :Acessa historico de uso da sala;
 :Define filtros de busca;
@@ -10,7 +10,7 @@ start
 :Busca registros conforme filtros;
 :Exibe registros encontrados;
 
-|Servidor da Biblioteca|
+|Estagiario|
 :Seleciona registro com erro;
 :Altera os dados necessarios;
 :Informa justificativa da correcao;

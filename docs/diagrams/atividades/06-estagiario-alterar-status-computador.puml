@@ -1,7 +1,7 @@
 @startuml
-title Fluxo de Atividade - Servidor acompanha sala e altera status de computador
+title Fluxo de Atividade - Estagiario altera status de computador
 
-|Servidor da Biblioteca|
+|Estagiario|
 start
 :Acessa painel de acompanhamento da sala;
 
@@ -10,14 +10,14 @@ start
 :Carrega computadores cadastrados;
 :Exibe computadores disponiveis, ocupados e indisponiveis;
 
-|Servidor da Biblioteca|
+|Estagiario|
 :Seleciona um computador;
 :Solicita alteracao de status;
 
 |Sistema|
 :Exibe status atual e opcoes permitidas;
 
-|Servidor da Biblioteca|
+|Estagiario|
 :Seleciona novo status;
 :Informa justificativa, se necessario;
 :Confirma alteracao;

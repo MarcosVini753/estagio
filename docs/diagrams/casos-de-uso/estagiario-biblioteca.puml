@@ -4,7 +4,7 @@ left to right direction
 skinparam packageStyle rectangle
 skinparam actorStyle awesome
 
-actor "Servidor da Biblioteca" as Servidor
+actor "Estagiario" as Estagiario
 
 rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC" {
 
@@ -30,15 +30,15 @@ rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da U
   }
 }
 
-Servidor --> UC01
-Servidor --> UC02
-Servidor --> UC03
-Servidor --> UC04
-Servidor --> UC05
-Servidor --> UC06
-Servidor --> UC07
-Servidor --> UC08
-Servidor --> UC09
+Estagiario --> UC01
+Estagiario --> UC02
+Estagiario --> UC03
+Estagiario --> UC04
+Estagiario --> UC05
+Estagiario --> UC06
+Estagiario --> UC07
+Estagiario --> UC08
+Estagiario --> UC09
 
 UC09 .> UC08 : <<include>>
 

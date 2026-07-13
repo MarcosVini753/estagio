@@ -1,7 +1,7 @@
 @startuml
-title Fluxo de Atividade - Gerar e exportar relatorio operacional
+title Fluxo de Atividade - Estagiario gera e exporta relatorio operacional
 
-|Servidor da Biblioteca|
+|Estagiario|
 start
 :Acessa area de relatorios;
 :Seleciona tipo de relatorio operacional;
@@ -13,7 +13,7 @@ start
 :Identifica registros incompletos;
 :Gera pre-visualizacao do relatorio;
 
-|Servidor da Biblioteca|
+|Estagiario|
 if (Deseja exportar?) then (Sim)
   :Seleciona formato de exportacao;
 
