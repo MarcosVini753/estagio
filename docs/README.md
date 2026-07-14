@@ -1,6 +1,6 @@
 # Documentação do sistema
 
-Esta pasta concentra a documentação funcional, arquitetural e histórica do Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC.
+Esta pasta concentra a documentação funcional, arquitetural, operacional e histórica do Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC.
 
 ## Estrutura
 
@@ -29,6 +29,8 @@ docs/
 │       ├── c4-container.md
 │       ├── module-map.md
 │       └── erd.md
+├── development/
+│   └── agent-skills.md
 ├── adr/
 └── diagrams/
 ```
@@ -37,9 +39,14 @@ docs/
 
 - `product/` descreve o que o sistema deve fazer.
 - `architecture/` descreve como a solução está organizada atualmente.
+- `development/` contém procedimentos de desenvolvimento e uso de ferramentas.
 - `adr/` registra decisões, alternativas e consequências.
 - `diagrams/` contém os diagramas UML de casos de uso e atividades.
 - `prototipos/` permanece na raiz como referência navegável de interface.
+
+## Guias
+
+- [Instalação e uso de skills no Cline e Codex](development/agent-skills.md)
 
 ## Regras de manutenção
 
@@ -48,6 +55,7 @@ docs/
 3. A documentação arquitetural deve refletir o estado atual, mesmo quando um ADR antigo tiver sido substituído.
 4. O contrato OpenAPI gerado pelo backend será a fonte executável da API; `04-api-v1.md` explica sua organização e semântica.
 5. O arquivo legado `docs/contexto.txt` passa a funcionar apenas como ponte para esta estrutura.
+6. Skills e regras de agentes devem ser revisadas por pull request e não podem contradizer `AGENTS.md`.
 
 ## Estado atual
 

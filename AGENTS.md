@@ -47,6 +47,33 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 - PostgreSQL é o banco-alvo.
 - OpenAPI deve acompanhar a implementação da API.
 
+## Implementação mínima e correta
+
+Aplique o princípio Ponytail depois de compreender integralmente a tarefa e o fluxo afetado:
+
+1. confirme se a alteração realmente precisa existir;
+2. procure implementação ou padrão reutilizável no repositório;
+3. prefira Python, Django, DRF ou PostgreSQL a código próprio;
+4. prefira recursos nativos de HTML, CSS e navegador a dependências;
+5. reutilize dependências já instaladas antes de adicionar outra;
+6. escreva somente o mínimo necessário para atender corretamente à regra.
+
+Não crie abstrações, camadas, dependências ou configurações para necessidades hipotéticas. O menor diff correto vence, mas minimalismo nunca pode remover validação, integridade, segurança, acessibilidade, auditoria, migrations ou testes exigidos pelo projeto.
+
+## Skills e fluxo de qualidade
+
+As skills específicas para Cline ficam em `.cline/skills/`. Use a mais adequada à tarefa:
+
+- `django-feature-development` para funcionalidades completas;
+- `django-model-and-migration` para esquema e migrations;
+- `api-endpoint` para API DRF;
+- `test-first-change` para bugs e mudanças críticas;
+- `code-review` para revisão geral antes de merge;
+- `ponytail-review` para uma segunda revisão focada em sobre-engenharia;
+- `documentation-sync` para manter código e documentação coerentes.
+
+Antes de concluir uma implementação, execute os comandos de qualidade disponíveis no repositório. Não declare a tarefa concluída quando testes, lint, migrations ou verificações obrigatórias falharem.
+
 ## Regras para alterações
 
 - Mudança arquitetural relevante exige ADR novo ou substituição explícita de ADR anterior.
