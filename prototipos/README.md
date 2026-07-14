@@ -1,31 +1,27 @@
 # Protótipo navegável
 
-O protótipo em HTML, CSS e JavaScript puro representa a experiência visual e os fluxos já discutidos para o sistema.
+O protótipo em HTML, CSS e JavaScript puro representa a experiência visual discutida antes da implementação Django.
 
 ## Execução
 
 Abra `index.html` no navegador.
 
-## Estado atual
+## Limitações
 
-Os dados são simulados e persistidos em `localStorage`. O protótipo não possui backend, autenticação real ou segurança.
+Os dados são fictícios e persistidos em `localStorage`. Não há backend, autenticação ou segurança. O protótipo não define o banco de dados.
 
-## Regras que devem orientar ajustes futuros
+## Regras para ajustes futuros
 
 - perfis: Usuário da Sala, Estagiário, Supervisor e Administrador;
-- a seleção de perfil é apenas uma simulação;
-- consulta somente para hoje e amanhã;
+- seleção de perfil apenas simulada;
+- consulta para hoje e amanhã;
 - uso imediato somente hoje;
-- reserva somente amanhã;
-- horários passados não podem ser usados;
-- não existe fila de espera;
-- computadores persistem somente estados operacionais `AVAILABLE`, `MAINTENANCE` e `INACTIVE` no backend futuro;
-- ocupado e reservado são situações calculadas;
-- troca de computador preserva uma única sessão com várias alocações;
-- relatórios serão calculados a partir de registros reais.
+- reserva para horário futuro de hoje ou para amanhã;
+- horários passados indisponíveis;
+- sem fila de espera;
+- estado operacional persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`;
+- `OCCUPIED` e `RESERVED` calculados;
+- troca preserva uma sessão com várias alocações;
+- relatórios derivados de registros operacionais.
 
-## Relação com a implementação
-
-Este diretório é referência visual. O modelo de dados e as regras oficiais estão em `docs/product/` e `docs/architecture/`.
-
-Durante a migração, funcionalidades devem ser substituídas gradualmente por chamadas à API `/api/v1/`, evitando manter duas fontes de verdade no navegador e no servidor.
+A integração real deve usar a API `/api/v1/` e evitar duas fontes de verdade.
