@@ -1,4 +1,4 @@
-# Configuração inicial do backend
+# Configuração do backend
 
 ## Pré-requisitos
 
@@ -14,17 +14,22 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements/dev.txt
 docker compose up -d db
-python backend/manage.py migrate
-python backend/manage.py runserver
+make migrate
+make seed
+make run
 ```
 
 A aplicação ficará em `http://localhost:8000/` e a documentação OpenAPI em `http://localhost:8000/api/docs/`.
+
+O comando `make seed` é idempotente e cria oito computadores fictícios, os três turnos iniciais, uma política de reservas e a configuração padrão de relatórios.
 
 ## Execução integral com Docker
 
 ```bash
 docker compose up --build
 ```
+
+Em outro terminal, execute as migrations e o seed no container da aplicação quando necessário.
 
 ## Comandos de qualidade
 
@@ -35,18 +40,16 @@ make format-check
 make test
 ```
 
-## Escopo desta etapa
+## Funcionalidades disponíveis
 
-O scaffold inicial inclui:
-
-- configurações separadas para ambiente local, testes e produção;
-- PostgreSQL;
-- apps por domínio;
-- modelos e migrations iniciais;
-- API `/api/v1/`;
-- OpenAPI com Swagger UI e ReDoc;
+- seleção de perfil de demonstração;
 - health check;
-- seleção de perfil de demonstração armazenada em sessão;
-- testes iniciais e CI.
+- computadores e estado operacional;
+- histórico das alterações de estado;
+- turnos;
+- exceções de calendário;
+- política de duração dos slots;
+- disponibilidade para hoje e amanhã;
+- slots derivados de configuração, reservas e alocações.
 
-Ainda não estão implementados os serviços de disponibilidade, reserva, entrada, troca, saída, ocorrências via API ou relatórios.
+Ainda não estão disponíveis criação e cancelamento de reservas, entrada, troca, saída, tratamento de ocorrências via API e relatórios.

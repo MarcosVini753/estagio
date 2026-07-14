@@ -1,60 +1,92 @@
 # Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC
 
-Sistema web para substituir o registro manual de uso da Sala de Informática da Biblioteca da UFAC, controlar computadores, reservas, sessões, trocas, ocorrências e gerar relatórios derivados dos registros operacionais.
+Repositório de documentação, diagramas, protótipo navegável e implementação Django do sistema web de controle de uso da Sala de Informática da Biblioteca da UFAC.
 
 ## Estado atual
 
-A etapa 2 do backend foi iniciada. O repositório contém:
+As etapas documentais e de inicialização do backend foram concluídas. O backend já possui:
 
-- documentação funcional, arquitetura e ADRs;
-- diagramas PlantUML;
-- protótipo navegável em HTML, CSS e JavaScript;
-- projeto Django 5.2 LTS e Django REST Framework;
-- apps modulares e modelo de domínio inicial;
-- migrations iniciais para PostgreSQL;
-- API `/api/v1/`, health check e OpenAPI;
-- seleção de perfil de demonstração armazenada em sessão;
-- testes iniciais, Ruff e GitHub Actions.
-
-Ainda não estão implementados os serviços completos de disponibilidade, reservas, sessões, trocas, ocorrências e relatórios.
+- Django 5.2 e Django REST Framework;
+- PostgreSQL via Docker Compose;
+- apps separados por domínio;
+- seleção de perfil de demonstração em sessão;
+- modelos e migrations iniciais;
+- CRUD inicial de computadores, turnos e exceções de calendário;
+- alteração auditável do estado operacional dos computadores;
+- política de duração dos slots;
+- geração de slots para hoje e amanhã;
+- cálculo de `AVAILABLE`, `MAINTENANCE`, `INACTIVE`, `OCCUPIED` e `RESERVED`;
+- OpenAPI, testes, Ruff e CI.
 
 ## Regras centrais
 
 - consulta somente para hoje e amanhã;
-- uso imediato apenas hoje, em horário ainda não passado;
-- reserva antecipada para horário futuro de hoje ou para amanhã;
+- uso imediato apenas hoje;
+- reservas para horários futuros de hoje ou para amanhã;
 - fila de espera fora do escopo;
-- ator operacional: Estagiário;
+- ator operacional denominado Estagiário;
 - autenticação real fora do MVP;
-- computador persiste somente `AVAILABLE`, `MAINTENANCE` ou `INACTIVE`;
+- computadores persistem apenas `AVAILABLE`, `MAINTENANCE` e `INACTIVE`;
 - `OCCUPIED` e `RESERVED` são calculados;
 - troca de computador preserva a sessão e cria nova alocação;
 - relatórios são projeções dos registros operacionais.
 
-## Execução com Docker
+## Execução do backend
 
 ```bash
 cp .env.example .env
-docker compose up --build
-```
-
-Acesse:
-
-- aplicação: `http://localhost:8000/`;
-- Swagger UI: `http://localhost:8000/api/docs/`;
-- ReDoc: `http://localhost:8000/api/redoc/`;
-- health check: `http://localhost:8000/api/v1/health/`.
-
-## Execução local
-
-```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements/dev.txt
 docker compose up -d db
-python backend/manage.py migrate
-python backend/manage.py runserver
+make migrate
+make seed
+make run
 ```
+
+A aplicação fica em `http://localhost:8000/`.
+
+Documentação da API:
+
+```text
+http://localhost:8000/api/docs/
+http://localhost:8000/api/redoc/
+```
+
+## Endpoints disponíveis
+
+```text
+GET  /api/v1/health/
+GET  /api/v1/demo/context/
+POST /api/v1/demo/select-profile/
+
+GET  /api/v1/computers/
+POST /api/v1/computers/
+GET  /api/v1/computers/{id}/
+PATCH /api/v1/computers/{id}/
+PATCH /api/v1/computers/{id}/operational-state/
+GET  /api/v1/computers/availability/?date=YYYY-MM-DD
+GET  /api/v1/computers/{id}/slots/?date=YYYY-MM-DD
+
+GET  /api/v1/shifts/
+POST /api/v1/shifts/
+PATCH /api/v1/shifts/{id}/
+GET  /api/v1/calendar-exceptions/
+POST /api/v1/calendar-exceptions/
+PATCH /api/v1/calendar-exceptions/{id}/
+GET  /api/v1/booking-policy/
+PATCH /api/v1/booking-policy/
+```
+
+## Estrutura
+
+- `backend/`: aplicação Django;
+- `docs/product/`: regras funcionais;
+- `docs/architecture/`: arquitetura corrente e API;
+- `docs/adr/`: decisões arquiteturais;
+- `docs/diagrams/`: UML em PlantUML;
+- `prototipos/`: referência visual em HTML, CSS e JavaScript;
+- `AGENTS.md`: instruções para agentes de código.
 
 ## Qualidade
 
@@ -65,20 +97,6 @@ make format-check
 make test
 ```
 
-## Estrutura
+## Próxima etapa
 
-```text
-AGENTS.md
-backend/                 # implementação Django
-requirements/            # dependências
-compose.yaml              # PostgreSQL e aplicação
-prototipos/               # referência visual legada
-docs/
-├── product/              # regras funcionais
-├── architecture/         # arquitetura vigente
-├── development/          # execução e agentes
-├── adr/                  # decisões arquiteturais
-└── diagrams/             # UML em PlantUML
-```
-
-Consulte [docs/README.md](docs/README.md) antes de implementar novas funcionalidades.
+Implementar reservas e sessões em uma fatia transacional: criação e cancelamento de reservas, entrada, sessão ativa, troca de computador e saída.
