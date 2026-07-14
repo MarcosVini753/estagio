@@ -1,7 +1,7 @@
 PYTHON ?= python
 MANAGE := cd backend && $(PYTHON) manage.py
 
-.PHONY: install db-up db-down migrate migrations run check test lint format-check
+.PHONY: install db-up db-down migrate migrations seed run check test lint format-check
 
 install:
 	$(PYTHON) -m pip install -r requirements/dev.txt
@@ -17,6 +17,9 @@ migrate:
 
 migrations:
 	$(MANAGE) makemigrations
+
+seed:
+	$(MANAGE) seed_demo_data
 
 run:
 	$(MANAGE) runserver 0.0.0.0:8000

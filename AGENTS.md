@@ -50,9 +50,9 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 
 ## Estado de implementação
 
-A etapa 2 já possui scaffold Django, apps, modelos e migrations iniciais, PostgreSQL via Compose, health check, seleção de perfil de demonstração, OpenAPI, testes iniciais e CI.
+As etapas 2 e 3 possuem scaffold Django, modelos, migrations, autorização simulada, CI, CRUD inicial de computadores e configurações, histórico de estado operacional, geração de slots e consulta de disponibilidade para hoje e amanhã.
 
-Ainda não existem serviços ou endpoints completos de disponibilidade, reservas, sessões, trocas, ocorrências e relatórios. Não simule essas funcionalidades diretamente em views; implemente-as em fatias verticais com serviços, testes e documentação.
+Ainda não existem serviços completos para criar ou cancelar reservas, registrar entrada, trocar computador, registrar saída, tratar ocorrências ou gerar relatórios. Essas funcionalidades devem ser implementadas em fatias verticais, sem concentrar regras em views ou serializers.
 
 ## Implementação mínima e correta
 
