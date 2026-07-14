@@ -85,9 +85,7 @@ Cobrir os fluxos principais do protótipo:
 - mais de uma alocação ativa na mesma sessão;
 - reserva sobreposta válida;
 - intervalo com término anterior ao início;
-- reserva para data diferente de amanhã;
 - uso imediato em data diferente de hoje;
-- uso de computador em manutenção ou inativo.
 
 ## Dados de teste
 

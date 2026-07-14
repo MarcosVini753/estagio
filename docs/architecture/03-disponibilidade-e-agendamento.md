@@ -15,7 +15,7 @@ Centralizar a regra que determina se um computador pode ser consultado, utilizad
 ## Janela temporal
 
 ```text
-hoje    -> consulta e uso imediato
+hoje    -> consulta e uso imediato ou reserva antecipada
 amanhã  -> consulta e reserva antecipada
 outras datas -> rejeitadas
 ```
@@ -77,11 +77,11 @@ Operação transacional:
 7. criar primeira `ComputerAllocation`;
 8. retornar sessão ativa.
 
-## Reserva para amanhã
+## Reserva antecipada
 
 Operação transacional:
 
-1. validar que a data é amanhã;
+1. validar que a data é hoje ou amanhã;
 2. validar intervalo e política;
 3. bloquear registros necessários;
 4. recalcular disponibilidade;

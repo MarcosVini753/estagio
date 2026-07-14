@@ -30,7 +30,7 @@ Situação calculada para um instante ou intervalo: pode resultar em `AVAILABLE`
 
 ## Reserva
 
-Bloqueio antecipado de um computador em intervalo específico. No MVP, só pode ser criada para amanhã.
+Bloqueio antecipado de um computador em intervalo específico. No MVP, pode ser criada para hoje (futuro do dia corrente) ou amanhã.
 
 ## Sessão de uso
 

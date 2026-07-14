@@ -30,10 +30,10 @@ if (Deseja agendar?) then (Sim)
       :Retorna a consulta de horarios;
       stop
     endif
-  else (Nao)
-    :Informa que agendamento so e permitido para o dia seguinte;
-    stop
-  endif
+   else (Nao)
+     :Informa que agendamento e permitido apenas para hoje ou amanha;
+     stop
+   endif
 
 else (Nao)
   :Encerra consulta;

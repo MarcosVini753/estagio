@@ -1,4 +1,4 @@
-# ADR 0009: Permitir reserva somente para amanhã
+# ADR 0009: Janela temporal para reservas e uso imediato
 
 ## Status
 
@@ -10,7 +10,7 @@ O fluxo definido distingue uso imediato e reserva antecipada. A consulta deve se
 
 ## Decisão
 
-Permitir uso imediato hoje e criação de reservas apenas para amanhã. Horários já passados no dia atual são rejeitados. Outras datas ficam fora da janela permitida.
+Permitir uso imediato hoje e criação de reservas para hoje (futuro do dia corrente) ou amanhã. Horários já passados no dia atual são rejeitados para novo uso ou reserva. Outras datas ficam fora da janela permitida.
 
 ## Alternativas consideradas
 
@@ -23,9 +23,9 @@ Permitir uso imediato hoje e criação de reservas apenas para amanhã. Horário
 - regra simples para usuários e biblioteca;
 - reduz conflitos e complexidade de calendário;
 - mantém o MVP alinhado ao fluxo validado.
+- permite ao usuário garantir horário futuro no mesmo dia.
 
 ## Consequências negativas e riscos
 
-- um horário futuro de hoje apenas consultado não fica garantido;
 - expansão da janela exigirá revisão de regras, interface e testes;
 - o backend deve validar a data, sem confiar no frontend.

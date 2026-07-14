@@ -67,7 +67,7 @@ POST /api/v1/reservations/
 POST /api/v1/reservations/{id}/cancel/
 ```
 
-Criação aceita somente intervalo de amanhã.
+Criação aceita intervalos de hoje (reserva antecipada) ou amanhã.
 
 ## Sessões e alocações
 

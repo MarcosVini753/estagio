@@ -54,8 +54,7 @@ docs/
 2. Mudanças estruturais devem atualizar `architecture/` e, quando relevantes, gerar ADR.
 3. A documentação arquitetural deve refletir o estado atual, mesmo quando um ADR antigo tiver sido substituído.
 4. O contrato OpenAPI gerado pelo backend será a fonte executável da API; `04-api-v1.md` explica sua organização e semântica.
-5. O arquivo legado `docs/contexto.txt` passa a funcionar apenas como ponte para esta estrutura.
-6. Skills e regras de agentes devem ser revisadas por pull request e não podem contradizer `AGENTS.md`.
+5. Skills e regras de agentes devem ser revisadas por pull request e não podem contradizer `AGENTS.md`.
 
 ## Estado atual
 

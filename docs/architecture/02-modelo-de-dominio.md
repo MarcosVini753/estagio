@@ -4,7 +4,7 @@
 
 - identificadores internos preferencialmente UUID ou chave numérica, decisão final na implementação;
 - todos os registros relevantes possuem `created_at` e `updated_at`;
-- datas e horários são timezone-aware;
+- datas e horários são timezone-aware, o timezone é de Rio Branco-AC;
 - estados usam `TextChoices`;
 - regras críticas são reforçadas por constraints quando possível;
 - nomes dos campos no código permanecem em inglês.
@@ -88,7 +88,7 @@ is_active
 valid_from
 ```
 
-A regra de reserva apenas para amanhã continua no domínio e não deve depender somente desse modelo.
+A regra de janela temporal (hoje ou amanhã) continua no domínio e não deve depender somente desse modelo.
 
 ## `Reservation`
 

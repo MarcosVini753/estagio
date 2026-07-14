@@ -9,8 +9,7 @@ Casos de uso principais:
 - consultar computadores disponíveis para hoje ou amanhã;
 - consultar horários disponíveis;
 - selecionar horário;
-- confirmar reserva para amanhã;
-- cancelar reserva;
+- confirmar reserva (hoje ou amanhã);
 - registrar entrada;
 - registrar saída;
 - trocar de computador durante sessão ativa;
@@ -66,7 +65,6 @@ O papel existe na arquitetura, mas seus casos de uso detalhados serão documenta
 - fila de espera foi removida do escopo;
 - estados ocupado e reservado são calculados, não persistidos;
 - a tela inicial de escolha de perfil substitui autenticação real no MVP;
-- reservas são somente para amanhã; hoje permite uso imediato.
 
 ## Rastreabilidade
 

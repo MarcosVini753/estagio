@@ -5,7 +5,7 @@
 - A consulta de disponibilidade aceita somente hoje ou amanhã.
 - Para hoje, horários cujo início já passou não podem ser selecionados para novo uso.
 - Uso imediato é permitido somente hoje.
-- Reserva antecipada é permitida somente para amanhã.
+- Reserva antecipada pode ser criada para hoje (futuro do dia corrente) ou amanhã.
 - Datas anteriores ou posteriores a amanhã devem ser rejeitadas.
 - Horários devem respeitar o funcionamento da sala e os turnos configurados.
 
@@ -35,7 +35,6 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 
 - Toda reserva pertence a um usuário e computador.
 - Toda reserva possui início, fim e estado.
-- Reservas novas só podem ser criadas para amanhã.
 - Reservas válidas de um mesmo computador não podem se sobrepor.
 - O usuário não pode possuir reservas conflitantes.
 - Reserva cancelada não bloqueia disponibilidade.
