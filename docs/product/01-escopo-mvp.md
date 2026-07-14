@@ -1,80 +1,60 @@
 # Escopo do MVP
 
-## Funcionalidades incluídas
+## Seleção de perfil de teste
 
-### Seleção de perfil de teste
-
-A aplicação inicial exibe uma tela para escolher o perfil que será simulado:
+A aplicação permite escolher:
 
 - Usuário da Sala;
 - Estagiário;
 - Supervisor da Biblioteca;
-- Administrador do Sistema, quando necessário para validar telas administrativas futuras.
+- Administrador do Sistema.
 
-A escolha do perfil controla menus e permissões simuladas. Não existe autenticação real no MVP.
+A seleção controla menus e autorizações simuladas. Não existe autenticação real.
 
-### Usuário da Sala
+## Usuário da Sala
 
-- escolher entre hoje e amanhã;
-- consultar computadores e horários disponíveis;
-- iniciar uso imediato hoje, desde que o horário não tenha passado;
-- reservar computador exclusivamente para amanhã;
+- escolher hoje ou amanhã;
+- consultar computadores e horários;
+- iniciar uso imediato hoje;
+- reservar horário futuro de hoje ou de amanhã;
 - consultar e cancelar suas reservas simuladas;
-- registrar entrada;
+- registrar entrada e saída;
 - visualizar sessão ativa;
-- trocar de computador durante a sessão;
-- registrar saída;
-- informar problema em computador.
+- trocar de computador preservando histórico;
+- informar problema.
 
-### Estagiário
+## Estagiário
 
 - consultar sessões ativas;
-- consultar computadores e seus estados efetivos;
-- alterar estado operacional de computador;
+- consultar computadores e estados efetivos;
+- alterar estado operacional;
 - registrar e consultar ocorrências;
-- consultar histórico de uso;
-- corrigir registro de uso com justificativa;
+- consultar e corrigir histórico com justificativa;
 - gerar e exportar relatórios operacionais.
 
-### Supervisor da Biblioteca
+## Supervisor
 
 - cadastrar e editar computadores;
-- configurar turnos;
-- configurar parâmetros de relatório;
+- configurar turnos e parâmetros;
 - analisar uso por período, turno, curso/setor e computador;
-- identificar dias e horários de maior demanda;
-- acompanhar taxa de ocupação;
-- gerar relatórios diário, semanal, mensal e anual consolidados.
+- identificar demanda e taxa de ocupação;
+- gerar relatórios diário, semanal, mensal e anual.
 
-### Administrador do Sistema
+## Administrador
 
-O papel existe na arquitetura, mas sua implementação completa não faz parte deste MVP. A estrutura deve permitir evolução futura para:
+O papel existe arquiteturalmente, mas contas, grupos, permissões e login reais estão fora deste MVP.
 
-- contas;
-- grupos e permissões;
-- parâmetros gerais;
-- logs de auditoria.
-
-## Funcionalidades explicitamente excluídas
+## Excluído
 
 - fila de espera;
-- autenticação real por usuário e senha;
-- integração com SSO, LDAP ou conta institucional;
-- recuperação de senha;
-- notificações por e-mail, SMS ou push;
+- autenticação real e recuperação de senha;
+- Django Admin como interface do MVP;
+- SSO, LDAP ou integração institucional;
+- notificações externas;
 - aplicação mobile nativa;
-- integração com sistemas externos da UFAC;
-- microsserviços e processamento assíncrono;
+- microsserviços, filas e tarefas assíncronas;
 - lançamentos manuais de relatórios.
 
-## Critério de conclusão do MVP
+## Critério de conclusão
 
-O MVP estará funcional quando for possível simular de ponta a ponta:
-
-1. escolher o perfil Usuário da Sala;
-2. consultar hoje e amanhã;
-3. iniciar uma sessão hoje ou reservar um horário amanhã;
-4. trocar de computador preservando o histórico;
-5. encerrar a sessão;
-6. visualizar os dados produzidos em relatórios operacionais e consolidados;
-7. executar operações do Estagiário e Supervisor de acordo com o perfil selecionado.
+O MVP estará funcional quando permitir selecionar perfil, consultar hoje e amanhã, reservar horário futuro de hoje ou amanhã, iniciar e encerrar sessão, trocar computador, registrar ocorrência e visualizar relatórios derivados dos registros operacionais.

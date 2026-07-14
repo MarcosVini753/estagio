@@ -1,218 +1,87 @@
 # Modelo de domínio
 
-## Convenções
+## Convenções implementadas
 
-- identificadores internos preferencialmente UUID ou chave numérica, decisão final na implementação;
-- todos os registros relevantes possuem `created_at` e `updated_at`;
-- datas e horários são timezone-aware, o timezone é de Rio Branco-AC;
-- estados usam `TextChoices`;
-- regras críticas são reforçadas por constraints quando possível;
-- nomes dos campos no código permanecem em inglês.
+- chaves primárias `BigAutoField`;
+- campos em inglês;
+- `created_at` e `updated_at` nas entidades mutáveis relevantes;
+- datas timezone-aware em `America/Rio_Branco`;
+- estados com `TextChoices`;
+- PostgreSQL como banco-alvo;
+- referências de usuário fictícias no MVP sem autenticação.
 
-## `Computer`
+## Configuração
 
-```text
-id
-code
-asset_number, opcional
-description
-operational_state
-notes
-created_at
-updated_at
-```
+### `Shift`
 
-`operational_state`:
+`name`, `start_time`, `end_time`, `display_order`, `valid_from`, `valid_until`, `is_active`.
 
-- `AVAILABLE`;
-- `MAINTENANCE`;
-- `INACTIVE`.
+Constraints: início anterior ao fim e validade final não anterior à inicial.
 
-Não criar campos `occupied`, `reserved`, `status_today` ou `status_tomorrow`.
+### `CalendarException`
 
-## `ComputerOperationalStateChange`
+`date`, `exception_type`, `opens_at`, `closes_at`, `description`.
 
-```text
-id
-computer_id
-previous_state
-new_state
-actor_profile
-reason
-changed_at
-```
+Tipos: `CLOSED`, `SPECIAL_HOURS`, `OPTIONAL_HOLIDAY`.
 
-Mantém histórico para auditoria e cálculo de disponibilidade operacional histórica.
+### `BookingPolicy`
 
-## `Shift`
+`slot_duration_minutes`, `check_in_tolerance_minutes`, `cancellation_limit_minutes`, `max_future_reservations_per_user`, `is_active`, `valid_from`.
 
-```text
-id
-name
-start_time
-end_time
-display_order
-valid_from
-valid_until
-is_active
-```
+### `ReportConfiguration`
 
-A validade temporal impede que uma alteração de turno reclassifique silenciosamente relatórios antigos.
+`default_format`, `group_by_shift`, `include_occurrences`, `is_active`.
 
-## `CalendarException`
+## Computadores
 
-```text
-id
-date
-exception_type
-opens_at, opcional
-closes_at, opcional
-description
-```
+### `Computer`
 
-Tipos sugeridos:
+`code`, `asset_number`, `description`, `operational_state`, `notes`.
 
-- `CLOSED`;
-- `SPECIAL_HOURS`;
-- `OPTIONAL_HOLIDAY`.
+Estado persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`. Não criar campos de ocupado ou reservado.
 
-## `BookingPolicy`
+### `ComputerOperationalStateChange`
 
-```text
-id
-slot_duration_minutes
-check_in_tolerance_minutes
-cancellation_limit_minutes
-max_future_reservations_per_user
-is_active
-valid_from
-```
+`computer`, `previous_state`, `new_state`, `actor_profile`, `reason`, `changed_at`.
 
-A regra de janela temporal (hoje ou amanhã) continua no domínio e não deve depender somente desse modelo.
+## Operações
 
-## `Reservation`
+### `Reservation`
 
-```text
-id
-user_reference
-computer_id
-starts_at
-ends_at
-status
-created_by_profile
-cancelled_by_profile, opcional
-cancelled_at, opcional
-cancellation_reason, opcional
-created_at
-updated_at
-```
+`user_reference`, `computer`, `starts_at`, `ends_at`, `status`, perfis de criação/cancelamento e dados de cancelamento.
 
-Estados sugeridos:
+Estados: `CONFIRMED`, `CANCELLED`, `USED`, `NO_SHOW`, `INVALIDATED`.
 
-- `CONFIRMED`;
-- `CANCELLED`;
-- `USED`;
-- `NO_SHOW`;
-- `INVALIDATED`.
+A migration inicial garante início anterior ao fim e cria índices por computador e usuário. Bloqueio concorrente e impedimento de sobreposição serão completados no serviço de reservas, preferencialmente com constraint PostgreSQL específica.
 
-No MVP sem autenticação, `user_reference` representa uma pessoa fictícia ou identificador de demonstração, não uma identidade validada.
+### `UseSession`
 
-## `UseSession`
+`user_reference`, `reservation`, `started_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
 
-```text
-id
-user_reference
-reservation_id, opcional
-started_at
-ended_at, opcional
-status
-start_shift_id, opcional
-entry_recorded_by_profile
-exit_recorded_by_profile, opcional
-created_at
-updated_at
-```
+Estados: `ACTIVE`, `FINISHED`, `CANCELLED`.
 
-Estados:
+Constraint: uma sessão ativa por referência de usuário.
 
-- `ACTIVE`;
-- `FINISHED`;
-- `CANCELLED`.
+### `ComputerAllocation`
 
-## `ComputerAllocation`
+`session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`.
 
-```text
-id
-session_id
-computer_id
-sequence
-started_at
-ended_at, opcional
-end_reason, opcional
-switch_reason, opcional
-created_at
-updated_at
-```
+Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início.
 
-Uma sessão possui uma ou mais alocações. Apenas uma alocação da sessão pode permanecer ativa.
+## Ocorrências
 
-## `Occurrence`
+### `Occurrence`
 
-```text
-id
-reported_by_reference
-computer_id, opcional
-session_id, opcional
-allocation_id, opcional
-description
-status
-resolved_by_profile, opcional
-resolution_notes, opcional
-created_at
-resolved_at, opcional
-updated_at
-```
+`reported_by_reference`, vínculos opcionais com computador, sessão e alocação, `description`, `status`, resolução e horários.
 
-Estados:
+Estados: `OPEN`, `IN_REVIEW`, `RESOLVED`, `CANCELLED`.
 
-- `OPEN`;
-- `IN_REVIEW`;
-- `RESOLVED`;
-- `CANCELLED`.
+## Auditoria
 
-## `AuditEvent`
+### `AuditEvent`
 
-```text
-id
-actor_profile
-action
-entity_type
-entity_id
-old_values
-new_values
-reason
-created_at
-```
+`actor_profile`, `action`, `entity_type`, `entity_id`, `old_values`, `new_values`, `reason`, `created_at`.
 
-## Restrições recomendadas
+## Relatórios
 
-- uma sessão ativa por `user_reference`;
-- uma alocação ativa por computador;
-- uma alocação ativa por sessão;
-- `starts_at < ends_at` quando houver término;
-- reservas válidas não podem se sobrepor no mesmo computador;
-- reservas do mesmo usuário não podem se sobrepor;
-- `sequence` é única dentro da sessão;
-- estado operacional aceita apenas os três valores definidos.
-
-## Relacionamentos principais
-
-```text
-Reservation 0..1 ─── 1 UseSession
-UseSession 1 ─────── * ComputerAllocation
-Computer 1 ───────── * ComputerAllocation
-Computer 1 ───────── * Reservation
-Computer 1 ───────── * Occurrence
-Computer 1 ───────── * ComputerOperationalStateChange
-Shift 0..1 ───────── * UseSession
-```
+O app `reports` não possui modelo agregado. Relatórios serão selectors, projeções e exportadores sobre os registros acima.

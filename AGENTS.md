@@ -1,15 +1,15 @@
 # Instruções para agentes de código
 
-Este repositório documenta e implementará o Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC.
+Este repositório documenta e implementa o Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC.
 
 ## Fontes de verdade
 
-Consulte os documentos nesta ordem:
+Consulte nesta ordem:
 
 1. `docs/product/`: escopo, atores, regras e fluxos funcionais.
 2. `docs/architecture/`: arquitetura vigente, módulos, modelo de domínio, API e relatórios.
 3. `docs/adr/`: decisões arquiteturais e justificativas.
-4. `docs/diagrams/`: diagramas UML já validados.
+4. `docs/diagrams/`: diagramas UML validados.
 5. `prototipos/`: referência visual e comportamental, não fonte de modelagem ou segurança.
 
 Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os documentos de arquitetura descrevem o estado corrente.
@@ -19,67 +19,61 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 - Não implementar fila de espera.
 - A consulta de disponibilidade é limitada a hoje e amanhã.
 - Hoje permite uso imediato em horários que ainda não passaram.
-- Reserva antecipada é permitida somente para amanhã.
-- O computador persiste apenas estado operacional: `AVAILABLE`, `MAINTENANCE` ou `INACTIVE`.
-- `OCCUPIED` e `RESERVED` são estados calculados para um instante ou intervalo.
+- Reservas podem ser criadas para horários futuros de hoje ou para amanhã.
+- O computador persiste apenas `AVAILABLE`, `MAINTENANCE` ou `INACTIVE`.
+- `OCCUPIED` e `RESERVED` são calculados para um instante ou intervalo.
 - Um usuário pode possuir no máximo uma sessão ativa.
 - Um computador pode possuir no máximo uma alocação ativa.
 - Uma sessão pode conter várias alocações por causa da troca de computador.
-- Trocar de computador não cria uma nova sessão e não apaga o histórico anterior.
-- Relatórios são projeções calculadas; não criar lançamentos manuais de relatório.
-- O ator operacional é denominado `Estagiário`, não `Servidor da Biblioteca`.
-- O Administrador do Sistema existe na arquitetura, embora seus casos de uso detalhados estejam adiados.
+- Trocar de computador não cria nova sessão nem apaga histórico.
+- Relatórios são projeções; não criar lançamentos manuais de relatório.
+- O ator operacional é `Estagiário`, não `Servidor da Biblioteca`.
+- O Administrador do Sistema existe arquiteturalmente, mas não possui autenticação real nesta etapa.
 
-## Autenticação da primeira versão
+## Autorização da primeira versão
 
 - Não existe autenticação real no MVP inicial.
 - A interface apresenta uma tela para escolher o perfil de teste.
-- O perfil selecionado determina menus e autorizações simuladas.
-- Não adicionar senha, JWT, OAuth, SSO ou integração institucional sem novo ADR.
-- A autorização simulada não oferece segurança e só pode ser usada com dados fictícios em ambiente local ou controlado.
+- O perfil selecionado é armazenado na sessão Django e controla autorizações simuladas.
+- Não adicionar senha, Django Admin, JWT, OAuth, SSO ou integração institucional sem novo ADR.
+- O modo de demonstração não oferece segurança e só pode usar dados fictícios em ambiente local ou controlado.
 
 ## Direção técnica
 
-- Backend em Django e Django REST Framework.
-- Monólito modular organizado em apps por domínio.
+- Backend em Django 5.2 LTS e Django REST Framework.
+- Monólito modular em apps por domínio.
+- PostgreSQL como banco-alvo.
 - API versionada em `/api/v1/`.
-- Frontend inicial com Django Templates e JavaScript puro, preservando o protótipo como referência.
-- PostgreSQL é o banco-alvo.
-- OpenAPI deve acompanhar a implementação da API.
+- Django Templates e JavaScript puro.
+- OpenAPI com `drf-spectacular`.
+- Configurações separadas para local, testes e produção.
+
+## Estado de implementação
+
+A etapa 2 já possui scaffold Django, apps, modelos e migrations iniciais, PostgreSQL via Compose, health check, seleção de perfil de demonstração, OpenAPI, testes iniciais e CI.
+
+Ainda não existem serviços ou endpoints completos de disponibilidade, reservas, sessões, trocas, ocorrências e relatórios. Não simule essas funcionalidades diretamente em views; implemente-as em fatias verticais com serviços, testes e documentação.
 
 ## Implementação mínima e correta
 
-Aplique o princípio Ponytail depois de compreender integralmente a tarefa e o fluxo afetado:
+1. confirme a necessidade da alteração;
+2. procure padrões reutilizáveis;
+3. prefira Python, Django, DRF e PostgreSQL a código próprio;
+4. não crie abstrações para necessidades hipotéticas;
+5. mantenha regras transacionais em serviços de domínio;
+6. mantenha consultas complexas e projeções em selectors;
+7. use constraints para invariantes persistentes;
+8. atualize migrations, testes, OpenAPI e documentação quando aplicável.
 
-1. confirme se a alteração realmente precisa existir;
-2. procure implementação ou padrão reutilizável no repositório;
-3. prefira Python, Django, DRF ou PostgreSQL a código próprio;
-4. prefira recursos nativos de HTML, CSS e navegador a dependências;
-5. reutilize dependências já instaladas antes de adicionar outra;
-6. escreva somente o mínimo necessário para atender corretamente à regra.
+## Skills e qualidade
 
-Não crie abstrações, camadas, dependências ou configurações para necessidades hipotéticas. O menor diff correto vence, mas minimalismo nunca pode remover validação, integridade, segurança, acessibilidade, auditoria, migrations ou testes exigidos pelo projeto.
+As skills ficam em `.cline/skills/`. Antes de concluir, execute:
 
-## Skills e fluxo de qualidade
+```bash
+make check
+make lint
+make format-check
+make test
+```
 
-As skills específicas para Cline ficam em `.cline/skills/`. Use a mais adequada à tarefa:
-
-- `django-feature-development` para funcionalidades completas;
-- `django-model-and-migration` para esquema e migrations;
-- `api-endpoint` para API DRF;
-- `test-first-change` para bugs e mudanças críticas;
-- `code-review` para revisão geral antes de merge;
-- `ponytail-review` para uma segunda revisão focada em sobre-engenharia;
-- `documentation-sync` para manter código e documentação coerentes.
-
-Antes de concluir uma implementação, execute os comandos de qualidade disponíveis no repositório. Não declare a tarefa concluída quando testes, lint, migrations ou verificações obrigatórias falharem.
-
-## Regras para alterações
-
-- Mudança arquitetural relevante exige ADR novo ou substituição explícita de ADR anterior.
-- Mudança de regra funcional exige atualização em `docs/product/`.
-- Mudança de endpoint exige atualização em `docs/architecture/04-api-v1.md`, OpenAPI e testes.
-- Toda regra crítica deve possuir teste automatizado.
-- Não introduzir microsserviços, Redis, Celery, WebSockets, JWT ou frontend SPA sem justificativa e ADR.
-- Não duplicar regra de negócio em views, serializers e modelos; centralize operações em serviços de domínio.
-- Não confiar no estado armazenado pelo protótipo em `localStorage` como modelo do banco.
+Mudanças arquiteturais exigem ADR. Mudanças funcionais atualizam `docs/product/`. Mudanças de endpoint atualizam OpenAPI, `docs/architecture/04-api-v1.md` e testes.

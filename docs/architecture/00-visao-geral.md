@@ -1,76 +1,66 @@
 # Visão geral da arquitetura
 
-## Estilo arquitetural
+## Estilo
 
-A solução será um monólito modular em Django. Haverá uma única aplicação implantável e um único banco relacional, com separação interna por domínios.
+Monólito modular em Django, com uma aplicação implantável e um banco PostgreSQL.
 
 ```text
 Navegador
-├── interface do Usuário da Sala
-├── painel do Estagiário
-├── painel do Supervisor
-└── seletor de perfil de teste
+├── Django Templates e JavaScript
+├── seletor de perfil de teste
+└── documentação OpenAPI
         │
         ▼
-Django
-├── templates e arquivos estáticos
-├── API REST /api/v1/
+Django + DRF
+├── API /api/v1/
 ├── serviços de domínio
-├── consultas e projeções
-└── autorização simulada
+├── selectors e projeções
+└── autorização simulada em sessão
         │
         ▼
 PostgreSQL
 ```
 
-## Stack proposta
+## Stack
 
-- Python;
+- Python 3.12;
 - Django 5.2 LTS;
 - Django REST Framework;
-- PostgreSQL como banco-alvo;
-- Django Templates;
-- JavaScript puro para interações progressivas;
-- `drf-spectacular` para OpenAPI;
-- Docker Compose em etapa posterior de desenvolvimento e implantação.
+- PostgreSQL 17;
+- Django Templates e JavaScript puro;
+- `drf-spectacular`;
+- Docker Compose;
+- Ruff;
+- GitHub Actions.
 
-## Motivação
+## Apps
 
-O domínio possui transações fortemente relacionadas: reservas, sessões, alocações, estados de computador, ocorrências e relatórios. Um monólito modular reduz complexidade operacional e permite transações atômicas sem mensageria distribuída.
+- `core`;
+- `access`;
+- `configuration`;
+- `computers`;
+- `operations`;
+- `occurrences`;
+- `reports`;
+- `audit`.
 
-## Camadas internas
+## Camadas
 
-### Apresentação
-
-Templates, JavaScript, views HTTP e serializers.
-
-### Aplicação
-
-Casos de uso implementados como serviços explícitos: reservar, iniciar sessão, trocar computador, encerrar sessão, corrigir registro e alterar estado operacional.
-
-### Domínio
-
-Modelos, regras, invariantes, enums e políticas de disponibilidade.
-
-### Infraestrutura
-
-ORM, PostgreSQL, exportadores, administração e futura auditoria.
+- apresentação: templates, JavaScript, views e serializers;
+- aplicação: serviços que executam casos de uso;
+- domínio: models, enums, constraints e políticas;
+- consulta: selectors, projeções e exportadores;
+- infraestrutura: ORM, PostgreSQL, sessões e OpenAPI.
 
 ## Princípios
 
-- regras de negócio não devem depender do frontend;
-- operações críticas devem ser transacionais;
-- estados calculados não devem ser persistidos como fonte de verdade;
-- relatórios consultam dados operacionais existentes;
-- cada app Django possui responsabilidade clara;
-- a API é versionada desde a primeira versão;
-- a seleção de perfil é mecanismo de demonstração, não segurança.
+- regras não dependem do frontend;
+- operações críticas são transacionais;
+- estados calculados não são persistidos;
+- relatórios consultam dados operacionais;
+- autorização simulada não é identidade;
+- não existe Django Admin ou autenticação real no MVP.
 
-## Limites atuais
+## Estado atual
 
-- sem autenticação real;
-- sem fila de espera;
-- sem integração institucional;
-- sem microsserviços;
-- sem tarefas assíncronas;
-- sem armazenamento de dados pessoais reais durante a fase de demonstração.
+O scaffold, apps, modelos, migrations, Compose, CI, health check e contexto de demonstração estão implementados. Os serviços operacionais e endpoints de domínio permanecem pendentes.

@@ -1,2 +1,16 @@
-*:Zone.Identifier
+__pycache__/
+*.py[cod]
+*.sqlite3
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+staticfiles/
+media/
 .DS_Store
+.vscode/
+.idea/

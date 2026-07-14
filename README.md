@@ -1,82 +1,84 @@
 # Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC
 
-Repositório de documentação, diagramas, protótipo navegável e futura implementação Django do sistema web de controle de uso da Sala de Informática da Biblioteca da UFAC.
+Sistema web para substituir o registro manual de uso da Sala de Informática da Biblioteca da UFAC, controlar computadores, reservas, sessões, trocas, ocorrências e gerar relatórios derivados dos registros operacionais.
 
 ## Estado atual
 
-O projeto está na etapa de consolidação documental e arquitetural. Já existem:
+A etapa 2 do backend foi iniciada. O repositório contém:
 
-- regras funcionais;
-- casos de uso;
-- diagramas de atividades;
-- protótipo em HTML, CSS e JavaScript puro;
-- arquitetura planejada para Django e Django REST Framework;
-- modelo de domínio inicial;
-- contrato preliminar da API `/api/v1/`;
-- Architecture Decision Records;
-- instruções e skills para agentes de código.
+- documentação funcional, arquitetura e ADRs;
+- diagramas PlantUML;
+- protótipo navegável em HTML, CSS e JavaScript;
+- projeto Django 5.2 LTS e Django REST Framework;
+- apps modulares e modelo de domínio inicial;
+- migrations iniciais para PostgreSQL;
+- API `/api/v1/`, health check e OpenAPI;
+- seleção de perfil de demonstração armazenada em sessão;
+- testes iniciais, Ruff e GitHub Actions.
 
-## Direção funcional consolidada
+Ainda não estão implementados os serviços completos de disponibilidade, reservas, sessões, trocas, ocorrências e relatórios.
 
-- consulta de disponibilidade somente para hoje e amanhã;
-- uso imediato permitido hoje em horários ainda não passados;
-- reserva antecipada permitida somente para amanhã;
+## Regras centrais
+
+- consulta somente para hoje e amanhã;
+- uso imediato apenas hoje, em horário ainda não passado;
+- reserva antecipada para horário futuro de hoje ou para amanhã;
 - fila de espera fora do escopo;
-- ator operacional denominado Estagiário;
-- troca de computador preserva a mesma sessão e cria nova alocação;
-- estados operacionais persistidos do computador: `AVAILABLE`, `MAINTENANCE` e `INACTIVE`;
+- ator operacional: Estagiário;
+- autenticação real fora do MVP;
+- computador persiste somente `AVAILABLE`, `MAINTENANCE` ou `INACTIVE`;
 - `OCCUPIED` e `RESERVED` são calculados;
-- relatórios são projeções derivadas dos registros operacionais;
-- autenticação real não existe no MVP inicial: o perfil é escolhido em uma tela de demonstração.
+- troca de computador preserva a sessão e cria nova alocação;
+- relatórios são projeções dos registros operacionais.
 
-## Estrutura principal
+## Execução com Docker
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Acesse:
+
+- aplicação: `http://localhost:8000/`;
+- Swagger UI: `http://localhost:8000/api/docs/`;
+- ReDoc: `http://localhost:8000/api/redoc/`;
+- health check: `http://localhost:8000/api/v1/health/`.
+
+## Execução local
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements/dev.txt
+docker compose up -d db
+python backend/manage.py migrate
+python backend/manage.py runserver
+```
+
+## Qualidade
+
+```bash
+make check
+make lint
+make format-check
+make test
+```
+
+## Estrutura
 
 ```text
 AGENTS.md
-.clinerules/             # Regras persistentes do Cline
-.cline/skills/           # Workflows especializados do Cline
-README.md
+backend/                 # implementação Django
+requirements/            # dependências
+compose.yaml              # PostgreSQL e aplicação
+prototipos/               # referência visual legada
 docs/
-├── README.md
-├── product/             # Escopo, atores, regras, fluxos e glossário
-├── architecture/        # Arquitetura vigente, módulos, domínio, API e relatórios
-├── development/         # Procedimentos de desenvolvimento e agentes
-├── adr/                 # Decisões arquiteturais
-└── diagrams/            # Diagramas UML em PlantUML
-prototipos/
-├── README.md
-├── index.html
-├── css/
-└── js/
+├── product/              # regras funcionais
+├── architecture/         # arquitetura vigente
+├── development/          # execução e agentes
+├── adr/                  # decisões arquiteturais
+└── diagrams/             # UML em PlantUML
 ```
 
-## Documentação
-
-- [Índice da documentação](docs/README.md)
-- [Visão geral do produto](docs/product/00-visao-geral.md)
-- [Escopo do MVP](docs/product/01-escopo-mvp.md)
-- [Regras de negócio](docs/product/03-regras-de-negocio.md)
-- [Visão geral da arquitetura](docs/architecture/00-visao-geral.md)
-- [Modelo de domínio](docs/architecture/02-modelo-de-dominio.md)
-- [API v1](docs/architecture/04-api-v1.md)
-- [Índice de ADRs](docs/adr/README.md)
-- [Índice dos diagramas](docs/diagrams/README.md)
-- [Instruções para agentes](AGENTS.md)
-- [Instalação e uso de skills no Cline e Codex](docs/development/agent-skills.md)
-
-## Protótipo
-
-Abra `prototipos/index.html` no navegador.
-
-O protótipo utiliza `localStorage` e dados fictícios. Ele serve como referência visual e comportamental, não como fonte definitiva para banco de dados, segurança ou arquitetura.
-
-## Próxima etapa
-
-A próxima fase é inicializar o backend Django seguindo a documentação versionada:
-
-1. criar a estrutura do projeto e dos apps;
-2. configurar PostgreSQL, DRF e OpenAPI;
-3. implementar computadores, turnos e disponibilidade;
-4. implementar reservas, sessões e alocações;
-5. implementar ocorrências e relatórios;
-6. substituir gradualmente o estado simulado do protótipo pela API.
+Consulte [docs/README.md](docs/README.md) antes de implementar novas funcionalidades.

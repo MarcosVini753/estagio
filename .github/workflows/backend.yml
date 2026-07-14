@@ -1,0 +1,67 @@
+name: Backend checks
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "requirements/**"
+      - "compose.yaml"
+      - "Makefile"
+      - ".github/workflows/backend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "requirements/**"
+      - "compose.yaml"
+      - "Makefile"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: biblioteca
+          POSTGRES_USER: biblioteca
+          POSTGRES_PASSWORD: biblioteca
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U biblioteca -d biblioteca"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SECRET_KEY: ci-only-secret
+      POSTGRES_DB: biblioteca
+      POSTGRES_USER: biblioteca
+      POSTGRES_PASSWORD: biblioteca
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements/dev.txt
+      - name: Django checks
+        run: cd backend && python manage.py check
+      - name: Migration drift
+        run: cd backend && python manage.py makemigrations --check --dry-run
+      - name: Apply migrations
+        run: cd backend && python manage.py migrate --noinput
+      - name: Tests
+        run: cd backend && python manage.py test
+      - name: Ruff
+        run: ruff check backend
+      - name: Format check
+        run: ruff format --check backend
