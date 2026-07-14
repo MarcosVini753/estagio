@@ -30,7 +30,9 @@ def update_active_booking_policy(*, values: dict) -> BookingPolicy:
     merged = {
         field: values.get(
             field,
-            getattr(current, field) if current else BookingPolicy._meta.get_field(field).default,
+            getattr(current, field)
+            if current
+            else BookingPolicy._meta.get_field(field).default,
         )
         for field in BOOKING_POLICY_FIELDS
     }

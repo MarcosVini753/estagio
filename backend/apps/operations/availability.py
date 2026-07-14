@@ -40,7 +40,10 @@ def get_operating_windows(target_date: date) -> list[tuple[datetime, datetime]]:
     }:
         return []
 
-    if exception and exception.exception_type == CalendarException.ExceptionType.SPECIAL_HOURS:
+    if (
+        exception
+        and exception.exception_type == CalendarException.ExceptionType.SPECIAL_HOURS
+    ):
         if not exception.opens_at or not exception.closes_at:
             return []
         return [
@@ -64,7 +67,9 @@ def generate_slot_intervals(
 ) -> tuple[int, list[tuple[datetime, datetime]], list[tuple[datetime, datetime]]]:
     policy = get_booking_policy_for_date(target_date)
     if not policy:
-        raise ConfigurationRequired("Nenhuma política de reservas está ativa para a data.")
+        raise ConfigurationRequired(
+            "Nenhuma política de reservas está ativa para a data."
+        )
 
     windows = get_operating_windows(target_date)
     duration = timedelta(minutes=policy.slot_duration_minutes)

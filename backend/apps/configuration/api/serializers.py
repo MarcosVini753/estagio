@@ -141,5 +141,7 @@ class BookingPolicyUpdateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if not attrs:
-            raise serializers.ValidationError("Informe ao menos um campo para atualização.")
+            raise serializers.ValidationError(
+                "Informe ao menos um campo para atualização."
+            )
         return attrs
