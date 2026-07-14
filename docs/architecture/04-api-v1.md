@@ -1,39 +1,30 @@
 # API v1
 
-## Política de versionamento
+## Política
 
-A API começa em `/api/v1/`. A versão aparece no caminho para facilitar roteamento, documentação, testes e evolução do frontend.
+Todos os endpoints ficam sob `/api/v1/`. JSON usa `snake_case`; datas usam ISO 8601 com timezone; erros usam `code`, `detail` e `fields`.
 
-A versão da API é independente da versão da aplicação. Novos campos opcionais e endpoints compatíveis permanecem em v1. Mudanças incompatíveis exigem migração planejada ou nova versão.
-
-## Convenções
-
-- JSON em `snake_case`;
-- datas e horários em ISO 8601 com timezone;
-- paginação nas listagens históricas;
-- filtros por query string;
-- erros com `code`, `detail` e `fields` quando aplicável;
-- OpenAPI gerado com `drf-spectacular`;
-- operações de domínio expostas como actions explícitas, não como atualizações arbitrárias de estado.
-
-## Contexto de demonstração
+## Implementado
 
 ```text
+GET  /api/v1/health/
 GET  /api/v1/demo/context/
 POST /api/v1/demo/select-profile/
 ```
 
-Exemplo:
+A seleção de perfil grava `ROOM_USER`, `INTERN`, `LIBRARY_SUPERVISOR` ou `SYSTEM_ADMIN` na sessão Django. Não autentica ninguém.
 
-```json
-{
-  "profile": "INTERN"
-}
+Documentação:
+
+```text
+GET /api/schema/
+GET /api/docs/
+GET /api/redoc/
 ```
 
-Esse endpoint não autentica o usuário. Apenas altera o contexto de teste.
+## Contratos planejados
 
-## Computadores e disponibilidade
+### Computadores
 
 ```text
 GET   /api/v1/computers/
@@ -45,20 +36,7 @@ GET   /api/v1/computers/availability/?date=YYYY-MM-DD
 GET   /api/v1/computers/{id}/slots/?date=YYYY-MM-DD
 ```
 
-Resposta de disponibilidade:
-
-```json
-{
-  "id": 4,
-  "code": "PC-04",
-  "operational_state": "AVAILABLE",
-  "effective_status": "RESERVED",
-  "reserved_by_current_user": false,
-  "can_start_now": false
-}
-```
-
-## Reservas
+### Reservas
 
 ```text
 GET  /api/v1/reservations/
@@ -67,9 +45,9 @@ POST /api/v1/reservations/
 POST /api/v1/reservations/{id}/cancel/
 ```
 
-Criação aceita intervalos de hoje (reserva antecipada) ou amanhã.
+Criação aceita horário futuro de hoje ou intervalo de amanhã.
 
-## Sessões e alocações
+### Sessões
 
 ```text
 GET  /api/v1/usage-sessions/current/
@@ -81,60 +59,10 @@ POST /api/v1/usage-sessions/{id}/finish/
 POST /api/v1/usage-sessions/{id}/correct/
 ```
 
-Não expor endpoint genérico que permita mudar diretamente o status da sessão sem executar as invariantes do caso de uso.
+### Ocorrências, configurações e relatórios
 
-## Ocorrências
+Os contratos permanecem planejados na documentação anterior, mas não devem ser considerados implementados até aparecerem no OpenAPI gerado e possuírem testes.
 
-```text
-GET   /api/v1/occurrences/
-POST  /api/v1/occurrences/
-GET   /api/v1/occurrences/{id}/
-PATCH /api/v1/occurrences/{id}/
-```
+## Regra de evolução
 
-## Configurações
-
-```text
-GET   /api/v1/shifts/
-POST  /api/v1/shifts/
-PATCH /api/v1/shifts/{id}/
-GET   /api/v1/calendar-exceptions/
-POST  /api/v1/calendar-exceptions/
-GET   /api/v1/booking-policy/
-PATCH /api/v1/booking-policy/
-GET   /api/v1/report-configuration/
-PATCH /api/v1/report-configuration/
-```
-
-## Relatórios
-
-```text
-GET /api/v1/reports/daily/
-GET /api/v1/reports/weekly/
-GET /api/v1/reports/monthly/
-GET /api/v1/reports/annual/
-GET /api/v1/reports/occupancy/
-GET /api/v1/reports/computers/
-GET /api/v1/reports/affiliations/
-GET /api/v1/reports/occurrences/
-```
-
-Exportação:
-
-```text
-GET /api/v1/reports/monthly/export/?year=2026&month=7&format=csv
-```
-
-## Formato de erro
-
-```json
-{
-  "code": "COMPUTER_NOT_AVAILABLE",
-  "detail": "O computador não está disponível no intervalo solicitado.",
-  "fields": {}
-}
-```
-
-## Perfis e acesso simulado
-
-Os endpoints verificam o perfil armazenado na sessão de demonstração para ocultar ou impedir ações incompatíveis. Isso não substitui segurança. Antes de usar dados reais, todos os endpoints devem migrar para autenticação e autorização reais.
+O OpenAPI gerado é a fonte executável. Mudanças incompatíveis exigem migração planejada ou nova versão.
