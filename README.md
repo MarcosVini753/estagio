@@ -1,54 +1,78 @@
 # Sistema de Controle de Uso da Sala de Informática da Biblioteca da UFAC
 
-Repositório com documentação, diagramas UML e protótipo navegável para o sistema web de controle de uso da Sala de Informática da Biblioteca da UFAC.
+Repositório de documentação, diagramas, protótipo navegável e futura implementação Django do sistema web de controle de uso da Sala de Informática da Biblioteca da UFAC.
 
-## Estrutura
+## Estado atual
 
-- `docs/contexto.txt`: contexto geral do sistema, atores, regras e entidades recomendadas.
-- `docs/casos-de-uso.md`: descrições textuais dos casos de uso.
-- `docs/diagrams/casos-de-uso/`: diagramas de casos de uso em PlantUML.
-- `docs/diagrams/atividades/`: diagramas de atividades dos principais fluxos.
-- `prototipos/`: protótipo navegável em HTML, CSS e JavaScript puros.
+O projeto está na etapa de consolidação documental e arquitetural. Já existem:
 
-## Como executar o protótipo
+- regras funcionais;
+- casos de uso;
+- diagramas de atividades;
+- protótipo em HTML, CSS e JavaScript puro;
+- arquitetura planejada para Django e Django REST Framework;
+- modelo de domínio inicial;
+- contrato preliminar da API `/api/v1/`;
+- Architecture Decision Records;
+- instruções para agentes de código em `AGENTS.md`.
 
-Abra o arquivo `prototipos/index.html` no navegador.
+## Direção funcional consolidada
 
-## Diagramas
+- consulta de disponibilidade somente para hoje e amanhã;
+- uso imediato permitido hoje em horários ainda não passados;
+- reserva antecipada permitida somente para amanhã;
+- fila de espera fora do escopo;
+- ator operacional denominado Estagiário;
+- troca de computador preserva a mesma sessão e cria nova alocação;
+- estados operacionais persistidos do computador: `AVAILABLE`, `MAINTENANCE` e `INACTIVE`;
+- `OCCUPIED` e `RESERVED` são calculados;
+- relatórios são projeções derivadas dos registros operacionais;
+- autenticação real não existe no MVP inicial: o perfil é escolhido em uma tela de demonstração.
 
-Os diagramas estão em arquivos `.puml` e podem ser abertos em qualquer ferramenta compatível com PlantUML.
+## Estrutura principal
 
-Índice dos diagramas: [`docs/diagrams/README.md`](docs/diagrams/README.md).
+```text
+AGENTS.md
+README.md
+docs/
+├── README.md
+├── product/          # Escopo, atores, regras, fluxos e glossário
+├── architecture/     # Arquitetura vigente, módulos, domínio, API e relatórios
+├── adr/              # Decisões arquiteturais
+└── diagrams/         # Diagramas UML em PlantUML
+prototipos/
+├── README.md
+├── index.html
+├── css/
+└── js/
+```
 
-## O que está simulado
+## Documentação
 
-### Usuário da Sala
-- Consultar computadores disponíveis para o dia atual ou seguinte.
-- Alternar entre hoje e amanhã por botões ou deslize lateral na lista.
-- Consultar horários disponíveis.
-- Selecionar horário disponível.
-- Confirmar agendamento para o próximo dia.
-- Cancelar agendamento.
-- Registrar entrada.
-- Registrar saída.
-- Trocar de computador durante sessão ativa.
-- Informar problema no computador.
+- [Índice da documentação](docs/README.md)
+- [Visão geral do produto](docs/product/00-visao-geral.md)
+- [Escopo do MVP](docs/product/01-escopo-mvp.md)
+- [Regras de negócio](docs/product/03-regras-de-negocio.md)
+- [Visão geral da arquitetura](docs/architecture/00-visao-geral.md)
+- [Modelo de domínio](docs/architecture/02-modelo-de-dominio.md)
+- [API v1](docs/architecture/04-api-v1.md)
+- [Índice de ADRs](docs/adr/README.md)
+- [Índice dos diagramas](docs/diagrams/README.md)
+- [Instruções para agentes](AGENTS.md)
 
-### Servidor da Biblioteca
-- Consultar sessões ativas.
-- Acompanhar computadores disponíveis, ocupados e indisponíveis.
-- Alterar status operacional de computadores.
-- Corrigir registros de uso.
-- Gerar e exportar relatórios operacionais.
+## Protótipo
 
-### Supervisor da Biblioteca
-- Cadastrar computadores.
-- Configurar turnos.
-- Configurar parâmetros de relatório.
-- Analisar uso da sala por período, turno, curso/setor e computador.
-- Identificar dias de maior movimento.
-- Identificar horários de maior demanda.
-- Acompanhar taxa de ocupação dos computadores.
-- Gerar relatório diário, semanal, mensal e anual consolidado.
+Abra `prototipos/index.html` no navegador.
 
-Os dados são persistidos no `localStorage` do navegador. O botão de reiniciar no topo limpa a simulação e volta ao estado inicial.
+O protótipo utiliza `localStorage` e dados fictícios. Ele serve como referência visual e comportamental, não como fonte definitiva para banco de dados, segurança ou arquitetura.
+
+## Próxima etapa
+
+A próxima fase é inicializar o backend Django seguindo a documentação versionada:
+
+1. criar a estrutura do projeto e dos apps;
+2. configurar PostgreSQL, DRF e OpenAPI;
+3. implementar computadores, turnos e disponibilidade;
+4. implementar reservas, sessões e alocações;
+5. implementar ocorrências e relatórios;
+6. substituir gradualmente o estado simulado do protótipo pela API.
