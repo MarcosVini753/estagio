@@ -14,7 +14,7 @@ O projeto está na etapa de consolidação documental e arquitetural. Já existe
 - modelo de domínio inicial;
 - contrato preliminar da API `/api/v1/`;
 - Architecture Decision Records;
-- instruções para agentes de código em `AGENTS.md`.
+- instruções e skills para agentes de código.
 
 ## Direção funcional consolidada
 
@@ -33,13 +33,16 @@ O projeto está na etapa de consolidação documental e arquitetural. Já existe
 
 ```text
 AGENTS.md
+.clinerules/             # Regras persistentes do Cline
+.cline/skills/           # Workflows especializados do Cline
 README.md
 docs/
 ├── README.md
-├── product/          # Escopo, atores, regras, fluxos e glossário
-├── architecture/     # Arquitetura vigente, módulos, domínio, API e relatórios
-├── adr/              # Decisões arquiteturais
-└── diagrams/         # Diagramas UML em PlantUML
+├── product/             # Escopo, atores, regras, fluxos e glossário
+├── architecture/        # Arquitetura vigente, módulos, domínio, API e relatórios
+├── development/         # Procedimentos de desenvolvimento e agentes
+├── adr/                 # Decisões arquiteturais
+└── diagrams/            # Diagramas UML em PlantUML
 prototipos/
 ├── README.md
 ├── index.html
@@ -59,6 +62,7 @@ prototipos/
 - [Índice de ADRs](docs/adr/README.md)
 - [Índice dos diagramas](docs/diagrams/README.md)
 - [Instruções para agentes](AGENTS.md)
+- [Instalação e uso de skills no Cline e Codex](docs/development/agent-skills.md)
 
 ## Protótipo
 
