@@ -14,7 +14,7 @@ Pode:
 
 - consultar disponibilidade de hoje e amanhã;
 - iniciar uso imediato hoje;
-- reservar para amanhã;
+- reservar para hoje ou amanhã, em horários válidos;
 - consultar e cancelar suas próprias reservas simuladas;
 - registrar entrada e saída;
 - trocar de computador;

@@ -24,9 +24,9 @@ Não altere arquivos durante a revisão, salvo solicitação explícita. Leia `A
 Confirme que:
 
 - fila de espera não foi introduzida;
-- reserva é somente para amanhã;
-- hoje é consulta e uso imediato;
-- `OCCUPIED` e `RESERVED` continuam calculados;
+- reserva pode ser realizada hoje, apenas em horários válidos, ou amanhã;
+- para hoje há também uso imediato;
+- `OCCUPIED` e `RESERVED` serão calculados;
 - troca de computador cria nova alocação, não nova sessão;
 - relatórios continuam projeções;
 - autenticação real não foi adicionada sem ADR.
