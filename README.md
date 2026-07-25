@@ -46,6 +46,18 @@ make run
 
 A aplicação fica em `http://localhost:8000/`.
 
+- [Índice da documentação](docs/README.md)
+- [Visão geral do produto](docs/product/00-visao-geral.md)
+- [Escopo do MVP](docs/product/01-escopo-mvp.md)
+- [Regras de negócio](docs/product/03-regras-de-negocio.md)
+- [Visão geral da arquitetura](docs/architecture/00-visao-geral.md)
+- [Modelo de domínio](docs/architecture/02-modelo-de-dominio.md)
+- [API v1](docs/architecture/04-api-v1.md)
+- [Índice de ADRs](docs/adr/README.md)
+- [Índice dos diagramas](docs/diagrams/README.md)
+- [Instruções para agentes](AGENTS.md)
+- [Instalação e uso de skills no Cline e Codex](docs/development/agent-skills.md)
+
 Documentação da API:
 
 ```text
