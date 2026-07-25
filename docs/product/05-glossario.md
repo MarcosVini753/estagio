@@ -4,7 +4,7 @@
 
 Aluno, professor ou técnico-administrativo autorizado a utilizar a Sala de Informática.
 
-## Estagiário
+## Monitor da Sala
 
 Papel operacional responsável por acompanhar a sala, corrigir registros, tratar ocorrências e gerar relatórios operacionais.
 
@@ -54,7 +54,7 @@ Registro de problema técnico ou operacional associado opcionalmente a computado
 
 ## Relatório operacional
 
-Projeção voltada ao acompanhamento cotidiano pelo Estagiário.
+Projeção voltada ao acompanhamento cotidiano pelo Monitor da Sala.
 
 ## Relatório consolidado
 

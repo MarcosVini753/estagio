@@ -15,14 +15,14 @@ Construir um sistema web para registrar, acompanhar e analisar o uso dos computa
 - controlar o estado operacional dos computadores;
 - evitar conflitos de uso e reservas;
 - gerar relatórios a partir dos registros reais;
-- permitir acompanhamento operacional pelo Estagiário;
+- permitir acompanhamento operacional pelo Monitor da Sala;
 - permitir análise gerencial pelo Supervisor;
 - manter base para futura administração de contas, permissões, parâmetros e logs.
 
 ## Atores
 
 - **Usuário da Sala:** aluno, professor ou técnico-administrativo.
-- **Estagiário:** acompanha operação, corrige registros, trata ocorrências e gera relatórios operacionais.
+- **Monitor da Sala:** acompanha operação, corrige registros, trata ocorrências e gera relatórios operacionais.
 - **Supervisor da Biblioteca:** configura dados, acompanha indicadores e gera relatórios consolidados.
 - **Administrador do Sistema:** papel arquitetural futuro para contas, permissões, parâmetros e auditoria.
 

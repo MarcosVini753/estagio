@@ -12,7 +12,7 @@ Os dados são fictícios e persistidos em `localStorage`. Não há backend, aute
 
 ## Regras para ajustes futuros
 
-- perfis: Usuário da Sala, Estagiário, Supervisor e Administrador;
+- perfis: Usuário da Sala, Monitor da Sala, Supervisor e Administrador;
 - seleção de perfil apenas simulada;
 - consulta para hoje e amanhã;
 - uso imediato somente hoje;

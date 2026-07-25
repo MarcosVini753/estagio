@@ -3,7 +3,7 @@
 ```mermaid
 flowchart LR
     roomUser[Usuário da Sala]
-    intern[Estagiário]
+    intern[Monitor da Sala]
     supervisor[Supervisor da Biblioteca]
     admin[Administrador do Sistema]
     system[Sistema de Controle de Uso da Sala de Informática]

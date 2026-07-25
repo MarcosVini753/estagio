@@ -16,6 +16,8 @@ A API começa em `/api/v1/`. A versão da API é independente da versão da apli
 
 ## Endpoints implementados
 
+> Salvo indicação contrária, todo endpoint acessível ao Monitor da Sala também é acessível ao Supervisor da Biblioteca.
+
 ### Sistema e demonstração
 
 ```text
@@ -36,7 +38,7 @@ PATCH /api/v1/computers/{id}/
 PATCH /api/v1/computers/{id}/operational-state/
 ```
 
-Leitura é permitida para qualquer perfil selecionado. Cadastro e edição são permitidos ao Supervisor e Administrador. A alteração de estado operacional também é permitida ao Estagiário e sempre registra histórico.
+Leitura é permitida para qualquer perfil selecionado. Cadastro e edição são permitidos ao Supervisor e Administrador. A alteração de estado operacional também é permitida ao Monitor da Sala e sempre registra histórico.
 
 O PATCH genérico não altera `operational_state`; a action específica deve ser usada para preservar auditoria e validações.
 

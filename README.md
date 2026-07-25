@@ -24,7 +24,7 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - uso imediato apenas hoje;
 - reservas para horários futuros de hoje ou para amanhã;
 - fila de espera fora do escopo;
-- ator operacional denominado Estagiário;
+- ator operacional denominado Monitor da Sala;
 - autenticação real fora do MVP;
 - computadores persistem apenas `AVAILABLE`, `MAINTENANCE` e `INACTIVE`;
 - `OCCUPIED` e `RESERVED` são calculados;

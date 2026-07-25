@@ -27,7 +27,7 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 - Uma sessão pode conter várias alocações por causa da troca de computador.
 - Trocar de computador não cria nova sessão nem apaga histórico.
 - Relatórios são projeções; não criar lançamentos manuais de relatório.
-- O ator operacional é `Estagiário`, não `Servidor da Biblioteca`.
+- O ator operacional é `Monitor da Sala`, não `Servidor da Biblioteca`.
 - O Administrador do Sistema existe arquiteturalmente, mas não possui autenticação real nesta etapa.
 
 ## Autorização da primeira versão

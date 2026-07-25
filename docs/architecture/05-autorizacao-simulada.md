@@ -25,7 +25,7 @@ SYSTEM_ADMIN
 
 - `ROOM_USER`: operações próprias de consulta, reserva, sessão e ocorrência;
 - `INTERN`: acompanhamento operacional, correções, ocorrências e relatórios operacionais;
-- `LIBRARY_SUPERVISOR`: funções do Estagiário mais configurações e relatórios gerenciais;
+- `LIBRARY_SUPERVISOR`: herda todas as permissões de `INTERN` e inclui configurações e relatórios gerenciais;
 - `SYSTEM_ADMIN`: reservado para telas administrativas e evolução futura.
 
 ## Implementação sugerida

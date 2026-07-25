@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         choices=[
                             ("ROOM_USER", "Usuário da Sala"),
-                            ("INTERN", "Estagiário"),
+                            ("INTERN", "Monitor da Sala"),
                             ("LIBRARY_SUPERVISOR", "Supervisor da Biblioteca"),
                             ("SYSTEM_ADMIN", "Administrador do Sistema"),
                         ],

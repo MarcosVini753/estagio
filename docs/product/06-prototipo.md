@@ -20,7 +20,7 @@ O diretório `prototipos/` contém a referência visual original em HTML, CSS e 
 ## Ajustes durante a integração
 
 - não introduzir fila de espera;
-- usar Estagiário, não Servidor da Biblioteca;
+- usar Monitor da Sala, não Servidor da Biblioteca;
 - separar estado operacional de estado efetivo;
 - permitir reserva para horário futuro de hoje ou para amanhã;
 - permitir uso imediato somente hoje;

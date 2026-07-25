@@ -5,7 +5,7 @@ Esta pasta concentra os diagramas PlantUML do Sistema de Controle de Uso da Sala
 ## Casos de uso
 
 - [Usuário da Sala](casos-de-uso/usuario.puml)
-- [Estagiário](casos-de-uso/estagiario-biblioteca.puml)
+- [Monitor da Sala](casos-de-uso/monitor-da-sala.puml)
 - [Supervisor da Biblioteca](casos-de-uso/supervisor.puml)
 
 O Administrador do Sistema existe arquiteturalmente, mas seus casos de uso detalhados permanecem fora desta etapa.
@@ -17,9 +17,9 @@ O Administrador do Sistema existe arquiteturalmente, mas seus casos de uso detal
 - [03 — Usuário registra saída](atividades/03-usuario-registrar-saida.puml)
 - [04 — Usuário troca de computador](atividades/04-usuario-trocar-computador.puml)
 - [05 — Usuário informa problema](atividades/05-usuario-informar-problema.puml)
-- [06 — Estagiário altera status de computador](atividades/06-estagiario-alterar-status-computador.puml)
-- [07 — Estagiário corrige registro](atividades/07-estagiario-corrigir-registro.puml)
-- [08 — Estagiário gera e exporta relatório operacional](atividades/08-estagiario-gerar-exportar-relatorio.puml)
+- [06 — Monitor altera status de computador](atividades/06-monitor-alterar-status-computador.puml)
+- [07 — Monitor corrige registro](atividades/07-monitor-corrigir-registro.puml)
+- [08 — Monitor gera e exporta relatório operacional](atividades/08-monitor-gerar-exportar-relatorio.puml)
 - [09 — Supervisor configura o sistema](atividades/09-supervisor-configuracoes.puml)
 - [10 — Supervisor analisa indicadores](atividades/10-supervisor-analisar-indicadores.puml)
 - [11 — Supervisor gera relatório consolidado](atividades/11-supervisor-gerar-relatorio-consolidado.puml)

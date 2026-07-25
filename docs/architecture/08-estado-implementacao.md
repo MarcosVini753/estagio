@@ -16,7 +16,7 @@
 
 - endpoints de computadores;
 - criação e edição de computadores pelo Supervisor ou Administrador;
-- alteração de estado operacional pelo Estagiário, Supervisor ou Administrador;
+- alteração de estado operacional pelo Monitor da Sala, Supervisor ou Administrador;
 - histórico de mudanças do estado operacional;
 - endpoints de turnos e exceções de calendário;
 - consulta e versionamento da política de reservas;

@@ -24,7 +24,7 @@ Fluxos críticos:
 5. saída;
 6. comunicação de problema.
 
-## Estagiário
+## Monitor da Sala
 
 Casos de uso principais:
 
@@ -45,7 +45,7 @@ Fluxos críticos:
 
 ## Supervisor da Biblioteca
 
-Casos de uso adicionais:
+Possui **todos** os casos de uso e fluxos do Monitor da Sala, além dos seguintes casos de uso adicionais:
 
 - cadastrar computadores;
 - configurar turnos;
@@ -61,7 +61,6 @@ O papel existe na arquitetura, mas seus casos de uso detalhados serão documenta
 
 ## Ajustes em relação aos artefatos anteriores
 
-- referências a Servidor da Biblioteca devem ser interpretadas e substituídas por Estagiário;
 - fila de espera foi removida do escopo;
 - estados ocupado e reservado são calculados, não persistidos;
 - a tela inicial de escolha de perfil substitui autenticação real no MVP;

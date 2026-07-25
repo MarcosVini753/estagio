@@ -5,7 +5,7 @@
 A aplicação permite escolher:
 
 - Usuário da Sala;
-- Estagiário;
+- Monitor da Sala;
 - Supervisor da Biblioteca;
 - Administrador do Sistema.
 
@@ -23,7 +23,7 @@ A seleção controla menus e autorizações simuladas. Não existe autenticaçã
 - trocar de computador preservando histórico;
 - informar problema.
 
-## Estagiário
+## Monitor da Sala
 
 - consultar sessões ativas;
 - consultar computadores e estados efetivos;

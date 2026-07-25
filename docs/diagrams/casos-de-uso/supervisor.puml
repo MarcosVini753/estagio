@@ -36,6 +36,11 @@ rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da U
 
 }
 
+note right of Supervisor
+  Herda todos os casos de uso
+  do Monitor da Sala.
+end note
+
 Supervisor --> UC01
 Supervisor --> UC02
 Supervisor --> UC03

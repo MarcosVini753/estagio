@@ -64,7 +64,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - A ocorrência pode ser associada a computador, sessão e alocação.
 - A descrição é obrigatória.
 - O usuário informa o problema, mas não altera diretamente o estado operacional.
-- Estagiário ou Supervisor pode acompanhar e encerrar a ocorrência.
+- Monitor da Sala ou Supervisor pode acompanhar e encerrar a ocorrência.
 
 ## Relatórios
 

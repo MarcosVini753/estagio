@@ -29,7 +29,7 @@ Não pode:
 - configurar turnos ou parâmetros;
 - acessar relatórios internos.
 
-## Estagiário
+## Monitor da Sala
 
 Representa o papel operacional da biblioteca.
 
@@ -43,13 +43,13 @@ Pode:
 - consultar histórico de uso;
 - gerar e exportar relatórios operacionais.
 
-Não deve possuir automaticamente todas as funções gerenciais do Supervisor.
+O Supervisor da Biblioteca herda todas estas capacidades.
 
 ## Supervisor da Biblioteca
 
 Representa o papel gerencial.
 
-Pode executar as ações do Estagiário e, adicionalmente:
+Pode executar **todas** as ações do Monitor da Sala e, adicionalmente:
 
 - cadastrar computadores;
 - configurar turnos;
@@ -57,7 +57,7 @@ Pode executar as ações do Estagiário e, adicionalmente:
 - consultar indicadores gerenciais;
 - gerar relatórios consolidados.
 
-Nos diagramas separados, as ações herdadas do Estagiário podem ser omitidas para reduzir poluição visual.
+Nos diagramas separados, as ações herdadas do Monitor da Sala podem ser omitidas para reduzir poluição visual.
 
 ## Administrador do Sistema
 

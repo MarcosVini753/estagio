@@ -6,7 +6,7 @@ Aceita
 
 ## Contexto
 
-Os casos de uso detalhados atuais concentram-se em Usuário da Sala, Estagiário e Supervisor, mas o sistema prevê administração de contas, permissões, parâmetros e logs.
+Os casos de uso detalhados atuais concentram-se em Usuário da Sala, Monitor da Sala e Supervisor, mas o sistema prevê administração de contas, permissões, parâmetros e logs.
 
 ## Decisão
 
