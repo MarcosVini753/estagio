@@ -24,3 +24,15 @@ class StateChangeReasonRequired(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
     default_detail = "Informe uma justificativa para indisponibilizar o computador."
     default_code = "STATE_CHANGE_REASON_REQUIRED"
+
+
+class ShiftReplacementInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "A substituição do turno não é válida para esta versão."
+    default_code = "SHIFT_REPLACEMENT_INVALID"
+
+
+class ShiftReplacementConflict(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "O novo turno sobrepõe outro turno ativo."
+    default_code = "SHIFT_REPLACEMENT_CONFLICT"

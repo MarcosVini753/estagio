@@ -13,6 +13,7 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - referência, vínculo e unidade fictícios para Usuário da Sala;
 - modelos e migrations iniciais;
 - CRUD inicial de computadores, turnos e exceções de calendário;
+- substituição versionada de turnos com auditoria;
 - alteração auditável do estado operacional dos computadores;
 - política de duração dos slots;
 - geração de slots para hoje e amanhã;
@@ -84,6 +85,7 @@ GET  /api/v1/computers/{id}/slots/?date=YYYY-MM-DD
 GET  /api/v1/shifts/
 POST /api/v1/shifts/
 PATCH /api/v1/shifts/{id}/
+POST /api/v1/shifts/{id}/replace/
 GET  /api/v1/calendar-exceptions/
 POST /api/v1/calendar-exceptions/
 PATCH /api/v1/calendar-exceptions/{id}/

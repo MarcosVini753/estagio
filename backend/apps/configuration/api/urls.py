@@ -6,11 +6,17 @@ from .views import (
     CalendarExceptionListCreateAPIView,
     ShiftDetailAPIView,
     ShiftListCreateAPIView,
+    ShiftReplaceAPIView,
 )
 
 urlpatterns = [
     path("shifts/", ShiftListCreateAPIView.as_view(), name="shift-list"),
     path("shifts/<int:pk>/", ShiftDetailAPIView.as_view(), name="shift-detail"),
+    path(
+        "shifts/<int:pk>/replace/",
+        ShiftReplaceAPIView.as_view(),
+        name="shift-replace",
+    ),
     path(
         "calendar-exceptions/",
         CalendarExceptionListCreateAPIView.as_view(),

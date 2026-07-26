@@ -35,6 +35,7 @@
 - contexto fictício ampliado para Usuário da Sala, com referência, vínculo e unidade institucional;
 - snapshots de vínculo e unidade em reservas e sessões de uso;
 - compatibilidade histórica para registros sem contexto, agrupáveis como `NOT_INFORMED`.
+- versionamento futuro de turnos, com substituição auditada e preservação dos turnos já usados.
 
 ## Não implementado
 

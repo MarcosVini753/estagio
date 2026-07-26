@@ -116,6 +116,7 @@ GET   /api/v1/shifts/
 POST  /api/v1/shifts/
 GET   /api/v1/shifts/{id}/
 PATCH /api/v1/shifts/{id}/
+POST  /api/v1/shifts/{id}/replace/
 
 GET   /api/v1/calendar-exceptions/
 POST  /api/v1/calendar-exceptions/
@@ -126,7 +127,7 @@ GET   /api/v1/booking-policy/
 PATCH /api/v1/booking-policy/
 ```
 
-Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
+Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
 
 ## Endpoints planejados
 
