@@ -5,9 +5,18 @@ from apps.computers.models import Computer, ComputerOperationalStateChange
 
 class ComputerAPITest(APITestCase):
     def select_profile(self, profile):
+        payload = {"profile": profile}
+        if profile == "ROOM_USER":
+            payload.update(
+                {
+                    "user_reference": "aluno-si-001",
+                    "affiliation_type": "STUDENT",
+                    "institutional_unit": "Sistemas de Informação",
+                }
+            )
         self.client.post(
             "/api/v1/demo/select-profile/",
-            {"profile": profile},
+            payload,
             format="json",
         )
 

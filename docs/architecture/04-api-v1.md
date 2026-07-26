@@ -28,6 +28,8 @@ POST /api/v1/demo/select-profile/
 
 A seleção de perfil simula autorização e não autentica uma identidade real.
 
+`POST /api/v1/demo/select-profile/` exige `user_reference`, `affiliation_type` e `institutional_unit` para `ROOM_USER`. `GET /api/v1/demo/context/` devolve os valores selecionados; perfis operacionais devolvem apenas a referência fictícia fixa.
+
 ### Computadores
 
 ```text

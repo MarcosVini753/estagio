@@ -30,6 +30,12 @@
 - seed idempotente para o ambiente de demonstração;
 - testes de API e regras de disponibilidade.
 
+## Concluído na Pré-Etapa 4
+
+- contexto fictício ampliado para Usuário da Sala, com referência, vínculo e unidade institucional;
+- snapshots de vínculo e unidade em reservas e sessões de uso;
+- compatibilidade histórica para registros sem contexto, agrupáveis como `NOT_INFORMED`.
+
 ## Não implementado
 
 - criação e cancelamento de reservas;

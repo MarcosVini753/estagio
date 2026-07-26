@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.computers.models import Computer
 from apps.configuration.models import Shift
-from apps.core.enums import DemoProfile
+from apps.core.enums import AffiliationType, DemoProfile
 from apps.core.models import TimeStampedModel
 
 
@@ -17,6 +17,12 @@ class Reservation(TimeStampedModel):
         INVALIDATED = "INVALIDATED", "Invalidada"
 
     user_reference = models.CharField(max_length=100, db_index=True)
+    affiliation_type = models.CharField(
+        max_length=32,
+        choices=AffiliationType.choices,
+        default=AffiliationType.NOT_INFORMED,
+    )
+    institutional_unit = models.CharField(max_length=255, blank=True, default="")
     computer = models.ForeignKey(
         Computer, on_delete=models.PROTECT, related_name="reservations"
     )
@@ -62,6 +68,12 @@ class UseSession(TimeStampedModel):
         CANCELLED = "CANCELLED", "Cancelada"
 
     user_reference = models.CharField(max_length=100, db_index=True)
+    affiliation_type = models.CharField(
+        max_length=32,
+        choices=AffiliationType.choices,
+        default=AffiliationType.NOT_INFORMED,
+    )
+    institutional_unit = models.CharField(max_length=255, blank=True, default="")
     reservation = models.OneToOneField(
         Reservation,
         on_delete=models.SET_NULL,

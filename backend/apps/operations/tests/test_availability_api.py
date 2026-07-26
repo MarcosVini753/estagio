@@ -27,7 +27,12 @@ class AvailabilityAPITest(APITestCase):
         )
         self.client.post(
             "/api/v1/demo/select-profile/",
-            {"profile": "ROOM_USER"},
+            {
+                "profile": "ROOM_USER",
+                "user_reference": "aluno-si-001",
+                "affiliation_type": "STUDENT",
+                "institutional_unit": "Sistemas de Informação",
+            },
             format="json",
         )
 
