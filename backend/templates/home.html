@@ -20,7 +20,22 @@
   </div>
   <h2>Escolha o perfil de teste</h2>
   <div id="profiles" class="profiles"></div>
+  <form id="room-user-form" hidden>
+    <p>Dados fictícios para demonstração.</p>
+    <p><label>Referência <input id="user-reference" name="user_reference" required maxlength="100"></label></p>
+    <p><label>Vínculo
+      <select id="affiliation-type" name="affiliation_type" required>
+        <option value="">Selecione</option>
+        <option value="STUDENT">Aluno</option>
+        <option value="PROFESSOR">Professor</option>
+        <option value="TECHNICAL_STAFF">Técnico-administrativo</option>
+      </select>
+    </label></p>
+    <p><label>Unidade institucional <input id="institutional-unit" name="institutional_unit" required maxlength="255"></label></p>
+    <button type="submit">Selecionar Usuário da Sala</button>
+  </form>
   <p>Perfil atual: <strong id="current-profile">nenhum</strong></p>
+  <p>Referência atual: <strong id="current-reference">nenhuma</strong></p>
   <p><a href="/api/docs/">Documentação interativa da API</a></p>
 
   <script>
@@ -28,22 +43,26 @@
       const response = await fetch('/api/v1/demo/context/');
       const context = await response.json();
       document.getElementById('current-profile').textContent = context.profile || 'nenhum';
+      document.getElementById('current-reference').textContent = context.user_reference || 'nenhuma';
       const root = document.getElementById('profiles');
       root.innerHTML = '';
       for (const item of context.available_profiles) {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = item.label;
-        button.addEventListener('click', () => selectProfile(item.value));
+        button.addEventListener('click', () => {
+          document.getElementById('room-user-form').hidden = item.value !== 'ROOM_USER';
+          if (item.value !== 'ROOM_USER') selectProfile(item.value);
+        });
         root.appendChild(button);
       }
     }
 
-    async function selectProfile(profile) {
+    async function selectProfile(profile, identity = {}) {
       const response = await fetch('/api/v1/demo/select-profile/', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({profile})
+        body: JSON.stringify({profile, ...identity})
       });
       if (!response.ok) {
         alert('Não foi possível selecionar o perfil.');
@@ -51,6 +70,12 @@
       }
       await loadContext();
     }
+
+    document.getElementById('room-user-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      selectProfile('ROOM_USER', Object.fromEntries(form.entries()));
+    });
 
     loadContext();
   </script>

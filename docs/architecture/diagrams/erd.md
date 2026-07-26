@@ -34,6 +34,8 @@ erDiagram
     RESERVATION {
         uuid id
         string user_reference
+        string affiliation_type
+        string institutional_unit
         uuid computer_id
         datetime starts_at
         datetime ends_at
@@ -43,6 +45,8 @@ erDiagram
     USE_SESSION {
         uuid id
         string user_reference
+        string affiliation_type
+        string institutional_unit
         uuid reservation_id
         datetime started_at
         datetime ended_at

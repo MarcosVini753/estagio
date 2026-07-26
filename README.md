@@ -10,6 +10,7 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - PostgreSQL via Docker Compose;
 - apps separados por domínio;
 - seleção de perfil de demonstração em sessão;
+- referência, vínculo e unidade fictícios para Usuário da Sala;
 - modelos e migrations iniciais;
 - CRUD inicial de computadores, turnos e exceções de calendário;
 - alteração auditável do estado operacional dos computadores;

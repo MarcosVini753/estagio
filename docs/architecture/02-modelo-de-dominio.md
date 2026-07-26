@@ -48,7 +48,7 @@ Estado persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`. Não criar campos de 
 
 ### `Reservation`
 
-`user_reference`, `computer`, `starts_at`, `ends_at`, `status`, perfis de criação/cancelamento e dados de cancelamento.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `computer`, `starts_at`, `ends_at`, `status`, perfis de criação/cancelamento e dados de cancelamento.
 
 Estados: `CONFIRMED`, `CANCELLED`, `USED`, `NO_SHOW`, `INVALIDATED`.
 
@@ -56,7 +56,9 @@ A migration inicial garante início anterior ao fim e cria índices por computad
 
 ### `UseSession`
 
-`user_reference`, `reservation`, `started_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `reservation`, `started_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
+
+Os snapshots preservam vínculo e unidade no momento da reserva ou entrada. Registros legados usam `NOT_INFORMED` e unidade vazia.
 
 Estados: `ACTIVE`, `FINISHED`, `CANCELLED`.
 
