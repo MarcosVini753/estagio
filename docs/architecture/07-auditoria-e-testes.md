@@ -44,6 +44,7 @@ Cobrir:
 - saída;
 - correção auditada;
 - alteração de estado operacional.
+- substituição transacional de turno e preservação da versão usada por sessão.
 
 ### Testes de API
 

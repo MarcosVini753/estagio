@@ -18,6 +18,8 @@
 
 Constraints: início anterior ao fim e validade final não anterior à inicial.
 
+Turnos usados por `UseSession.start_shift` preservam seus horários e vigência. A substituição cria uma nova versão futura, mantendo a referência histórica da sessão na versão anterior.
+
 ### `CalendarException`
 
 `date`, `exception_type`, `opens_at`, `closes_at`, `description`.
