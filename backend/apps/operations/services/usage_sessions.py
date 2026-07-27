@@ -216,6 +216,8 @@ def switch_computer(
         actor_reference=actor_reference,
     )
     allocation = session.allocations.select_for_update().get(ended_at__isnull=True)
+    if current < allocation.started_at:
+        raise UsageSessionConflict("A troca não pode anteceder a alocação atual.")
     computers = {
         computer.pk: computer
         for computer in Computer.objects.select_for_update()
@@ -276,6 +278,8 @@ def finish_usage_session(
         raise UsageSessionReasonRequired()
 
     allocation = session.allocations.select_for_update().get(ended_at__isnull=True)
+    if current < allocation.started_at:
+        raise UsageSessionConflict("A saída não pode anteceder a alocação atual.")
     allocation.ended_at = current
     allocation.end_reason = ComputerAllocation.EndReason.SESSION_FINISHED
     allocation.save(update_fields=["ended_at", "end_reason", "updated_at"])

@@ -42,6 +42,9 @@
 - correção restrita de entrada, saída e último intervalo;
 - auditoria e rollback integral de correções;
 - constraint PostgreSQL contra sobreposição histórica de alocações.
+- seed histórico determinístico e idempotente para relatórios;
+- limpeza seletiva por prefixo e sentinelas `demo-report-`;
+- sessões, trocas, reservas, ocorrências, manutenção e exceções de calendário fictícias.
 
 ## Concluído na Pré-Etapa 4
 
@@ -58,4 +61,4 @@
 
 ## Próxima fatia recomendada
 
-Concluir a Etapa 3.5 com dados históricos de demonstração antes de iniciar relatórios.
+Adicionar identidade lógica às versões de turno e iniciar a projeção mensal.

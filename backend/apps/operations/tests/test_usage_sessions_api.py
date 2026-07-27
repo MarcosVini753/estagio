@@ -285,11 +285,15 @@ class UsageSessionAPITest(APITestCase):
             f"/api/v1/usage-sessions/{session.pk}/finish/",
             format="json",
         )
-        valid_response = self.client.post(
-            f"/api/v1/usage-sessions/{session.pk}/finish/",
-            {"reason": "Usuário esqueceu de registrar a saída."},
-            format="json",
-        )
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(10, 0)),
+        ):
+            valid_response = self.client.post(
+                f"/api/v1/usage-sessions/{session.pk}/finish/",
+                {"reason": "Usuário esqueceu de registrar a saída."},
+                format="json",
+            )
 
         self.assertEqual(missing_response.status_code, 400)
         self.assertEqual(valid_response.status_code, 200)

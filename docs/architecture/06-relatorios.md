@@ -4,6 +4,14 @@
 
 Relatórios são projeções derivadas dos registros operacionais. Não haverá tabela de lançamentos manuais com totais desconectados das sessões.
 
+## Dados históricos de demonstração
+
+```bash
+python manage.py seed_report_demo_data --days 60 --seed 12345 --reset
+```
+
+O comando cria uma linha do tempo fictícia determinística e informa no terminal as datas inicial e final geradas. Referências usam o prefixo reservado `demo-report-`; `--reset` remove somente registros operacionais e sentinelas criados pelo comando. Computadores, turnos e configurações existentes nunca são sobrescritos ou removidos.
+
 ## Fontes
 
 - `UseSession`: visita, entrada, saída, duração e usuário de demonstração;
