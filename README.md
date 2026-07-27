@@ -16,6 +16,7 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - substituição versionada de turnos com auditoria;
 - alteração auditável do estado operacional dos computadores;
 - política de duração dos slots;
+- criação e cancelamento transacionais de reservas;
 - geração de slots para hoje e amanhã;
 - cálculo de `AVAILABLE`, `MAINTENANCE`, `INACTIVE`, `OCCUPIED` e `RESERVED`;
 - OpenAPI, testes, Ruff e CI.
@@ -91,6 +92,11 @@ POST /api/v1/calendar-exceptions/
 PATCH /api/v1/calendar-exceptions/{id}/
 GET  /api/v1/booking-policy/
 PATCH /api/v1/booking-policy/
+
+GET  /api/v1/reservations/
+GET  /api/v1/reservations/mine/
+POST /api/v1/reservations/
+POST /api/v1/reservations/{id}/cancel/
 ```
 
 ## Estrutura

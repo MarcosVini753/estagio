@@ -54,7 +54,7 @@ Estado persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`. Não criar campos de 
 
 Estados: `CONFIRMED`, `CANCELLED`, `USED`, `NO_SHOW`, `INVALIDATED`.
 
-A migration inicial garante início anterior ao fim e cria índices por computador e usuário. Bloqueio concorrente e impedimento de sobreposição serão completados no serviço de reservas, preferencialmente com constraint PostgreSQL específica.
+Constraints PostgreSQL impedem sobreposição de reservas confirmadas por computador e por usuário com intervalos `[)`. O serviço bloqueia computador e referência de usuário para validar slots, limite e disponibilidade antes da criação.
 
 ### `UseSession`
 

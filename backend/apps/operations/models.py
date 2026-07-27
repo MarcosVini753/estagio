@@ -1,5 +1,7 @@
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import DateTimeRangeField, RangeOperators
 from django.db import models
-from django.db.models import F, Q
+from django.db.models import F, Func, Q, Value
 from django.utils import timezone
 
 from apps.computers.models import Computer
@@ -54,7 +56,41 @@ class Reservation(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(starts_at__lt=F("ends_at")),
                 name="reservation_start_before_end",
-            )
+            ),
+            ExclusionConstraint(
+                name="reservation_computer_no_overlap",
+                expressions=[
+                    ("computer", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            F("starts_at"),
+                            F("ends_at"),
+                            Value("[)"),
+                            function="TSTZRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(status="CONFIRMED"),
+            ),
+            ExclusionConstraint(
+                name="reservation_user_no_overlap",
+                expressions=[
+                    ("user_reference", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            F("starts_at"),
+                            F("ends_at"),
+                            Value("[)"),
+                            function="TSTZRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(status="CONFIRMED"),
+            ),
         ]
 
     def __str__(self) -> str:
