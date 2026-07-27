@@ -45,6 +45,7 @@ pip install -r requirements/dev.txt
 docker compose up -d db
 make migrate
 make seed
+make seed-reports
 make run
 ```
 
@@ -134,4 +135,4 @@ make test
 
 ## Próxima etapa
 
-Implementar dados históricos de demonstração.
+Adicionar identidade lógica aos turnos e iniciar o relatório mensal.
