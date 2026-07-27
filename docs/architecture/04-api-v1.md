@@ -171,17 +171,25 @@ PATCH /api/v1/occurrences/{id}/
 
 Usuário da Sala consulta apenas as próprias ocorrências. Perfis operacionais consultam todas e realizam as transições de análise, resolução ou cancelamento. Computador, sessão e alocação devem ser compatíveis; criar ocorrência não altera o estado operacional do computador.
 
+### Relatórios
+
+```text
+GET /api/v1/reports/monthly/?year=YYYY&month=M
+```
+
+O relatório mensal é restrito ao Supervisor e Administrador. A resposta contém todos os dias do mês, status de calendário, colunas por `Shift.series_key`, totais por turno e as métricas de visitas, pessoas distintas, reservas, ocorrências, computadores utilizados, minutos alocados e tempo médio das sessões finalizadas. Sessões sem turno são agrupadas em `NOT_INFORMED`.
+
 ## Endpoints planejados
 
 ### Relatórios
 
 ```text
 GET /api/v1/reports/daily/
-GET /api/v1/reports/weekly/
-GET /api/v1/reports/monthly/
 GET /api/v1/reports/annual/
 GET /api/v1/reports/occupancy/
 ```
+
+O relatório semanal permanece como evolução futura e não possui endpoint definido na Etapa 4.
 
 ## Formato de erro
 
