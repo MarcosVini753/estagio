@@ -14,11 +14,12 @@
 
 ### `Shift`
 
-`name`, `start_time`, `end_time`, `display_order`, `valid_from`, `valid_until`, `is_active`.
+`series_key`, `name`, `start_time`, `end_time`, `display_order`, `valid_from`, `valid_until`, `is_active`.
 
 Constraints: início anterior ao fim e validade final não anterior à inicial.
 
 Turnos usados por `UseSession.start_shift` preservam seus horários e vigência. A substituição cria uma nova versão futura, mantendo a referência histórica da sessão na versão anterior.
+Versões do mesmo turno lógico compartilham `series_key`, usado para agrupamento analítico.
 
 ### `CalendarException`
 

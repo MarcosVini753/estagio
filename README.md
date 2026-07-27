@@ -14,6 +14,7 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - modelos e migrations iniciais;
 - CRUD inicial de computadores, turnos e exceções de calendário;
 - substituição versionada de turnos com auditoria;
+- identidade lógica compartilhada entre versões do mesmo turno;
 - alteração auditável do estado operacional dos computadores;
 - política de duração dos slots;
 - criação e cancelamento transacionais de reservas;
@@ -135,4 +136,4 @@ make test
 
 ## Próxima etapa
 
-Adicionar identidade lógica aos turnos e iniciar o relatório mensal.
+Implementar o relatório mensal em JSON.

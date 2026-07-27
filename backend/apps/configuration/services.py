@@ -100,6 +100,7 @@ def replace_shift(
     shift.save(update_fields=["valid_until", "updated_at"])
 
     replacement = Shift.objects.create(
+        series_key=shift.series_key,
         name=name,
         start_time=start_time,
         end_time=end_time,

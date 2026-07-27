@@ -144,6 +144,7 @@ class ConfigurationAPITest(APITestCase):
         self.assertEqual(response.status_code, 201)
         shift.refresh_from_db()
         session.refresh_from_db()
+        self.assertEqual(response.data["series_key"], str(shift.series_key))
         self.assertEqual(shift.valid_until, effective_from - timedelta(days=1))
         self.assertEqual(session.start_shift_id, shift.pk)
         self.assertEqual(get_shifts_for_date(today).get().pk, shift.pk)
