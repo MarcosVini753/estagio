@@ -120,3 +120,21 @@ class RoomClosed(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "A sala não está aberta neste horário."
     default_code = "ROOM_CLOSED"
+
+
+class OccurrenceLinkInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Computador, sessão e alocação não são compatíveis."
+    default_code = "OCCURRENCE_LINK_INVALID"
+
+
+class OccurrenceTransitionInvalid(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "A transição de estado da ocorrência não é permitida."
+    default_code = "OCCURRENCE_TRANSITION_INVALID"
+
+
+class OccurrenceResolutionNotesRequired(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Informe as notas de resolução da ocorrência."
+    default_code = "OCCURRENCE_RESOLUTION_NOTES_REQUIRED"
