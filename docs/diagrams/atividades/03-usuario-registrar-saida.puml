@@ -18,7 +18,7 @@ if (Existe sessao ativa?) then (Sim)
   |Sistema|
   :Registra hora de saida;
   :Calcula tempo de permanencia;
-  :Libera computador;
+  :Encerra alocacao atual;
   :Encerra sessao de uso;
   :Exibe confirmacao de saida;
   stop

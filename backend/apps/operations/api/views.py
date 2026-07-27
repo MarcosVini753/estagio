@@ -14,12 +14,23 @@ from apps.access.services import (
 from apps.computers.models import Computer
 from apps.core.enums import DemoProfile
 from apps.operations.models import Reservation
-from apps.operations.services import cancel_reservation, create_reservation
+from apps.operations.models import UseSession
+from apps.operations.services import (
+    cancel_reservation,
+    create_reservation,
+    finish_usage_session,
+    start_usage_session,
+    switch_computer,
+)
 
 from .serializers import (
     ReservationCancelSerializer,
     ReservationCreateSerializer,
     ReservationSerializer,
+    ComputerSwitchSerializer,
+    UsageSessionFinishSerializer,
+    UsageSessionStartSerializer,
+    UseSessionSerializer,
 )
 
 OPERATIONAL_PROFILES = [
@@ -103,3 +114,133 @@ class ReservationCancelAPIView(APIView):
             **serializer.validated_data,
         )
         return Response(ReservationSerializer(reservation).data)
+
+
+class CurrentUsageSessionAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = [DemoProfile.ROOM_USER]
+
+    @extend_schema(responses={200: UseSessionSerializer}, tags=["usage-sessions"])
+    def get(self, request):
+        session = (
+            UseSession.objects.filter(
+                user_reference=get_demo_user_reference(request),
+                status=UseSession.Status.ACTIVE,
+            )
+            .prefetch_related("allocations")
+            .first()
+        )
+        return Response(UseSessionSerializer(session).data if session else None)
+
+
+class ActiveUsageSessionListAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = OPERATIONAL_PROFILES
+
+    @extend_schema(
+        responses={200: UseSessionSerializer(many=True)}, tags=["usage-sessions"]
+    )
+    def get(self, request):
+        sessions = UseSession.objects.filter(
+            status=UseSession.Status.ACTIVE
+        ).prefetch_related("allocations")
+        return Response(UseSessionSerializer(sessions, many=True).data)
+
+
+class UsageSessionHistoryAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = DemoProfile.values
+
+    @extend_schema(
+        responses={200: UseSessionSerializer(many=True)}, tags=["usage-sessions"]
+    )
+    def get(self, request):
+        sessions = UseSession.objects.exclude(status=UseSession.Status.ACTIVE)
+        if get_demo_profile(request) == DemoProfile.ROOM_USER:
+            sessions = sessions.filter(user_reference=get_demo_user_reference(request))
+        return Response(
+            UseSessionSerializer(
+                sessions.prefetch_related("allocations"),
+                many=True,
+            ).data
+        )
+
+
+class UsageSessionStartAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = DemoProfile.values
+
+    @extend_schema(
+        request=UsageSessionStartSerializer,
+        responses={201: UseSessionSerializer},
+        tags=["usage-sessions"],
+    )
+    def post(self, request):
+        serializer = UsageSessionStartSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        get_object_or_404(Computer, pk=data["computer_id"])
+        if reservation_id := data.get("reservation_id"):
+            get_object_or_404(Reservation, pk=reservation_id)
+        session = start_usage_session(
+            computer_id=data["computer_id"],
+            reservation_id=reservation_id,
+            actor_profile=get_demo_profile(request),
+            actor_reference=get_demo_user_reference(request),
+            user_reference=data.get("user_reference", get_demo_user_reference(request)),
+            affiliation_type=data.get(
+                "affiliation_type", get_demo_affiliation_type(request)
+            ),
+            institutional_unit=data.get(
+                "institutional_unit", get_demo_institutional_unit(request)
+            ),
+        )
+        return Response(
+            UseSessionSerializer(session).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class UsageSessionSwitchAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = DemoProfile.values
+
+    @extend_schema(
+        request=ComputerSwitchSerializer,
+        responses={200: UseSessionSerializer},
+        tags=["usage-sessions"],
+    )
+    def post(self, request, pk):
+        get_object_or_404(UseSession, pk=pk)
+        serializer = ComputerSwitchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        get_object_or_404(Computer, pk=serializer.validated_data["computer_id"])
+        session = switch_computer(
+            session_id=pk,
+            actor_profile=get_demo_profile(request),
+            actor_reference=get_demo_user_reference(request),
+            **serializer.validated_data,
+        )
+        return Response(UseSessionSerializer(session).data)
+
+
+class UsageSessionFinishAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = DemoProfile.values
+
+    @extend_schema(
+        request=UsageSessionFinishSerializer,
+        responses={200: UseSessionSerializer},
+        tags=["usage-sessions"],
+    )
+    def post(self, request, pk):
+        get_object_or_404(UseSession, pk=pk)
+        serializer = UsageSessionFinishSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        session = finish_usage_session(
+            session_id=pk,
+            actor_profile=get_demo_profile(request),
+            actor_reference=get_demo_user_reference(request),
+            **serializer.validated_data,
+        )
+        return Response(UseSessionSerializer(session).data)

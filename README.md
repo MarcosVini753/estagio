@@ -17,6 +17,7 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - alteração auditável do estado operacional dos computadores;
 - política de duração dos slots;
 - criação e cancelamento transacionais de reservas;
+- entrada, sessão ativa, troca de computador e saída transacionais;
 - geração de slots para hoje e amanhã;
 - cálculo de `AVAILABLE`, `MAINTENANCE`, `INACTIVE`, `OCCUPIED` e `RESERVED`;
 - OpenAPI, testes, Ruff e CI.
@@ -97,6 +98,13 @@ GET  /api/v1/reservations/
 GET  /api/v1/reservations/mine/
 POST /api/v1/reservations/
 POST /api/v1/reservations/{id}/cancel/
+
+GET  /api/v1/usage-sessions/current/
+GET  /api/v1/usage-sessions/active/
+GET  /api/v1/usage-sessions/history/
+POST /api/v1/usage-sessions/start/
+POST /api/v1/usage-sessions/{id}/switch-computer/
+POST /api/v1/usage-sessions/{id}/finish/
 ```
 
 ## Estrutura
@@ -120,4 +128,4 @@ make test
 
 ## Próxima etapa
 
-Implementar reservas e sessões em uma fatia transacional: criação e cancelamento de reservas, entrada, sessão ativa, troca de computador e saída.
+Implementar ocorrências, correções auditadas e dados históricos de demonstração.

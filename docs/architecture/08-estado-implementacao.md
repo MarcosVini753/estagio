@@ -31,6 +31,11 @@
 - testes de API e regras de disponibilidade.
 - criação, listagem e cancelamento transacionais de reservas;
 - constraints PostgreSQL contra sobreposição de reservas confirmadas.
+- entrada imediata e entrada vinculada a reserva;
+- sessão atual, sessões ativas e histórico;
+- troca de computador preservando a sessão;
+- saída com encerramento da alocação atual;
+- auditoria de saída operacional de terceiro.
 
 ## Concluído na Pré-Etapa 4
 
@@ -41,7 +46,6 @@
 
 ## Não implementado
 
-- entrada, saída e troca por serviços transacionais;
 - tratamento de ocorrências via API;
 - selectors e exportadores de relatórios;
 - migração do protótipo para Django Templates;
@@ -49,4 +53,4 @@
 
 ## Próxima fatia recomendada
 
-Concluir a Etapa 3.5 com entrada, sessão ativa, troca, saída, ocorrências, correções auditadas e dados históricos de demonstração antes de iniciar relatórios.
+Concluir a Etapa 3.5 com ocorrências, correções auditadas e dados históricos de demonstração antes de iniciar relatórios.
