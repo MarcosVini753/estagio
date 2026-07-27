@@ -79,3 +79,27 @@ class OperationConstraintTest(TestCase):
                 ends_at="2026-08-01T09:30:00-05:00",
                 created_by_profile="ROOM_USER",
             )
+
+    def test_adjacent_and_cancelled_reservations_do_not_overlap(self):
+        Reservation.objects.create(
+            user_reference="user-1",
+            computer=self.computer,
+            starts_at="2026-08-01T08:00:00-05:00",
+            ends_at="2026-08-01T09:00:00-05:00",
+            created_by_profile="ROOM_USER",
+        )
+        Reservation.objects.create(
+            user_reference="user-2",
+            computer=self.computer,
+            starts_at="2026-08-01T09:00:00-05:00",
+            ends_at="2026-08-01T10:00:00-05:00",
+            created_by_profile="ROOM_USER",
+        )
+        Reservation.objects.create(
+            user_reference="user-3",
+            computer=self.computer,
+            starts_at="2026-08-01T08:30:00-05:00",
+            ends_at="2026-08-01T09:30:00-05:00",
+            status=Reservation.Status.CANCELLED,
+            created_by_profile="ROOM_USER",
+        )

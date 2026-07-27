@@ -1,7 +1,7 @@
 from datetime import datetime, time, timedelta
 from threading import Barrier, Thread
 
-from django.db import close_old_connections
+from django.db import close_old_connections, connections
 from django.test import TransactionTestCase
 from django.utils import timezone
 
@@ -54,7 +54,7 @@ class ReservationConcurrencyTest(TransactionTestCase):
             except ReservationConflict:
                 results.append("conflict")
             finally:
-                close_old_connections()
+                connections.close_all()
 
         first = Thread(target=reserve)
         second = Thread(target=reserve)

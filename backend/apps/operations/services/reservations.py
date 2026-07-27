@@ -6,9 +6,11 @@ from django.utils import timezone
 
 from apps.computers.models import Computer
 from apps.configuration.selectors import get_booking_policy_for_date
+from apps.audit.models import AuditEvent
 from apps.core.api.errors import (
     ConfigurationRequired,
     ReservationCancellationNotAllowed,
+    ReservationCancellationReasonRequired,
     ReservationCancellationUnavailable,
     ReservationConflict,
     ReservationLimitReached,
@@ -119,11 +121,12 @@ def cancel_reservation(
         DemoProfile.LIBRARY_SUPERVISOR,
         DemoProfile.SYSTEM_ADMIN,
     }
-    if (
-        actor_profile not in operational_profiles
-        and actor_reference != reservation.user_reference
-    ):
+    is_owner = actor_reference == reservation.user_reference
+    if actor_profile not in operational_profiles and not is_owner:
         raise ReservationCancellationNotAllowed()
+    cancellation_reason = reason.strip()
+    if not is_owner and not cancellation_reason:
+        raise ReservationCancellationReasonRequired()
 
     current = now or timezone.now()
     target_date = timezone.localdate(reservation.starts_at)
@@ -145,7 +148,7 @@ def cancel_reservation(
     reservation.status = Reservation.Status.CANCELLED
     reservation.cancelled_by_profile = actor_profile
     reservation.cancelled_at = current
-    reservation.cancellation_reason = reason.strip()
+    reservation.cancellation_reason = cancellation_reason
     reservation.save(
         update_fields=[
             "status",
@@ -155,4 +158,17 @@ def cancel_reservation(
             "updated_at",
         ]
     )
+    if not is_owner:
+        AuditEvent.objects.create(
+            actor_profile=actor_profile,
+            action="RESERVATION_CANCELLED",
+            entity_type="Reservation",
+            entity_id=str(reservation.pk),
+            old_values={"status": Reservation.Status.CONFIRMED},
+            new_values={
+                "status": Reservation.Status.CANCELLED,
+                "cancelled_at": current.isoformat(),
+            },
+            reason=cancellation_reason,
+        )
     return reservation

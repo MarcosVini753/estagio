@@ -72,3 +72,9 @@ class ReservationCancellationUnavailable(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "A reserva não pode mais ser cancelada."
     default_code = "RESERVATION_CANCELLATION_UNAVAILABLE"
+
+
+class ReservationCancellationReasonRequired(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Informe a justificativa para o cancelamento administrativo."
+    default_code = "RESERVATION_CANCELLATION_REASON_REQUIRED"

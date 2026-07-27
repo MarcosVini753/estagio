@@ -139,6 +139,7 @@ POST /api/v1/reservations/{id}/cancel/
 ```
 
 `POST /reservations/` é exclusivo do Usuário da Sala e recebe `computer_id` e `starts_at`; o backend deriva `ends_at` do slot configurado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o slot.
+Cancelamento de terceiro exige justificativa e gera evento de auditoria.
 
 ## Endpoints planejados
 

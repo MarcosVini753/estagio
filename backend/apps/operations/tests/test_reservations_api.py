@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, Shift
 from apps.operations.models import Reservation
@@ -84,6 +85,11 @@ class ReservationAPITest(APITestCase):
             self.create_payload(),
             format="json",
         )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_room_user_cannot_list_all_reservations(self):
+        response = self.client.get("/api/v1/reservations/")
 
         self.assertEqual(response.status_code, 403)
 
@@ -251,8 +257,60 @@ class ReservationAPITest(APITestCase):
 
         response = self.client.post(
             f"/api/v1/reservations/{reservation.pk}/cancel/",
+            {"reason": "Solicitação da supervisão."},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["cancelled_by_profile"], "INTERN")
+        audit_event = AuditEvent.objects.get(action="RESERVATION_CANCELLED")
+        self.assertEqual(audit_event.entity_id, str(reservation.pk))
+        self.assertEqual(audit_event.reason, "Solicitação da supervisão.")
+
+    def test_operational_cancellation_requires_reason(self):
+        reservation = Reservation.objects.create(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(8, 0)),
+            ends_at=self.aware(self.tomorrow, time(9, 0)),
+            created_by_profile="ROOM_USER",
+        )
+        self.client.post(
+            "/api/v1/demo/select-profile/",
+            {"profile": "INTERN"},
+            format="json",
+        )
+
+        response = self.client.post(
+            f"/api/v1/reservations/{reservation.pk}/cancel/",
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.data["code"], "RESERVATION_CANCELLATION_REASON_REQUIRED"
+        )
+
+    def test_cancellation_respects_policy_limit_and_start(self):
+        policy = BookingPolicy.objects.get()
+        policy.cancellation_limit_minutes = 30
+        policy.save(update_fields=["cancellation_limit_minutes", "updated_at"])
+        reservation = Reservation.objects.create(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(8, 0)),
+            ends_at=self.aware(self.tomorrow, time(9, 0)),
+            created_by_profile="ROOM_USER",
+        )
+
+        with patch(
+            "apps.operations.services.reservations.timezone.now",
+            return_value=self.aware(self.tomorrow, time(7, 31)),
+        ):
+            response = self.client.post(
+                f"/api/v1/reservations/{reservation.pk}/cancel/",
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "RESERVATION_CANCELLATION_UNAVAILABLE")

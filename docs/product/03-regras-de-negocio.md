@@ -42,6 +42,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - Reserva cancelada não bloqueia disponibilidade.
 - A criação recebe somente computador e início de um slot; o sistema calcula o fim.
 - Somente o proprietário ou perfil operacional pode cancelar antes do início e do limite da política.
+- Cancelamento realizado por perfil operacional em nome de terceiro exige justificativa e auditoria.
 - Ao registrar entrada dentro de uma reserva válida, a sessão pode ser vinculada à reserva.
 - Reservas não utilizadas devem poder ser classificadas como `NO_SHOW` por regra configurável futura.
 
