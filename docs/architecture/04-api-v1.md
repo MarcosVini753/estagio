@@ -154,6 +154,12 @@ POST /api/v1/usage-sessions/{id}/finish/
 
 Entrada com reserva herda seus snapshots e aplica a tolerância configurada. Entrada imediata exige sala aberta e computador disponível. Troca encerra a alocação atual e cria a próxima na mesma sessão. Saída encerra a alocação atual e a sessão; saída operacional de terceiro exige justificativa e auditoria.
 
+```text
+POST /api/v1/usage-sessions/{id}/correct/
+```
+
+A correção é restrita a perfis operacionais, exige justificativa e altera somente entrada, saída ou o último intervalo. A primeira e a última alocação são sincronizadas quando aplicável, toda a linha do tempo é validada e a mudança gera `AuditEvent`.
+
 ### Ocorrências
 
 ```text
@@ -166,12 +172,6 @@ PATCH /api/v1/occurrences/{id}/
 Usuário da Sala consulta apenas as próprias ocorrências. Perfis operacionais consultam todas e realizam as transições de análise, resolução ou cancelamento. Computador, sessão e alocação devem ser compatíveis; criar ocorrência não altera o estado operacional do computador.
 
 ## Endpoints planejados
-
-### Correções
-
-```text
-POST /api/v1/usage-sessions/{id}/correct/
-```
 
 ### Relatórios
 
