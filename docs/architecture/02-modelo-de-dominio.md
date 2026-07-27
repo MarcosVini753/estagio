@@ -70,7 +70,7 @@ Constraint: uma sessão ativa por referência de usuário.
 
 `session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`.
 
-Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início.
+Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início; intervalos históricos do mesmo computador sem sobreposição.
 
 ## Ocorrências
 

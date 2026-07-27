@@ -138,3 +138,15 @@ class OccurrenceResolutionNotesRequired(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
     default_detail = "Informe as notas de resolução da ocorrência."
     default_code = "OCCURRENCE_RESOLUTION_NOTES_REQUIRED"
+
+
+class SessionCorrectionInvalid(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "A correção produziria uma linha do tempo inválida."
+    default_code = "SESSION_CORRECTION_INVALID"
+
+
+class SessionCorrectionReasonRequired(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Informe a justificativa da correção."
+    default_code = "SESSION_CORRECTION_REASON_REQUIRED"

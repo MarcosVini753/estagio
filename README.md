@@ -105,6 +105,7 @@ GET  /api/v1/usage-sessions/history/
 POST /api/v1/usage-sessions/start/
 POST /api/v1/usage-sessions/{id}/switch-computer/
 POST /api/v1/usage-sessions/{id}/finish/
+POST /api/v1/usage-sessions/{id}/correct/
 
 GET   /api/v1/occurrences/
 POST  /api/v1/occurrences/
@@ -133,4 +134,4 @@ make test
 
 ## Próxima etapa
 
-Implementar correções auditadas e dados históricos de demonstração.
+Implementar dados históricos de demonstração.

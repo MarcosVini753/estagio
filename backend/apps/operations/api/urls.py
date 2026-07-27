@@ -7,6 +7,7 @@ from .views import (
     ReservationCancelAPIView,
     ReservationListCreateAPIView,
     UsageSessionFinishAPIView,
+    UsageSessionCorrectionAPIView,
     UsageSessionHistoryAPIView,
     UsageSessionStartAPIView,
     UsageSessionSwitchAPIView,
@@ -55,5 +56,10 @@ urlpatterns = [
         "usage-sessions/<int:pk>/finish/",
         UsageSessionFinishAPIView.as_view(),
         name="usage-session-finish",
+    ),
+    path(
+        "usage-sessions/<int:pk>/correct/",
+        UsageSessionCorrectionAPIView.as_view(),
+        name="usage-session-correct",
     ),
 ]

@@ -39,6 +39,9 @@
 - criação e consulta de ocorrências;
 - vínculos coerentes com computador, sessão e alocação;
 - transições e resolução de ocorrências por perfis operacionais.
+- correção restrita de entrada, saída e último intervalo;
+- auditoria e rollback integral de correções;
+- constraint PostgreSQL contra sobreposição histórica de alocações.
 
 ## Concluído na Pré-Etapa 4
 
@@ -55,4 +58,4 @@
 
 ## Próxima fatia recomendada
 
-Concluir a Etapa 3.5 com correções auditadas e dados históricos de demonstração antes de iniciar relatórios.
+Concluir a Etapa 3.5 com dados históricos de demonstração antes de iniciar relatórios.

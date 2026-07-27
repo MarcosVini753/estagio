@@ -1,7 +1,7 @@
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import DateTimeRangeField, RangeOperators
 from django.db import models
-from django.db.models import F, Func, Q, Value
+from django.db.models import Deferrable, F, Func, Q, Value
 from django.utils import timezone
 
 from apps.computers.models import Computer
@@ -192,6 +192,23 @@ class ComputerAllocation(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(ended_at__isnull=True) | Q(ended_at__gte=F("started_at")),
                 name="allocation_end_not_before_start",
+            ),
+            ExclusionConstraint(
+                name="allocation_computer_no_overlap",
+                expressions=[
+                    ("computer", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            F("started_at"),
+                            F("ended_at"),
+                            Value("[)"),
+                            function="TSTZRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                deferrable=Deferrable.DEFERRED,
             ),
         ]
 

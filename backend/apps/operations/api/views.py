@@ -18,6 +18,7 @@ from apps.operations.models import UseSession
 from apps.operations.services import (
     cancel_reservation,
     create_reservation,
+    correct_usage_session,
     finish_usage_session,
     start_usage_session,
     switch_computer,
@@ -29,6 +30,7 @@ from .serializers import (
     ReservationSerializer,
     ComputerSwitchSerializer,
     UsageSessionFinishSerializer,
+    UsageSessionCorrectionSerializer,
     UsageSessionStartSerializer,
     UseSessionSerializer,
 )
@@ -241,6 +243,27 @@ class UsageSessionFinishAPIView(APIView):
             session_id=pk,
             actor_profile=get_demo_profile(request),
             actor_reference=get_demo_user_reference(request),
+            **serializer.validated_data,
+        )
+        return Response(UseSessionSerializer(session).data)
+
+
+class UsageSessionCorrectionAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = OPERATIONAL_PROFILES
+
+    @extend_schema(
+        request=UsageSessionCorrectionSerializer,
+        responses={200: UseSessionSerializer},
+        tags=["usage-sessions"],
+    )
+    def post(self, request, pk):
+        get_object_or_404(UseSession, pk=pk)
+        serializer = UsageSessionCorrectionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        session = correct_usage_session(
+            session_id=pk,
+            actor_profile=get_demo_profile(request),
             **serializer.validated_data,
         )
         return Response(UseSessionSerializer(session).data)

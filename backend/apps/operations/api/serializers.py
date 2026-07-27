@@ -94,3 +94,24 @@ class ComputerSwitchSerializer(serializers.Serializer):
 
 class UsageSessionFinishSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True, max_length=1000)
+
+
+class UsageSessionCorrectionSerializer(serializers.Serializer):
+    started_at = serializers.DateTimeField(required=False)
+    ended_at = serializers.DateTimeField(required=False)
+    last_allocation_started_at = serializers.DateTimeField(required=False)
+    last_allocation_ended_at = serializers.DateTimeField(required=False)
+    reason = serializers.CharField(max_length=2000, trim_whitespace=True)
+
+    def validate(self, attrs):
+        correction_fields = {
+            "started_at",
+            "ended_at",
+            "last_allocation_started_at",
+            "last_allocation_ended_at",
+        }
+        if not correction_fields.intersection(attrs):
+            raise serializers.ValidationError(
+                "Informe ao menos um horário para correção."
+            )
+        return attrs
