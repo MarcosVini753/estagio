@@ -15,7 +15,8 @@ start
 if (Dados validos?) then (Sim)
   :Registra ocorrencia;
   :Associa ocorrencia ao computador;
-  :Notifica area de acompanhamento da biblioteca;
+  :Associa sessao e alocacao quando informadas;
+  :Disponibiliza na listagem operacional;
   :Exibe confirmacao ao usuario;
   stop
 else (Nao)

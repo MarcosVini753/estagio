@@ -105,6 +105,11 @@ GET  /api/v1/usage-sessions/history/
 POST /api/v1/usage-sessions/start/
 POST /api/v1/usage-sessions/{id}/switch-computer/
 POST /api/v1/usage-sessions/{id}/finish/
+
+GET   /api/v1/occurrences/
+POST  /api/v1/occurrences/
+GET   /api/v1/occurrences/{id}/
+PATCH /api/v1/occurrences/{id}/
 ```
 
 ## Estrutura
@@ -128,4 +133,4 @@ make test
 
 ## Próxima etapa
 
-Implementar ocorrências, correções auditadas e dados históricos de demonstração.
+Implementar correções auditadas e dados históricos de demonstração.

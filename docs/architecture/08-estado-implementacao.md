@@ -36,6 +36,9 @@
 - troca de computador preservando a sessão;
 - saída com encerramento da alocação atual;
 - auditoria de saída operacional de terceiro.
+- criação e consulta de ocorrências;
+- vínculos coerentes com computador, sessão e alocação;
+- transições e resolução de ocorrências por perfis operacionais.
 
 ## Concluído na Pré-Etapa 4
 
@@ -46,11 +49,10 @@
 
 ## Não implementado
 
-- tratamento de ocorrências via API;
 - selectors e exportadores de relatórios;
 - migração do protótipo para Django Templates;
 - autenticação real.
 
 ## Próxima fatia recomendada
 
-Concluir a Etapa 3.5 com ocorrências, correções auditadas e dados históricos de demonstração antes de iniciar relatórios.
+Concluir a Etapa 3.5 com correções auditadas e dados históricos de demonstração antes de iniciar relatórios.
