@@ -53,13 +53,16 @@
 - compatibilidade histórica para registros sem contexto, agrupáveis como `NOT_INFORMED`.
 - versionamento futuro de turnos, com substituição auditada e preservação dos turnos já usados.
 - identidade lógica compartilhada pelas versões do mesmo turno.
+- relatório mensal JSON com matriz dia por turno lógico;
+- métricas mensais derivadas de sessões, alocações, reservas e ocorrências;
+- agrupamento `NOT_INFORMED`, calendário completo e recorte temporal de alocações.
 
 ## Não implementado
 
-- selectors e exportadores de relatórios;
+- demais projeções e exportadores de relatórios;
 - migração do protótipo para Django Templates;
 - autenticação real.
 
 ## Próxima fatia recomendada
 
-Implementar a projeção mensal em JSON.
+Implementar o relatório diário e reutilizar a projeção nas exportações futuras.

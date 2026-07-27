@@ -58,7 +58,7 @@ Projeção voltada ao acompanhamento cotidiano pelo Monitor da Sala.
 
 ## Relatório consolidado
 
-Projeção gerencial diária, semanal, mensal ou anual usada pelo Supervisor.
+Projeção gerencial diária, mensal ou anual usada pelo Supervisor.
 
 ## Perfil de teste
 

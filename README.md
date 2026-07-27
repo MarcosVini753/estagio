@@ -21,7 +21,8 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - entrada, sessão ativa, troca de computador e saída transacionais;
 - geração de slots para hoje e amanhã;
 - cálculo de `AVAILABLE`, `MAINTENANCE`, `INACTIVE`, `OCCUPIED` e `RESERVED`;
-- OpenAPI, testes, Ruff e CI.
+- OpenAPI, testes, Ruff e CI;
+- relatório mensal JSON derivado dos registros operacionais.
 
 ## Regras centrais
 
@@ -113,6 +114,8 @@ GET   /api/v1/occurrences/
 POST  /api/v1/occurrences/
 GET   /api/v1/occurrences/{id}/
 PATCH /api/v1/occurrences/{id}/
+
+GET /api/v1/reports/monthly/?year=YYYY&month=M
 ```
 
 ## Estrutura
@@ -136,4 +139,4 @@ make test
 
 ## Próxima etapa
 
-Implementar o relatório mensal em JSON.
+Implementar as demais projeções e exportações a partir das mesmas regras do relatório mensal.

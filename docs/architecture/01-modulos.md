@@ -93,7 +93,6 @@ Entidade:
 Responsável por consultas analíticas e exportações:
 
 - relatório diário;
-- semanal;
 - mensal;
 - anual;
 - ocupação;
@@ -102,6 +101,7 @@ Responsável por consultas analíticas e exportações:
 - reservas, cancelamentos e não comparecimentos.
 
 Deve possuir principalmente selectors, projections e exporters. Não deve criar lançamentos manuais de totais.
+O relatório semanal permanece como evolução futura, fora da Etapa 4.
 
 ## `audit`
 
