@@ -36,3 +36,45 @@ class ShiftReplacementConflict(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "O novo turno sobrepõe outro turno ativo."
     default_code = "SHIFT_REPLACEMENT_CONFLICT"
+
+
+class ReservationSlotInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "O horário deve corresponder a um slot configurado e futuro."
+    default_code = "RESERVATION_SLOT_INVALID"
+
+
+class ReservationUnavailable(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "O computador não está disponível para esta reserva."
+    default_code = "RESERVATION_UNAVAILABLE"
+
+
+class ReservationConflict(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "A reserva conflita com outro intervalo confirmado."
+    default_code = "RESERVATION_CONFLICT"
+
+
+class ReservationLimitReached(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "O limite de reservas futuras para este usuário foi atingido."
+    default_code = "RESERVATION_LIMIT_REACHED"
+
+
+class ReservationCancellationNotAllowed(APIException):
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = "Este perfil não pode cancelar a reserva informada."
+    default_code = "RESERVATION_CANCELLATION_NOT_ALLOWED"
+
+
+class ReservationCancellationUnavailable(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "A reserva não pode mais ser cancelada."
+    default_code = "RESERVATION_CANCELLATION_UNAVAILABLE"
+
+
+class ReservationCancellationReasonRequired(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Informe a justificativa para o cancelamento administrativo."
+    default_code = "RESERVATION_CANCELLATION_REASON_REQUIRED"

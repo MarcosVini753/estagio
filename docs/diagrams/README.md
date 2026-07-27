@@ -27,7 +27,7 @@ O Administrador do Sistema existe arquiteturalmente, mas seus casos de uso detal
 ## Decisões posteriores aos diagramas
 
 - fila de espera foi removida do escopo;
-- reserva antecipada é somente para amanhã;
+- reserva antecipada pode ser criada para horários futuros de hoje ou amanhã;
 - hoje permite uso imediato em horários ainda não passados;
 - `OCCUPIED` e `RESERVED` são estados calculados;
 - autenticação real foi substituída, no MVP, por seleção de perfil de teste.

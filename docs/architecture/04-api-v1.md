@@ -129,8 +129,6 @@ PATCH /api/v1/booking-policy/
 
 Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
 
-## Endpoints planejados
-
 ### Reservas
 
 ```text
@@ -139,6 +137,11 @@ GET  /api/v1/reservations/mine/
 POST /api/v1/reservations/
 POST /api/v1/reservations/{id}/cancel/
 ```
+
+`POST /reservations/` é exclusivo do Usuário da Sala e recebe `computer_id` e `starts_at`; o backend deriva `ends_at` do slot configurado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o slot.
+Cancelamento de terceiro exige justificativa e gera evento de auditoria.
+
+## Endpoints planejados
 
 ### Sessões e alocações
 
