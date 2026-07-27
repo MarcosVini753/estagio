@@ -52,6 +52,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - A sessão registra entrada e saída reais.
 - O registro de entrada cria uma sessão ativa e sua primeira alocação.
 - O registro de saída encerra a alocação atual e a sessão.
+- Saída registrada por perfil operacional em nome de terceiro exige justificativa e auditoria.
 - A hora de saída não pode ser anterior à hora de entrada.
 - O turno principal da visita é calculado a partir do horário de entrada.
 - Correções administrativas exigem justificativa e auditoria.

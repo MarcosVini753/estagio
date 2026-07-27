@@ -19,7 +19,7 @@ else (Nao)
   if (Computador disponivel?) then (Sim)
     :Registra data e hora de entrada;
     :Cria sessao de uso;
-    :Marca computador como ocupado;
+    :Cria primeira alocacao do computador;
     :Exibe confirmacao de entrada;
     stop
 
@@ -28,7 +28,8 @@ else (Nao)
       :Confirma comparecimento ao agendamento;
       :Registra data e hora de entrada;
       :Cria sessao de uso;
-      :Marca computador como ocupado;
+      :Cria primeira alocacao do computador;
+      :Marca reserva como utilizada;
       :Exibe confirmacao de entrada;
       stop
     else (Nao)

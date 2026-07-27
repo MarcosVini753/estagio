@@ -22,7 +22,7 @@ from apps.operations.availability import generate_slot_intervals, validate_targe
 from apps.operations.models import ComputerAllocation, Reservation
 
 
-def _lock_user_reference(user_reference: str) -> None:
+def lock_user_reference(user_reference: str) -> None:
     with connection.cursor() as cursor:
         cursor.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", [user_reference])
 
@@ -60,7 +60,7 @@ def create_reservation(
     if computer.operational_state != Computer.OperationalState.AVAILABLE:
         raise ReservationUnavailable()
 
-    _lock_user_reference(user_reference)
+    lock_user_reference(user_reference)
     if _overlapping_allocations(
         computer_id=computer.pk,
         starts_at=starts_at,

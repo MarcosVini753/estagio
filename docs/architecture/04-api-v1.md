@@ -141,8 +141,6 @@ POST /api/v1/reservations/{id}/cancel/
 `POST /reservations/` é exclusivo do Usuário da Sala e recebe `computer_id` e `starts_at`; o backend deriva `ends_at` do slot configurado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o slot.
 Cancelamento de terceiro exige justificativa e gera evento de auditoria.
 
-## Endpoints planejados
-
 ### Sessões e alocações
 
 ```text
@@ -152,6 +150,15 @@ GET  /api/v1/usage-sessions/history/
 POST /api/v1/usage-sessions/start/
 POST /api/v1/usage-sessions/{id}/switch-computer/
 POST /api/v1/usage-sessions/{id}/finish/
+```
+
+Entrada com reserva herda seus snapshots e aplica a tolerância configurada. Entrada imediata exige sala aberta e computador disponível. Troca encerra a alocação atual e cria a próxima na mesma sessão. Saída encerra a alocação atual e a sessão; saída operacional de terceiro exige justificativa e auditoria.
+
+## Endpoints planejados
+
+### Correções
+
+```text
 POST /api/v1/usage-sessions/{id}/correct/
 ```
 

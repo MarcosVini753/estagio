@@ -78,3 +78,45 @@ class ReservationCancellationReasonRequired(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
     default_detail = "Informe a justificativa para o cancelamento administrativo."
     default_code = "RESERVATION_CANCELLATION_REASON_REQUIRED"
+
+
+class UsageSessionConflict(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Não foi possível executar a operação na sessão de uso."
+    default_code = "USAGE_SESSION_CONFLICT"
+
+
+class UsageSessionNotActive(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "A sessão informada não está ativa."
+    default_code = "USAGE_SESSION_NOT_ACTIVE"
+
+
+class ReservationCheckInUnavailable(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "A reserva não está disponível para registrar entrada."
+    default_code = "RESERVATION_CHECK_IN_UNAVAILABLE"
+
+
+class UsageSessionIdentityRequired(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Informe a identidade fictícia do usuário da sessão."
+    default_code = "USAGE_SESSION_IDENTITY_REQUIRED"
+
+
+class UsageSessionNotAllowed(APIException):
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = "Este perfil não pode operar a sessão informada."
+    default_code = "USAGE_SESSION_NOT_ALLOWED"
+
+
+class UsageSessionReasonRequired(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Informe a justificativa para encerrar a sessão de terceiro."
+    default_code = "USAGE_SESSION_REASON_REQUIRED"
+
+
+class RoomClosed(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "A sala não está aberta neste horário."
+    default_code = "ROOM_CLOSED"
