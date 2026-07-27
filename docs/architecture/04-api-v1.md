@@ -127,7 +127,7 @@ GET   /api/v1/booking-policy/
 PATCH /api/v1/booking-policy/
 ```
 
-Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
+Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
 
 ### Reservas
 

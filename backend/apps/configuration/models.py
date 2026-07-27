@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 
 from django.core.exceptions import ValidationError
@@ -9,6 +10,7 @@ from apps.core.models import TimeStampedModel
 
 
 class Shift(TimeStampedModel):
+    series_key = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
     name = models.CharField(max_length=100)
     start_time = models.TimeField()
     end_time = models.TimeField()

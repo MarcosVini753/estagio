@@ -52,6 +52,7 @@
 - snapshots de vínculo e unidade em reservas e sessões de uso;
 - compatibilidade histórica para registros sem contexto, agrupáveis como `NOT_INFORMED`.
 - versionamento futuro de turnos, com substituição auditada e preservação dos turnos já usados.
+- identidade lógica compartilhada pelas versões do mesmo turno.
 
 ## Não implementado
 
@@ -61,4 +62,4 @@
 
 ## Próxima fatia recomendada
 
-Adicionar identidade lógica às versões de turno e iniciar a projeção mensal.
+Implementar a projeção mensal em JSON.

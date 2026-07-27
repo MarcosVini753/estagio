@@ -10,6 +10,7 @@ class ShiftSerializer(serializers.ModelSerializer):
         model = Shift
         fields = [
             "id",
+            "series_key",
             "name",
             "start_time",
             "end_time",
@@ -20,7 +21,7 @@ class ShiftSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "series_key", "created_at", "updated_at"]
 
     def validate(self, attrs):
         instance = self.instance
