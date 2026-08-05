@@ -23,7 +23,7 @@ PostgreSQL
 
 ## Stack
 
-- Python 3.12;
+- Python 3.14;
 - Django 5.2 LTS;
 - Django REST Framework;
 - PostgreSQL 17;

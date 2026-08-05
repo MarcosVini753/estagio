@@ -2,7 +2,7 @@
 
 ## Pré-requisitos
 
-- Python 3.12;
+- Python 3.14;
 - Docker com Docker Compose;
 - PostgreSQL 17 quando executado fora do Compose.
 

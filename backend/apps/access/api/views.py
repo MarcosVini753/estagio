@@ -3,7 +3,6 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.enums import DemoProfile
 from apps.access.services import (
     get_demo_affiliation_type,
     get_demo_institutional_unit,
@@ -11,6 +10,7 @@ from apps.access.services import (
     get_demo_user_reference,
     select_demo_profile,
 )
+from apps.core.enums import DemoProfile
 
 from .serializers import DemoProfileSelectionSerializer
 
@@ -29,7 +29,10 @@ class DemoContextAPIView(APIView):
                 "affiliation_type": get_demo_affiliation_type(request),
                 "institutional_unit": get_demo_institutional_unit(request),
                 "available_profiles": profiles_payload(),
-                "warning": "Autorização simulada; não representa autenticação ou identidade real.",
+                "warning": (
+                    "Autorização simulada; não representa "
+                    "autenticação ou identidade real."
+                ),
             }
         )
 
