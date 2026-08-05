@@ -59,6 +59,15 @@ A data deve ser hoje ou amanhã. O primeiro endpoint devolve um resumo por compu
   "is_today": true,
   "slot_duration_minutes": 15,
   "generated_at": "2026-07-14T09:30:00-05:00",
+  "room": {
+    "status": "OPEN",
+    "source": "REGULAR_SCHEDULE",
+    "reason": "",
+    "operating_windows": [
+      {"opens_at": "07:15:00", "closes_at": "21:00:00"}
+    ],
+    "active_notices": []
+  },
   "computers": [
     {
       "id": 1,
@@ -91,6 +100,15 @@ O endpoint de slots devolve intervalos derivados, não registros persistidos:
   "date": "2026-07-15",
   "is_today": false,
   "slot_duration_minutes": 15,
+  "room": {
+    "status": "OPEN",
+    "source": "REGULAR_SCHEDULE",
+    "reason": "",
+    "operating_windows": [
+      {"opens_at": "07:15:00", "closes_at": "21:00:00"}
+    ],
+    "active_notices": []
+  },
   "slots": [
     {
       "starts_at": "2026-07-15T07:15:00-05:00",
@@ -109,6 +127,8 @@ Precedência do estado efetivo:
 INACTIVE > MAINTENANCE > OCCUPIED > RESERVED > AVAILABLE
 ```
 
+O bloco `room` explica ausência de slots. Domingo, por exemplo, retorna `status=CLOSED`, `source=REGULAR_SCHEDULE`, motivo explícito e nenhuma janela. O calendário operacional, não `Shift`, define as janelas.
+
 ### Configuração operacional
 
 ```text
@@ -117,6 +137,13 @@ POST  /api/v1/shifts/
 GET   /api/v1/shifts/{id}/
 PATCH /api/v1/shifts/{id}/
 POST  /api/v1/shifts/{id}/replace/
+
+GET  /api/v1/operating-schedules/
+POST /api/v1/operating-schedules/
+POST /api/v1/operating-schedules/impact-preview/
+GET   /api/v1/operating-schedules/{id}/
+PATCH /api/v1/operating-schedules/{id}/
+POST  /api/v1/operating-schedules/{id}/replace/
 
 GET   /api/v1/calendar-exceptions/
 POST  /api/v1/calendar-exceptions/
@@ -129,6 +156,88 @@ PATCH /api/v1/booking-policy/
 
 Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
 
+Calendários recebem exatamente sete dias. A API aceita `weekday` pelos nomes `MONDAY` a `SUNDAY`. Exemplo de criação temporária:
+
+```json
+{
+  "name": "Recesso acadêmico 2026/2",
+  "schedule_type": "TEMPORARY",
+  "valid_from": "2026-12-21",
+  "valid_until": "2027-01-31",
+  "reason": "Funcionamento durante o recesso.",
+  "days": [
+    {
+      "weekday": "MONDAY",
+      "is_open": true,
+      "windows": [
+        {"opens_at": "08:00", "closes_at": "13:00"}
+      ]
+    },
+    {
+      "weekday": "SUNDAY",
+      "is_open": false,
+      "windows": []
+    }
+  ],
+  "confirm_invalidation": false,
+  "notify_users": false
+}
+```
+
+O exemplo omite os outros cinco itens apenas por brevidade; a requisição real exige os sete. `TEMPORARY` exige `valid_until`. Calendários ativos do mesmo tipo não podem sobrepor. `PATCH` é aceito somente para configuração futura; calendário iniciado usa `replace/` com `effective_from` posterior a hoje. Emergência no próprio dia usa `CalendarException`.
+
+O preview recebe os dados do calendário proposto e devolve:
+
+```json
+{
+  "affected_period": {
+    "starts_on": "2026-12-21",
+    "ends_on": "2027-01-31"
+  },
+  "conflicting_reservations": [
+    {
+      "id": 84,
+      "user_reference": "202312345",
+      "computer_id": 3,
+      "starts_at": "2026-12-22T18:00:00-05:00",
+      "ends_at": "2026-12-22T18:15:00-05:00",
+      "reason": "OUTSIDE_NEW_OPERATING_HOURS"
+    }
+  ],
+  "total": 1
+}
+```
+
+Sem `confirm_invalidation=true`, a aplicação responde `SCHEDULE_CHANGE_AFFECTS_RESERVATIONS` e reverte a mudança. Com confirmação, as reservas conflitantes ficam `INVALIDATED` e calendário, auditorias e aviso opcional são confirmados juntos.
+
+### Status da sala e avisos
+
+```text
+GET /api/v1/room-status/?date=YYYY-MM-DD
+
+GET /api/v1/room-notices/active/
+GET  /api/v1/room-notices/
+POST /api/v1/room-notices/
+GET   /api/v1/room-notices/{id}/
+PATCH /api/v1/room-notices/{id}/
+```
+
+`room-status` e `room-notices/active` são públicos e funcionam antes da escolha de perfil. Os demais endpoints de aviso são restritos ao Supervisor e Administrador.
+
+```json
+{
+  "date": "2026-08-09",
+  "status": "CLOSED",
+  "source": "REGULAR_SCHEDULE",
+  "is_open_now": false,
+  "reason": "A Sala de Informática não funciona aos domingos.",
+  "operating_windows": [],
+  "active_notices": []
+}
+```
+
+Um aviso possui tipo `CLOSURE`, `SCHEDULE_CHANGE` ou `SPECIAL_HOURS`, período efetivo, período de visibilidade e flag ativa. Criação de calendário ou exceção aceita `notify_users=true` e objeto `notice`; ambos são salvos ou revertidos na mesma transação.
+
 ### Reservas
 
 ```text
@@ -140,6 +249,8 @@ POST /api/v1/reservations/{id}/cancel/
 
 `POST /reservations/` é exclusivo do Usuário da Sala e recebe `computer_id` e `starts_at`; o backend deriva `ends_at` do slot configurado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o slot.
 Cancelamento de terceiro exige justificativa e gera evento de auditoria.
+
+Reservas invalidadas expõem `invalidated_at`, `invalidated_by_profile` e `invalidation_reason`. Elas permanecem em `mine/`, deixam de bloquear slots e não podem iniciar sessão.
 
 ### Sessões e alocações
 
@@ -177,7 +288,7 @@ Usuário da Sala consulta apenas as próprias ocorrências. Perfis operacionais 
 GET /api/v1/reports/monthly/?year=YYYY&month=M
 ```
 
-O relatório mensal é restrito ao Supervisor e Administrador. A resposta contém todos os dias do mês, status de calendário, colunas por `Shift.series_key`, totais por turno e as métricas de visitas, pessoas distintas, reservas, ocorrências, computadores utilizados, minutos alocados e tempo médio das sessões finalizadas. Sessões sem turno são agrupadas em `NOT_INFORMED`.
+O relatório mensal é restrito ao Supervisor e Administrador. A resposta contém todos os dias do mês, `calendar_status`, `calendar_source`, `operating_minutes`, colunas por `Shift.series_key`, totais por turno e as métricas de visitas, pessoas distintas, reservas totais e `reservations_by_status`, ocorrências, computadores utilizados, minutos operacionais, minutos alocados e tempo médio das sessões finalizadas. Sessões sem turno são agrupadas em `NOT_INFORMED`.
 
 ## Endpoints planejados
 

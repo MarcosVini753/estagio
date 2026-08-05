@@ -23,6 +23,7 @@ O Administrador do Sistema existe arquiteturalmente, mas seus casos de uso detal
 - [09 — Supervisor configura o sistema](atividades/09-supervisor-configuracoes.puml)
 - [10 — Supervisor analisa indicadores](atividades/10-supervisor-analisar-indicadores.puml)
 - [11 — Supervisor gera relatório consolidado](atividades/11-supervisor-gerar-relatorio-consolidado.puml)
+- [12 — Supervisor configura calendário operacional](atividades/12-supervisor-configurar-calendario.puml)
 
 ## Decisões posteriores aos diagramas
 
@@ -31,5 +32,6 @@ O Administrador do Sistema existe arquiteturalmente, mas seus casos de uso detal
 - hoje permite uso imediato em horários ainda não passados;
 - `OCCUPIED` e `RESERVED` são estados calculados;
 - autenticação real foi substituída, no MVP, por seleção de perfil de teste.
+- turnos são dimensões analíticas; calendário regular, temporário e exceções definem abertura.
 
 Ao encontrar divergência, consulte `docs/product/`, `docs/architecture/` e os ADRs.

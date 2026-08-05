@@ -10,8 +10,13 @@ rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da U
 
   package "Configuração do sistema" {
     usecase "Cadastrar computadores" as UC01
-    usecase "Configurar turnos" as UC02
+    usecase "Configurar turnos\nanalíticos" as UC02
     usecase "Configurar parâmetros\nde relatório" as UC03
+    usecase "Configurar horário\nsemanal" as UC15
+    usecase "Configurar horário\ntemporário" as UC16
+    usecase "Registrar fechamento\nexcepcional" as UC17
+    usecase "Visualizar reservas\nafetadas" as UC18
+    usecase "Publicar ou desativar\naviso" as UC19
   }
 
   package "Acompanhamento gerencial" {
@@ -29,7 +34,6 @@ rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da U
 
   package "Relatórios consolidados" {
     usecase "Gerar relatório diário\nconsolidado" as UC11
-    usecase "Gerar relatório semanal\nconsolidado" as UC12
     usecase "Gerar relatório mensal\nconsolidado" as UC13
     usecase "Gerar relatório anual\nconsolidado" as UC14
   }
@@ -44,6 +48,11 @@ end note
 Supervisor --> UC01
 Supervisor --> UC02
 Supervisor --> UC03
+Supervisor --> UC15
+Supervisor --> UC16
+Supervisor --> UC17
+Supervisor --> UC18
+Supervisor --> UC19
 Supervisor --> UC04
 Supervisor --> UC05
 Supervisor --> UC06
@@ -52,11 +61,16 @@ Supervisor --> UC08
 Supervisor --> UC09
 Supervisor --> UC10
 Supervisor --> UC11
-Supervisor --> UC12
 Supervisor --> UC13
 Supervisor --> UC14
 
 UC08 .> UC04 : <<include>>
 UC09 .> UC05 : <<include>>
+UC15 .> UC18 : <<include>>
+UC16 .> UC18 : <<include>>
+UC17 .> UC18 : <<include>>
+UC15 .> UC19 : <<extend>>
+UC16 .> UC19 : <<extend>>
+UC17 .> UC19 : <<extend>>
 
 @enduml

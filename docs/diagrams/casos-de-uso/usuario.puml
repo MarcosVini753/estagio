@@ -11,6 +11,8 @@ rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da U
   package "Consulta de disponibilidade" {
     usecase "Consultar computadores disponíveis\npara o dia atual ou seguinte" as UC01
     usecase "Consultar horários disponíveis" as UC02
+    usecase "Consultar funcionamento\nda sala" as UC09
+    usecase "Visualizar avisos\noperacionais" as UC10
   }
 
   package "Agendamento" {
@@ -31,6 +33,8 @@ rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da U
 
 Usuario --> UC01
 Usuario --> UC02
+Usuario --> UC09
+Usuario --> UC10
 Usuario --> UC03
 Usuario --> UC05
 Usuario --> UC06
@@ -38,6 +42,7 @@ Usuario --> UC07
 Usuario --> UC08
 
 UC02 .> UC01 : <<include>>
+UC01 .> UC09 : <<include>>
 UC03 .> UC04 : <<include>>
 UC03 .> UC02 : <<include>>
 

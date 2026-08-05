@@ -7,6 +7,8 @@ Este documento funciona como índice funcional. Os diagramas completos permanece
 Casos de uso principais:
 
 - consultar computadores disponíveis para hoje ou amanhã;
+- `UC-USR-Consultar funcionamento`: consultar estado, origem e janelas da sala;
+- `UC-USR-Visualizar aviso`: visualizar avisos internos ativos;
 - consultar horários disponíveis;
 - selecionar horário;
 - confirmar reserva (hoje ou amanhã);
@@ -29,6 +31,7 @@ Fluxos críticos:
 Casos de uso principais:
 
 - consultar sessões ativas;
+- consultar calendário operacional e avisos;
 - consultar computadores disponíveis, ocupados, reservados, em manutenção ou inativos;
 - alterar estado operacional;
 - registrar e consultar ocorrências;
@@ -48,7 +51,12 @@ Fluxos críticos:
 Possui **todos** os casos de uso e fluxos do Monitor da Sala, além dos seguintes casos de uso adicionais:
 
 - cadastrar computadores;
-- configurar turnos;
+- configurar turnos analíticos;
+- `UC-SUP-Configurar horário semanal`: cadastrar ou versionar os sete dias do calendário regular;
+- `UC-SUP-Configurar horário temporário`: definir início, fim e sete dias de um recesso;
+- `UC-SUP-Registrar fechamento excepcional`: fechar ou definir horário especial para uma data;
+- `UC-SUP-Visualizar reservas afetadas`: revisar conflitos antes de aplicar a mudança;
+- `UC-SUP-Publicar aviso`: publicar ou desativar uma comunicação interna;
 - configurar parâmetros de relatório;
 - analisar uso por período, turno, curso/setor e computador;
 - identificar maior movimento e demanda;
@@ -64,6 +72,7 @@ O papel existe na arquitetura, mas seus casos de uso detalhados serão documenta
 - fila de espera foi removida do escopo;
 - estados ocupado e reservado são calculados, não persistidos;
 - a tela inicial de escolha de perfil substitui autenticação real no MVP;
+- calendário operacional e turnos foram separados para impedir que classificação analítica altere a abertura da sala.
 
 ## Rastreabilidade
 
