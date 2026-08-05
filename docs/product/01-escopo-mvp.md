@@ -38,7 +38,7 @@ A seleção controla menus e autorizações simuladas. Não existe autenticaçã
 - configurar turnos e parâmetros de relatórios;
 - analisar uso por período, turno, curso/setor e computador;
 - identificar demanda e taxa de ocupação;
-- gerar relatórios diário, semanal, mensal e anual.
+- gerar relatórios diário, mensal e anual.
 
 ## Administrador
 
@@ -53,7 +53,8 @@ O papel existe arquiteturalmente, mas contas, grupos, permissões e login reais 
 - notificações externas;
 - aplicação mobile nativa;
 - microsserviços, filas e tarefas assíncronas;
-- lançamentos manuais de relatórios.
+- lançamentos manuais de relatórios;
+- relatório semanal, mantido como evolução futura.
 
 ## Critério de conclusão
 

@@ -10,6 +10,7 @@ class ShiftSerializer(serializers.ModelSerializer):
         model = Shift
         fields = [
             "id",
+            "series_key",
             "name",
             "start_time",
             "end_time",
@@ -20,10 +21,15 @@ class ShiftSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "series_key", "created_at", "updated_at"]
 
     def validate(self, attrs):
         instance = self.instance
+        if instance and instance.use_sessions.exists() and attrs:
+            if set(attrs) != {"is_active"} or attrs["is_active"] is not False:
+                raise serializers.ValidationError(
+                    "Turnos usados são imutáveis; apenas a desativação é permitida."
+                )
         start_time = attrs.get(
             "start_time",
             instance.start_time if instance else None,
@@ -63,6 +69,26 @@ class ShiftSerializer(serializers.ModelSerializer):
         if conflicts.exists():
             raise serializers.ValidationError(
                 {"non_field_errors": ["O turno sobrepõe outro turno ativo."]}
+            )
+        return attrs
+
+
+class ShiftReplaceSerializer(serializers.Serializer):
+    effective_from = serializers.DateField()
+    name = serializers.CharField(max_length=100)
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+    display_order = serializers.IntegerField(min_value=0)
+
+    def validate_effective_from(self, value):
+        if value <= timezone.localdate():
+            raise serializers.ValidationError("A vigência deve começar após hoje.")
+        return value
+
+    def validate(self, attrs):
+        if attrs["start_time"] >= attrs["end_time"]:
+            raise serializers.ValidationError(
+                {"end_time": "O horário final deve ser posterior ao horário inicial."}
             )
         return attrs
 

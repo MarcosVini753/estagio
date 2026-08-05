@@ -12,7 +12,7 @@
 - tela mínima de seleção de perfil;
 - OpenAPI, formato padronizado de erro, Ruff e CI.
 
-## Concluído na etapa 3
+## Concluído parcialmente na etapa 3
 
 - endpoints de computadores;
 - criação e edição de computadores pelo Supervisor ou Administrador;
@@ -29,17 +29,40 @@
 - identificação de reserva pertencente ao usuário fictício atual;
 - seed idempotente para o ambiente de demonstração;
 - testes de API e regras de disponibilidade.
+- criação, listagem e cancelamento transacionais de reservas;
+- constraints PostgreSQL contra sobreposição de reservas confirmadas.
+- entrada imediata e entrada vinculada a reserva;
+- sessão atual, sessões ativas e histórico;
+- troca de computador preservando a sessão;
+- saída com encerramento da alocação atual;
+- auditoria de saída operacional de terceiro.
+- criação e consulta de ocorrências;
+- vínculos coerentes com computador, sessão e alocação;
+- transições e resolução de ocorrências por perfis operacionais.
+- correção restrita de entrada, saída e último intervalo;
+- auditoria e rollback integral de correções;
+- constraint PostgreSQL contra sobreposição histórica de alocações.
+- seed histórico determinístico e idempotente para relatórios;
+- limpeza seletiva por prefixo e sentinelas `demo-report-`;
+- sessões, trocas, reservas, ocorrências, manutenção e exceções de calendário fictícias.
+
+## Concluído na Pré-Etapa 4
+
+- contexto fictício ampliado para Usuário da Sala, com referência, vínculo e unidade institucional;
+- snapshots de vínculo e unidade em reservas e sessões de uso;
+- compatibilidade histórica para registros sem contexto, agrupáveis como `NOT_INFORMED`.
+- versionamento futuro de turnos, com substituição auditada e preservação dos turnos já usados.
+- identidade lógica compartilhada pelas versões do mesmo turno.
+- relatório mensal JSON com matriz dia por turno lógico;
+- métricas mensais derivadas de sessões, alocações, reservas e ocorrências;
+- agrupamento `NOT_INFORMED`, calendário completo e recorte temporal de alocações.
 
 ## Não implementado
 
-- criação e cancelamento de reservas;
-- constraint PostgreSQL contra reservas sobrepostas;
-- entrada, saída e troca por serviços transacionais;
-- tratamento de ocorrências via API;
-- selectors e exportadores de relatórios;
+- demais projeções e exportadores de relatórios;
 - migração do protótipo para Django Templates;
 - autenticação real.
 
 ## Próxima fatia recomendada
 
-Implementar reservas, entrada, sessão ativa, troca de computador e saída. As operações devem usar transações, bloqueios e as constraints existentes, reutilizando o serviço de disponibilidade da etapa 3.
+Implementar o relatório diário e reutilizar a projeção nas exportações futuras.

@@ -3,7 +3,13 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.access.services import get_demo_profile, select_demo_profile
+from apps.access.services import (
+    get_demo_affiliation_type,
+    get_demo_institutional_unit,
+    get_demo_profile,
+    get_demo_user_reference,
+    select_demo_profile,
+)
 from apps.core.enums import DemoProfile
 
 from .serializers import DemoProfileSelectionSerializer
@@ -19,6 +25,9 @@ class DemoContextAPIView(APIView):
         return Response(
             {
                 "profile": get_demo_profile(request),
+                "user_reference": get_demo_user_reference(request),
+                "affiliation_type": get_demo_affiliation_type(request),
+                "institutional_unit": get_demo_institutional_unit(request),
                 "available_profiles": profiles_payload(),
                 "warning": (
                     "Autorização simulada; não representa "
@@ -37,10 +46,13 @@ class DemoSelectProfileAPIView(APIView):
     def post(self, request):
         serializer = DemoProfileSelectionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        profile = select_demo_profile(request, serializer.validated_data["profile"])
+        profile = select_demo_profile(request, **serializer.validated_data)
         return Response(
             {
                 "profile": profile,
+                "user_reference": get_demo_user_reference(request),
+                "affiliation_type": get_demo_affiliation_type(request),
+                "institutional_unit": get_demo_institutional_unit(request),
                 "warning": "Perfil selecionado apenas para demonstração.",
             },
             status=status.HTTP_200_OK,

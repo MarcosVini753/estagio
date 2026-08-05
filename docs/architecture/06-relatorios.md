@@ -4,6 +4,14 @@
 
 Relatórios são projeções derivadas dos registros operacionais. Não haverá tabela de lançamentos manuais com totais desconectados das sessões.
 
+## Dados históricos de demonstração
+
+```bash
+python manage.py seed_report_demo_data --days 60 --seed 12345 --reset
+```
+
+O comando cria uma linha do tempo fictícia determinística e informa no terminal as datas inicial e final geradas. Referências usam o prefixo reservado `demo-report-`; `--reset` remove somente registros operacionais e sentinelas criados pelo comando. Computadores, turnos e configurações existentes nunca são sobrescritos ou removidos.
+
 ## Fontes
 
 - `UseSession`: visita, entrada, saída, duração e usuário de demonstração;
@@ -57,6 +65,9 @@ Contagem por estado, computador e período.
 - tempo de ocupação: distribuir alocações pelos turnos que atravessarem;
 - reservas: classificar pelo intervalo reservado;
 - alterações de configuração devem respeitar validade temporal.
+- versões do mesmo turno lógico são agrupadas por `Shift.series_key`.
+
+Todos os períodos usam `America/Rio_Branco` e limites `[start, end)`. Intervalos de alocação são recortados ao período consultado. Para sessões ativas, o fim temporário é `min(now, period_end)`; elas não entram no tempo médio de permanência.
 
 ## Relatório diário
 
@@ -69,44 +80,39 @@ Deve apresentar:
 - computadores utilizados;
 - ocorrências relevantes.
 
-## Relatório semanal
-
-Consolida os dias da semana e permite comparação por turno.
-
 ## Relatório mensal
 
-Deve reproduzir o modelo atual:
+Implementado em:
+
+```text
+GET /api/v1/reports/monthly/?year=YYYY&month=M
+```
+
+O endpoint é restrito ao Supervisor e Administrador e reproduz o modelo atual:
 
 - linhas por dia;
-- colunas por turno;
+- colunas por `series_key`;
 - totais por turno;
 - total geral mensal;
-- referência ao total anual acumulado quando solicitado.
+- dias sem uso;
+- estado de calendário `OPEN`, `CLOSED`, `OPTIONAL_HOLIDAY` ou `SPECIAL_HOURS`;
+- grupo `NOT_INFORMED` para sessões sem turno.
+
+As métricas complementares são visitas, pessoas distintas, reservas pelo horário agendado, ocorrências pela criação, computadores utilizados, minutos alocados e tempo médio de sessões finalizadas. Uma sessão com troca continua sendo uma visita, mas suas alocações contribuem para todos os computadores e intervalos utilizados.
 
 ## Relatório anual
 
 Consolida meses, totais por turno, visitas, pessoas distintas e indicadores de ocupação.
 
-## Implementação
+## Implementação atual
 
-Estrutura sugerida:
+O relatório mensal usa:
 
 ```text
-reports/
-├── selectors/
-│   ├── sessions.py
-│   ├── allocations.py
-│   └── reservations.py
-├── projections/
-│   ├── daily.py
-│   ├── monthly.py
-│   └── occupancy.py
-├── exporters/
-│   ├── csv.py
-│   ├── xlsx.py
-│   └── pdf.py
-└── api/v1/
+Banco → selectors.py → projections.py → API JSON
 ```
+
+Não há modelo agregado nem exporter nesta entrega.
 
 ## Exportação
 
@@ -117,6 +123,10 @@ Prioridade:
 3. PDF.
 
 A exportação deve usar a mesma projeção exibida na API para evitar totais divergentes.
+
+## Evolução futura
+
+O relatório semanal não faz parte da Etapa 4. Diário, anual, indicadores, taxa percentual de ocupação e exportações serão adicionados em entregas próprias.
 
 ## Desempenho
 

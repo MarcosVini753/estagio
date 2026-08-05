@@ -28,6 +28,8 @@ POST /api/v1/demo/select-profile/
 
 A seleção de perfil simula autorização e não autentica uma identidade real.
 
+`POST /api/v1/demo/select-profile/` exige `user_reference`, `affiliation_type` e `institutional_unit` para `ROOM_USER`. `GET /api/v1/demo/context/` devolve os valores selecionados; perfis operacionais devolvem apenas a referência fictícia fixa.
+
 ### Computadores
 
 ```text
@@ -114,6 +116,7 @@ GET   /api/v1/shifts/
 POST  /api/v1/shifts/
 GET   /api/v1/shifts/{id}/
 PATCH /api/v1/shifts/{id}/
+POST  /api/v1/shifts/{id}/replace/
 
 GET   /api/v1/calendar-exceptions/
 POST  /api/v1/calendar-exceptions/
@@ -124,9 +127,7 @@ GET   /api/v1/booking-policy/
 PATCH /api/v1/booking-policy/
 ```
 
-Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
-
-## Endpoints planejados
+Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
 
 ### Reservas
 
@@ -137,6 +138,9 @@ POST /api/v1/reservations/
 POST /api/v1/reservations/{id}/cancel/
 ```
 
+`POST /reservations/` é exclusivo do Usuário da Sala e recebe `computer_id` e `starts_at`; o backend deriva `ends_at` do slot configurado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o slot.
+Cancelamento de terceiro exige justificativa e gera evento de auditoria.
+
 ### Sessões e alocações
 
 ```text
@@ -146,22 +150,46 @@ GET  /api/v1/usage-sessions/history/
 POST /api/v1/usage-sessions/start/
 POST /api/v1/usage-sessions/{id}/switch-computer/
 POST /api/v1/usage-sessions/{id}/finish/
+```
+
+Entrada com reserva herda seus snapshots e aplica a tolerância configurada. Entrada imediata exige sala aberta e computador disponível. Troca encerra a alocação atual e cria a próxima na mesma sessão. Saída encerra a alocação atual e a sessão; saída operacional de terceiro exige justificativa e auditoria.
+
+```text
 POST /api/v1/usage-sessions/{id}/correct/
 ```
 
-### Ocorrências e relatórios
+A correção é restrita a perfis operacionais, exige justificativa e altera somente entrada, saída ou o último intervalo. A primeira e a última alocação são sincronizadas quando aplicável, toda a linha do tempo é validada e a mudança gera `AuditEvent`.
+
+### Ocorrências
 
 ```text
 GET   /api/v1/occurrences/
 POST  /api/v1/occurrences/
+GET   /api/v1/occurrences/{id}/
 PATCH /api/v1/occurrences/{id}/
+```
 
+Usuário da Sala consulta apenas as próprias ocorrências. Perfis operacionais consultam todas e realizam as transições de análise, resolução ou cancelamento. Computador, sessão e alocação devem ser compatíveis; criar ocorrência não altera o estado operacional do computador.
+
+### Relatórios
+
+```text
+GET /api/v1/reports/monthly/?year=YYYY&month=M
+```
+
+O relatório mensal é restrito ao Supervisor e Administrador. A resposta contém todos os dias do mês, status de calendário, colunas por `Shift.series_key`, totais por turno e as métricas de visitas, pessoas distintas, reservas, ocorrências, computadores utilizados, minutos alocados e tempo médio das sessões finalizadas. Sessões sem turno são agrupadas em `NOT_INFORMED`.
+
+## Endpoints planejados
+
+### Relatórios
+
+```text
 GET /api/v1/reports/daily/
-GET /api/v1/reports/weekly/
-GET /api/v1/reports/monthly/
 GET /api/v1/reports/annual/
 GET /api/v1/reports/occupancy/
 ```
+
+O relatório semanal permanece como evolução futura e não possui endpoint definido na Etapa 4.
 
 ## Formato de erro
 

@@ -27,7 +27,7 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 - Uma sessão pode conter várias alocações por causa da troca de computador.
 - Trocar de computador não cria nova sessão nem apaga histórico.
 - Relatórios são projeções; não criar lançamentos manuais de relatório.
-- O ator operacional é `Monitor da Sala`, não `Servidor da Biblioteca`.
+- O ator operacional é `Monitor da Sala`.
 - O Administrador do Sistema existe arquiteturalmente, mas não possui autenticação real nesta etapa.
 
 ## Autorização da primeira versão
@@ -48,26 +48,26 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 - OpenAPI com `drf-spectacular`.
 - Configurações separadas para local, testes e produção.
 
-## Estado de implementação
-
-As etapas 2 e 3 possuem scaffold Django, modelos, migrations, autorização simulada, CI, CRUD inicial de computadores e configurações, histórico de estado operacional, geração de slots e consulta de disponibilidade para hoje e amanhã.
-
-Ainda não existem serviços completos para criar ou cancelar reservas, registrar entrada, trocar computador, registrar saída, tratar ocorrências ou gerar relatórios. Essas funcionalidades devem ser implementadas em fatias verticais, sem concentrar regras em views ou serializers.
-
 ## Implementação mínima e correta
 
-1. confirme a necessidade da alteração;
-2. procure padrões reutilizáveis;
-3. prefira Python, Django, DRF e PostgreSQL a código próprio;
-4. não crie abstrações para necessidades hipotéticas;
+Aplique o princípio Ponytail depois de compreender integralmente a tarefa e o fluxo afetado:
+
+1. confirme se a alteração realmente precisa existir;
+2. procure implementação ou padrão reutilizável no repositório;
+3. prefira Python, Django, DRF ou PostgreSQL a código próprio;
+4. prefira recursos nativos de HTML, HTMX, CSS e navegador a dependências;
 5. mantenha regras transacionais em serviços de domínio;
 6. mantenha consultas complexas e projeções em selectors;
 7. use constraints para invariantes persistentes;
 8. atualize migrations, testes, OpenAPI e documentação quando aplicável.
+9. reutilize dependências já instaladas antes de adicionar outra;
+10. escreva somente o mínimo necessário para atender corretamente à regra.
 
-## Skills e qualidade
+Não crie abstrações, camadas, dependências ou configurações para necessidades hipotéticas. O menor diff correto vence, mas minimalismo nunca pode remover validação, integridade, segurança, acessibilidade, auditoria, migrations ou testes exigidos pelo projeto.
 
-As skills ficam em `.cline/skills/`. Antes de concluir, execute:
+## Skills e fluxo de qualidade
+
+As skills específicas para Cline ficam em `.cline/skills/`. Use a mais adequada à tarefa. Antes de concluir, execute:
 
 ```bash
 make check
@@ -76,4 +76,12 @@ make format-check
 make test
 ```
 
-Mudanças arquiteturais exigem ADR. Mudanças funcionais atualizam `docs/product/`. Mudanças de endpoint atualizam OpenAPI, `docs/architecture/04-api-v1.md` e testes.
+- `django-feature-development` para funcionalidades completas;
+- `django-model-and-migration` para esquema e migrations;
+- `api-endpoint` para API DRF;
+- `test-first-change` para bugs e mudanças críticas;
+- `code-review` para revisão geral antes de merge;
+- `ponytail-review` para uma segunda revisão focada em sobre-engenharia;
+- `documentation-sync` para manter código e documentação coerentes.
+
+Antes de concluir uma implementação, execute os comandos de qualidade disponíveis no repositório. Não declare a tarefa concluída quando testes, lint, migrations ou verificações obrigatórias falharem. Mudanças arquiteturais exigem ADR. Mudanças funcionais atualizam `docs/product/`. Mudanças de endpoint atualizam OpenAPI, `docs/architecture/04-api-v1.md` e testes.

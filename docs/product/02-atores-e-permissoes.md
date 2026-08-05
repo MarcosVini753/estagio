@@ -6,6 +6,8 @@ A primeira versão não possui autenticação real. O usuário escolhe um perfil
 
 Essa autorização é apenas comportamental. Ela não garante identidade, sigilo ou segurança. O MVP deve operar somente com dados fictícios em ambiente local ou controlado.
 
+Ao escolher Usuário da Sala, a demonstração exige referência fictícia, vínculo e unidade institucional. Esses dados distinguem pessoas e agrupamentos analíticos, mas não comprovam identidade.
+
 ## Usuário da Sala
 
 Representa aluno, professor ou técnico-administrativo que utiliza os computadores.
@@ -14,7 +16,7 @@ Pode:
 
 - consultar disponibilidade de hoje e amanhã;
 - iniciar uso imediato hoje;
-- reservar para amanhã;
+- reservar para hoje ou amanhã, em horários válidos;
 - consultar e cancelar suas próprias reservas simuladas;
 - registrar entrada e saída;
 - trocar de computador;
@@ -85,6 +87,8 @@ SYSTEM_ADMIN
 ```
 
 A seleção pode ser armazenada temporariamente na sessão Django ou no estado local do frontend. O backend não deve tratar esse valor como prova de identidade.
+
+Para Usuário da Sala, a sessão Django também armazena `demo_user_reference`, `demo_affiliation_type` e `demo_institutional_unit`. Os demais perfis usam apenas referências operacionais fixas.
 
 ## Evolução futura
 

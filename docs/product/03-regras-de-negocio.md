@@ -8,6 +8,8 @@
 - Reserva antecipada pode ser criada para hoje (futuro do dia corrente) ou amanhã.
 - Datas anteriores ou posteriores a amanhã devem ser rejeitadas.
 - Horários devem respeitar o funcionamento da sala e os turnos configurados.
+- Um turno já usado por sessão não pode ter seus horários ou vigência alterados retroativamente.
+- A substituição de turno cria uma nova versão futura e encerra a vigência da versão anterior no dia anterior.
 
 ## Computadores
 
@@ -38,6 +40,9 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - Reservas válidas de um mesmo computador não podem se sobrepor.
 - O usuário não pode possuir reservas conflitantes.
 - Reserva cancelada não bloqueia disponibilidade.
+- A criação recebe somente computador e início de um slot; o sistema calcula o fim.
+- Somente o proprietário ou perfil operacional pode cancelar antes do início e do limite da política.
+- Cancelamento realizado por perfil operacional em nome de terceiro exige justificativa e auditoria.
 - Ao registrar entrada dentro de uma reserva válida, a sessão pode ser vinculada à reserva.
 - Reservas não utilizadas devem poder ser classificadas como `NO_SHOW` por regra configurável futura.
 
@@ -47,6 +52,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - A sessão registra entrada e saída reais.
 - O registro de entrada cria uma sessão ativa e sua primeira alocação.
 - O registro de saída encerra a alocação atual e a sessão.
+- Saída registrada por perfil operacional em nome de terceiro exige justificativa e auditoria.
 - A hora de saída não pode ser anterior à hora de entrada.
 - O turno principal da visita é calculado a partir do horário de entrada.
 - Correções administrativas exigem justificativa e auditoria.

@@ -24,3 +24,6 @@ ADRs registram decisões arquiteturais, alternativas e consequências.
 - [0011 — Manter auditoria de ações sensíveis](0011-auditoria.md)
 - [0012 — Remover fila de espera do escopo](0012-remover-fila-de-espera.md)
 - [0013 — Manter Administrador como papel arquitetural](0013-administrador-arquitetural.md)
+- [0014 — Identidade fictícia e snapshots analíticos](0014-identidade-ficticia-e-snapshots.md)
+- [0015 — Versionar historicamente os turnos](0015-versionamento-historico-de-turnos.md)
+- [0016 — Identidade lógica das versões de turno](0016-identidade-logica-das-versoes-de-turno.md)

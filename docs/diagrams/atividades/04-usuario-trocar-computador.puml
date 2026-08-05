@@ -20,10 +20,8 @@ if (Possui sessao ativa?) then (Sim)
   :Verifica se o novo computador continua disponivel;
 
   if (Computador disponivel?) then (Sim)
-    :Registra troca no historico da sessao;
-    :Libera computador anterior;
-    :Marca novo computador como ocupado;
-    :Atualiza sessao ativa;
+    :Encerra alocacao anterior;
+    :Cria nova alocacao na mesma sessao;
     :Exibe confirmacao da troca;
     stop
   else (Nao)

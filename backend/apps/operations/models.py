@@ -1,10 +1,12 @@
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import DateTimeRangeField, RangeOperators
 from django.db import models
-from django.db.models import F, Q
+from django.db.models import Deferrable, F, Func, Q, Value
 from django.utils import timezone
 
 from apps.computers.models import Computer
 from apps.configuration.models import Shift
-from apps.core.enums import DemoProfile
+from apps.core.enums import AffiliationType, DemoProfile
 from apps.core.models import TimeStampedModel
 
 
@@ -17,6 +19,12 @@ class Reservation(TimeStampedModel):
         INVALIDATED = "INVALIDATED", "Invalidada"
 
     user_reference = models.CharField(max_length=100, db_index=True)
+    affiliation_type = models.CharField(
+        max_length=32,
+        choices=AffiliationType.choices,
+        default=AffiliationType.NOT_INFORMED,
+    )
+    institutional_unit = models.CharField(max_length=255, blank=True, default="")
     computer = models.ForeignKey(
         Computer, on_delete=models.PROTECT, related_name="reservations"
     )
@@ -48,7 +56,41 @@ class Reservation(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(starts_at__lt=F("ends_at")),
                 name="reservation_start_before_end",
-            )
+            ),
+            ExclusionConstraint(
+                name="reservation_computer_no_overlap",
+                expressions=[
+                    ("computer", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            F("starts_at"),
+                            F("ends_at"),
+                            Value("[)"),
+                            function="TSTZRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(status="CONFIRMED"),
+            ),
+            ExclusionConstraint(
+                name="reservation_user_no_overlap",
+                expressions=[
+                    ("user_reference", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            F("starts_at"),
+                            F("ends_at"),
+                            Value("[)"),
+                            function="TSTZRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(status="CONFIRMED"),
+            ),
         ]
 
     def __str__(self) -> str:
@@ -62,6 +104,12 @@ class UseSession(TimeStampedModel):
         CANCELLED = "CANCELLED", "Cancelada"
 
     user_reference = models.CharField(max_length=100, db_index=True)
+    affiliation_type = models.CharField(
+        max_length=32,
+        choices=AffiliationType.choices,
+        default=AffiliationType.NOT_INFORMED,
+    )
+    institutional_unit = models.CharField(max_length=255, blank=True, default="")
     reservation = models.OneToOneField(
         Reservation,
         on_delete=models.SET_NULL,
@@ -144,6 +192,23 @@ class ComputerAllocation(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(ended_at__isnull=True) | Q(ended_at__gte=F("started_at")),
                 name="allocation_end_not_before_start",
+            ),
+            ExclusionConstraint(
+                name="allocation_computer_no_overlap",
+                expressions=[
+                    ("computer", RangeOperators.EQUAL),
+                    (
+                        Func(
+                            F("started_at"),
+                            F("ended_at"),
+                            Value("[)"),
+                            function="TSTZRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                deferrable=Deferrable.DEFERRED,
             ),
         ]
 

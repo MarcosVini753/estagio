@@ -1,11 +1,13 @@
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.access.permissions import HasDemoProfile
+from apps.access.services import get_demo_profile
 from apps.configuration.models import BookingPolicy, CalendarException, Shift
-from apps.configuration.services import update_active_booking_policy
+from apps.configuration.services import replace_shift, update_active_booking_policy
 from apps.core.api.errors import ConfigurationRequired
 from apps.core.enums import DemoProfile
 
@@ -13,6 +15,7 @@ from .serializers import (
     BookingPolicySerializer,
     BookingPolicyUpdateSerializer,
     CalendarExceptionSerializer,
+    ShiftReplaceSerializer,
     ShiftSerializer,
 )
 
@@ -46,6 +49,27 @@ class ShiftDetailAPIView(generics.RetrieveUpdateAPIView):
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
+
+
+class ShiftReplaceAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = MANAGEMENT_PROFILES
+
+    @extend_schema(
+        request=ShiftReplaceSerializer,
+        responses={201: ShiftSerializer},
+        tags=["configuration"],
+    )
+    def post(self, request, pk):
+        get_object_or_404(Shift, pk=pk)
+        serializer = ShiftReplaceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        shift = replace_shift(
+            shift_id=pk,
+            actor_profile=get_demo_profile(request),
+            **serializer.validated_data,
+        )
+        return Response(ShiftSerializer(shift).data, status=status.HTTP_201_CREATED)
 
 
 class CalendarExceptionListCreateAPIView(generics.ListCreateAPIView):

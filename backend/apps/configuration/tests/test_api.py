@@ -1,16 +1,30 @@
 from datetime import time, timedelta
+from unittest.mock import patch
 
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.audit.models import AuditEvent
 from apps.configuration.models import BookingPolicy, Shift
+from apps.configuration.selectors import get_shifts_for_date
+from apps.configuration.services import replace_shift
+from apps.operations.models import UseSession
 
 
 class ConfigurationAPITest(APITestCase):
     def select_profile(self, profile):
+        payload = {"profile": profile}
+        if profile == "ROOM_USER":
+            payload.update(
+                {
+                    "user_reference": "aluno-si-001",
+                    "affiliation_type": "STUDENT",
+                    "institutional_unit": "Sistemas de Informação",
+                }
+            )
         self.client.post(
             "/api/v1/demo/select-profile/",
-            {"profile": profile},
+            payload,
             format="json",
         )
 
@@ -95,3 +109,204 @@ class ConfigurationAPITest(APITestCase):
         old_policy.refresh_from_db()
         self.assertFalse(old_policy.is_active)
         self.assertEqual(BookingPolicy.objects.filter(is_active=True).count(), 1)
+
+    def test_replace_preserves_historical_shift_reference(self):
+        today = timezone.localdate()
+        shift = Shift.objects.create(
+            name="Manhã",
+            start_time=time(7, 0),
+            end_time=time(12, 0),
+            valid_from=today - timedelta(days=7),
+        )
+        session = UseSession.objects.create(
+            user_reference="aluno-historico",
+            start_shift=shift,
+            started_at=timezone.now() - timedelta(days=1),
+            ended_at=timezone.now() - timedelta(hours=23),
+            status=UseSession.Status.FINISHED,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        effective_from = today + timedelta(days=1)
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            f"/api/v1/shifts/{shift.pk}/replace/",
+            {
+                "effective_from": effective_from.isoformat(),
+                "name": "1º Turno",
+                "start_time": "08:00:00",
+                "end_time": "13:00:00",
+                "display_order": 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        shift.refresh_from_db()
+        session.refresh_from_db()
+        self.assertEqual(response.data["series_key"], str(shift.series_key))
+        self.assertEqual(shift.valid_until, effective_from - timedelta(days=1))
+        self.assertEqual(session.start_shift_id, shift.pk)
+        self.assertEqual(get_shifts_for_date(today).get().pk, shift.pk)
+        self.assertEqual(
+            get_shifts_for_date(effective_from).get().pk, response.data["id"]
+        )
+        audit_event = AuditEvent.objects.get(action="SHIFT_REPLACED")
+        self.assertEqual(audit_event.actor_profile, "LIBRARY_SUPERVISOR")
+        self.assertEqual(audit_event.new_values["shift_id"], response.data["id"])
+
+    def test_used_shift_rejects_direct_time_change_but_can_be_deactivated(self):
+        shift = Shift.objects.create(
+            name="Manhã",
+            start_time=time(7, 0),
+            end_time=time(12, 0),
+        )
+        UseSession.objects.create(
+            user_reference="aluno-historico",
+            start_shift=shift,
+            status=UseSession.Status.FINISHED,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        time_response = self.client.patch(
+            f"/api/v1/shifts/{shift.pk}/",
+            {"start_time": "08:00:00"},
+            format="json",
+        )
+        deactivate_response = self.client.patch(
+            f"/api/v1/shifts/{shift.pk}/",
+            {"is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(time_response.status_code, 400)
+        self.assertEqual(deactivate_response.status_code, 200)
+        self.assertFalse(deactivate_response.data["is_active"])
+
+    def test_future_unused_shift_keeps_patch_behavior(self):
+        shift = Shift.objects.create(
+            name="Manhã",
+            start_time=time(7, 0),
+            end_time=time(12, 0),
+            valid_from=timezone.localdate() + timedelta(days=1),
+        )
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.patch(
+            f"/api/v1/shifts/{shift.pk}/",
+            {"start_time": "08:00:00"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["start_time"], "08:00:00")
+
+    def test_replace_rejects_conflicting_active_shift(self):
+        today = timezone.localdate()
+        shift = Shift.objects.create(
+            name="Manhã",
+            start_time=time(7, 0),
+            end_time=time(12, 0),
+            valid_from=today - timedelta(days=1),
+        )
+        Shift.objects.create(
+            name="Conflitante",
+            start_time=time(9, 0),
+            end_time=time(14, 0),
+            valid_from=today + timedelta(days=1),
+        )
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            f"/api/v1/shifts/{shift.pk}/replace/",
+            {
+                "effective_from": (today + timedelta(days=1)).isoformat(),
+                "name": "Novo turno",
+                "start_time": "08:00:00",
+                "end_time": "13:00:00",
+                "display_order": 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+        shift.refresh_from_db()
+        self.assertIsNone(shift.valid_until)
+        self.assertEqual(Shift.objects.count(), 2)
+
+    def test_replace_requires_a_future_effective_date(self):
+        shift = Shift.objects.create(
+            name="Manhã",
+            start_time=time(7, 0),
+            end_time=time(12, 0),
+        )
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            f"/api/v1/shifts/{shift.pk}/replace/",
+            {
+                "effective_from": timezone.localdate().isoformat(),
+                "name": "Novo turno",
+                "start_time": "08:00:00",
+                "end_time": "13:00:00",
+                "display_order": 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("effective_from", response.data["fields"])
+
+    def test_replace_requires_date_after_current_version_start(self):
+        effective_from = timezone.localdate() + timedelta(days=1)
+        shift = Shift.objects.create(
+            name="Manhã",
+            start_time=time(7, 0),
+            end_time=time(12, 0),
+            valid_from=effective_from,
+        )
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            f"/api/v1/shifts/{shift.pk}/replace/",
+            {
+                "effective_from": effective_from.isoformat(),
+                "name": "Novo turno",
+                "start_time": "08:00:00",
+                "end_time": "13:00:00",
+                "display_order": 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "SHIFT_REPLACEMENT_INVALID")
+
+    def test_replace_rolls_back_when_audit_fails(self):
+        shift = Shift.objects.create(
+            name="Manhã",
+            start_time=time(7, 0),
+            end_time=time(12, 0),
+        )
+
+        with (
+            patch(
+                "apps.configuration.services.AuditEvent.objects.create",
+                side_effect=RuntimeError("audit unavailable"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            replace_shift(
+                shift_id=shift.pk,
+                effective_from=timezone.localdate() + timedelta(days=1),
+                name="Novo turno",
+                start_time=time(8, 0),
+                end_time=time(13, 0),
+                display_order=1,
+                actor_profile="LIBRARY_SUPERVISOR",
+            )
+
+        shift.refresh_from_db()
+        self.assertIsNone(shift.valid_until)
+        self.assertEqual(Shift.objects.count(), 1)

@@ -14,9 +14,12 @@
 
 ### `Shift`
 
-`name`, `start_time`, `end_time`, `display_order`, `valid_from`, `valid_until`, `is_active`.
+`series_key`, `name`, `start_time`, `end_time`, `display_order`, `valid_from`, `valid_until`, `is_active`.
 
 Constraints: início anterior ao fim e validade final não anterior à inicial.
+
+Turnos usados por `UseSession.start_shift` preservam seus horários e vigência. A substituição cria uma nova versão futura, mantendo a referência histórica da sessão na versão anterior.
+Versões do mesmo turno lógico compartilham `series_key`, usado para agrupamento analítico.
 
 ### `CalendarException`
 
@@ -48,15 +51,17 @@ Estado persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`. Não criar campos de 
 
 ### `Reservation`
 
-`user_reference`, `computer`, `starts_at`, `ends_at`, `status`, perfis de criação/cancelamento e dados de cancelamento.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `computer`, `starts_at`, `ends_at`, `status`, perfis de criação/cancelamento e dados de cancelamento.
 
 Estados: `CONFIRMED`, `CANCELLED`, `USED`, `NO_SHOW`, `INVALIDATED`.
 
-A migration inicial garante início anterior ao fim e cria índices por computador e usuário. Bloqueio concorrente e impedimento de sobreposição serão completados no serviço de reservas, preferencialmente com constraint PostgreSQL específica.
+Constraints PostgreSQL impedem sobreposição de reservas confirmadas por computador e por usuário com intervalos `[)`. O serviço bloqueia computador e referência de usuário para validar slots, limite e disponibilidade antes da criação.
 
 ### `UseSession`
 
-`user_reference`, `reservation`, `started_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `reservation`, `started_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
+
+Os snapshots preservam vínculo e unidade no momento da reserva ou entrada. Registros legados usam `NOT_INFORMED` e unidade vazia.
 
 Estados: `ACTIVE`, `FINISHED`, `CANCELLED`.
 
@@ -66,7 +71,7 @@ Constraint: uma sessão ativa por referência de usuário.
 
 `session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`.
 
-Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início.
+Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início; intervalos históricos do mesmo computador sem sobreposição.
 
 ## Ocorrências
 
