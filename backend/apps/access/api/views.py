@@ -3,8 +3,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.enums import DemoProfile
 from apps.access.services import get_demo_profile, select_demo_profile
+from apps.core.enums import DemoProfile
 
 from .serializers import DemoProfileSelectionSerializer
 
@@ -20,7 +20,10 @@ class DemoContextAPIView(APIView):
             {
                 "profile": get_demo_profile(request),
                 "available_profiles": profiles_payload(),
-                "warning": "Autorização simulada; não representa autenticação ou identidade real.",
+                "warning": (
+                    "Autorização simulada; não representa "
+                    "autenticação ou identidade real."
+                ),
             }
         )
 

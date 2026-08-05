@@ -1,0 +1,13 @@
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+# Regras habilitadas por padrão no ruff 0.12
+select = ["E", "F", "W", "I"]
+# RUF012: mutable default values em Meta de Django models/migrations
+# RUF100: noqa desnecessários em imports star do Django settings
+ignore = ["RUF012", "RUF100"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]

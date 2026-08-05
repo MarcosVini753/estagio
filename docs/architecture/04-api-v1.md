@@ -55,7 +55,7 @@ A data deve ser hoje ou amanhã. O primeiro endpoint devolve um resumo por compu
 {
   "date": "2026-07-14",
   "is_today": true,
-  "slot_duration_minutes": 60,
+  "slot_duration_minutes": 15,
   "generated_at": "2026-07-14T09:30:00-05:00",
   "computers": [
     {
@@ -88,7 +88,7 @@ O endpoint de slots devolve intervalos derivados, não registros persistidos:
   },
   "date": "2026-07-15",
   "is_today": false,
-  "slot_duration_minutes": 60,
+  "slot_duration_minutes": 15,
   "slots": [
     {
       "starts_at": "2026-07-15T07:15:00-05:00",

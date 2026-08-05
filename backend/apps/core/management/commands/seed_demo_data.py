@@ -44,8 +44,8 @@ class Command(BaseCommand):
 
         if not BookingPolicy.objects.filter(is_active=True).exists():
             BookingPolicy.objects.create(
-                slot_duration_minutes=60,
-                check_in_tolerance_minutes=15,
+                slot_duration_minutes=15,
+                check_in_tolerance_minutes=7,
                 cancellation_limit_minutes=0,
                 max_future_reservations_per_user=1,
                 valid_from=BASE_VALID_FROM,
@@ -57,6 +57,9 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                "Dados de demonstração disponíveis: 8 computadores, 3 turnos e configurações padrão."
+                (
+                    "Dados de demonstração disponíveis: 8 computadores, "
+                    "3 turnos e configurações padrão."
+                )
             )
         )

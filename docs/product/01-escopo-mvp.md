@@ -28,14 +28,14 @@ A seleção controla menus e autorizações simuladas. Não existe autenticaçã
 - consultar sessões ativas;
 - consultar computadores e estados efetivos;
 - alterar estado operacional;
-- registrar e consultar ocorrências;
+- registrar e consultar ocorrências registradas por usuários;
 - consultar e corrigir histórico com justificativa;
 - gerar e exportar relatórios operacionais.
 
 ## Supervisor
-
+- herda tudo que é feito por monitor
 - cadastrar e editar computadores;
-- configurar turnos e parâmetros;
+- configurar turnos e parâmetros de relatórios;
 - analisar uso por período, turno, curso/setor e computador;
 - identificar demanda e taxa de ocupação;
 - gerar relatórios diário, semanal, mensal e anual.
