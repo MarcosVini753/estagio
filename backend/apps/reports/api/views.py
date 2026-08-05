@@ -7,8 +7,8 @@ from apps.core.enums import DemoProfile
 from apps.reports.projections import build_monthly_report, month_bounds
 from apps.reports.selectors import (
     get_allocations_for_period,
-    get_calendar_exceptions_for_period,
     get_occurrences_for_period,
+    get_operating_days_for_period,
     get_reservations_for_period,
     get_sessions_for_period,
     get_shifts_for_period,
@@ -44,8 +44,9 @@ class MonthlyReportAPIView(APIView):
             reservations=get_reservations_for_period(starts_at, ends_at),
             occurrences=get_occurrences_for_period(starts_at, ends_at),
             shifts=get_shifts_for_period(starts_at.date(), ends_at.date()),
-            calendar_exceptions=get_calendar_exceptions_for_period(
-                starts_at.date(), ends_at.date()
+            operating_days=get_operating_days_for_period(
+                starts_at.date(),
+                ends_at.date(),
             ),
         )
         return Response(report)

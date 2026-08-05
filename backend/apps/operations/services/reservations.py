@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
+from apps.configuration.calendar import lock_operating_date
 from apps.configuration.selectors import get_booking_policy_for_date
 from apps.core.api.errors import (
     ConfigurationRequired,
@@ -50,6 +51,7 @@ def create_reservation(
     current = now or timezone.now()
     target_date = timezone.localdate(starts_at)
     today = validate_target_date(target_date, now=current)
+    lock_operating_date(target_date)
     _, _, slots = generate_slot_intervals(target_date)
     ends_at = next((end for start, end in slots if start == starts_at), None)
 
@@ -171,4 +173,45 @@ def cancel_reservation(
             },
             reason=cancellation_reason,
         )
+    return reservation
+
+
+@transaction.atomic
+def invalidate_reservation_due_to_calendar_change(
+    *,
+    reservation_id: int,
+    actor_profile: str,
+    reason: str,
+    now: datetime | None = None,
+) -> Reservation:
+    reservation = Reservation.objects.select_for_update().get(pk=reservation_id)
+    if reservation.status != Reservation.Status.CONFIRMED:
+        return reservation
+
+    current = now or timezone.now()
+    reservation.status = Reservation.Status.INVALIDATED
+    reservation.invalidated_by_profile = actor_profile
+    reservation.invalidated_at = current
+    reservation.invalidation_reason = reason.strip()
+    reservation.save(
+        update_fields=[
+            "status",
+            "invalidated_by_profile",
+            "invalidated_at",
+            "invalidation_reason",
+            "updated_at",
+        ]
+    )
+    AuditEvent.objects.create(
+        actor_profile=actor_profile,
+        action="RESERVATION_INVALIDATED",
+        entity_type="Reservation",
+        entity_id=str(reservation.pk),
+        old_values={"status": Reservation.Status.CONFIRMED},
+        new_values={
+            "status": Reservation.Status.INVALIDATED,
+            "invalidated_at": current.isoformat(),
+        },
+        reason=reservation.invalidation_reason,
+    )
     return reservation

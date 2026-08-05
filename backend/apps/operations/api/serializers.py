@@ -22,6 +22,9 @@ class ReservationSerializer(serializers.ModelSerializer):
             "cancelled_by_profile",
             "cancelled_at",
             "cancellation_reason",
+            "invalidated_by_profile",
+            "invalidated_at",
+            "invalidation_reason",
             "created_at",
             "updated_at",
         ]

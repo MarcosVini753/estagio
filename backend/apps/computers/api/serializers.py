@@ -1,6 +1,11 @@
 from rest_framework import serializers
 
 from apps.computers.models import Computer
+from apps.configuration.api.serializers import (
+    RoomNoticeSerializer,
+    RoomStatusWindowSerializer,
+)
+from apps.configuration.calendar import CALENDAR_SOURCE_CHOICES, ROOM_STATUS_CHOICES
 
 EFFECTIVE_STATUS_CHOICES = [
     Computer.OperationalState.AVAILABLE,
@@ -88,11 +93,20 @@ class ComputerAvailabilityItemSerializer(serializers.Serializer):
     next_available_slot = NextAvailableSlotSerializer(allow_null=True)
 
 
+class RoomAvailabilitySerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=ROOM_STATUS_CHOICES)
+    source = serializers.ChoiceField(choices=CALENDAR_SOURCE_CHOICES)
+    reason = serializers.CharField(allow_blank=True)
+    operating_windows = RoomStatusWindowSerializer(many=True)
+    active_notices = RoomNoticeSerializer(many=True)
+
+
 class ComputerAvailabilityResponseSerializer(serializers.Serializer):
     date = serializers.DateField()
     is_today = serializers.BooleanField()
     slot_duration_minutes = serializers.IntegerField()
     generated_at = serializers.DateTimeField()
+    room = RoomAvailabilitySerializer()
     computers = ComputerAvailabilityItemSerializer(many=True)
 
 
@@ -101,4 +115,5 @@ class ComputerSlotsResponseSerializer(serializers.Serializer):
     date = serializers.DateField()
     is_today = serializers.BooleanField()
     slot_duration_minutes = serializers.IntegerField()
+    room = RoomAvailabilitySerializer()
     slots = AvailabilitySlotSerializer(many=True)

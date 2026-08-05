@@ -1,8 +1,9 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from django.db.models import Q
 
-from apps.configuration.models import CalendarException, Shift
+from apps.configuration.calendar import resolve_operating_day
+from apps.configuration.models import Shift
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 
@@ -54,8 +55,10 @@ def get_shifts_for_period(starts_on: date, ends_on: date):
     )
 
 
-def get_calendar_exceptions_for_period(starts_on: date, ends_on: date):
-    return CalendarException.objects.filter(
-        date__gte=starts_on,
-        date__lt=ends_on,
-    )
+def get_operating_days_for_period(starts_on: date, ends_on: date):
+    current = starts_on
+    results = []
+    while current < ends_on:
+        results.append(resolve_operating_day(current))
+        current += timedelta(days=1)
+    return results

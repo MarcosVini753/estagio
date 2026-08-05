@@ -103,7 +103,7 @@ class ComputerAvailabilityAPIView(APIView):
             computers=Computer.objects.all(),
             user_reference=get_demo_user_reference(request),
         )
-        return Response(payload)
+        return Response(ComputerAvailabilityResponseSerializer(payload).data)
 
 
 class ComputerSlotsAPIView(APIView):
@@ -125,4 +125,4 @@ class ComputerSlotsAPIView(APIView):
             user_reference=get_demo_user_reference(request),
         )
         payload["computer"] = ComputerSerializer(computer).data
-        return Response(payload)
+        return Response(ComputerSlotsResponseSerializer(payload).data)

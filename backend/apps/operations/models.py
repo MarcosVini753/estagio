@@ -39,6 +39,13 @@ class Reservation(TimeStampedModel):
     )
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True)
+    invalidated_at = models.DateTimeField(null=True, blank=True)
+    invalidated_by_profile = models.CharField(
+        max_length=32,
+        choices=DemoProfile.choices,
+        blank=True,
+    )
+    invalidation_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ["starts_at"]
