@@ -1,11 +1,17 @@
-from datetime import datetime
+from datetime import datetime, time
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from rest_framework.test import APITestCase
 
 from apps.computers.models import Computer
-from apps.configuration.models import CalendarException, Shift
+from apps.configuration.models import (
+    CalendarException,
+    OperatingSchedule,
+    Shift,
+    Weekday,
+)
+from apps.configuration.tests.factories import create_operating_schedule
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 from apps.reports.projections import NOT_INFORMED, overlap_minutes
@@ -192,6 +198,13 @@ class MonthlyReportAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["days"]), 28)
+        self.assertEqual(response.data["days"][0]["calendar_status"], "CLOSED")
+        self.assertEqual(
+            response.data["days"][0]["calendar_source"],
+            "REGULAR_SCHEDULE",
+        )
+        self.assertEqual(response.data["days"][0]["operating_minutes"], 0)
+        self.assertEqual(response.data["days"][6]["operating_minutes"], 345)
         self.assertEqual(response.data["days"][8]["calendar_status"], "CLOSED")
         self.assertEqual(response.data["days"][14]["calendar_status"], "SPECIAL_HOURS")
         first_key = str(shifts[0].series_key)
@@ -204,6 +217,10 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.assertEqual(response.data["summary"]["distinct_users"], 3)
         self.assertEqual(response.data["summary"]["reservations"], 1)
+        self.assertEqual(
+            response.data["summary"]["reservations_by_status"]["INVALIDATED"],
+            0,
+        )
         self.assertEqual(response.data["summary"]["occurrences"], 1)
         self.assertEqual(response.data["summary"]["computers_used"], 2)
         self.assertEqual(response.data["summary"]["allocated_minutes"], 270)
@@ -305,3 +322,25 @@ class MonthlyReportAPITest(APITestCase):
         self.assertEqual(allowed.status_code, 200)
         self.assertEqual(len(allowed.data["days"]), 29)
         self.assertEqual(minutes, 30)
+
+    def test_temporary_schedule_changes_operating_denominator(self):
+        create_operating_schedule(
+            schedule_type=OperatingSchedule.ScheduleType.TEMPORARY,
+            valid_from=report_datetime(2, 2).date(),
+            valid_until=report_datetime(2, 6).date(),
+            weekday_windows={
+                weekday: [(time(8), time(13))] for weekday in Weekday.values
+            },
+            name="Recesso de fevereiro",
+        )
+        self.select_profile()
+
+        response = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["days"][1]["calendar_status"], "SPECIAL_HOURS")
+        self.assertEqual(
+            response.data["days"][1]["calendar_source"],
+            "TEMPORARY_SCHEDULE",
+        )
+        self.assertEqual(response.data["days"][1]["operating_minutes"], 300)

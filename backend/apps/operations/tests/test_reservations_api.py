@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
 from django.utils import timezone
@@ -6,8 +6,10 @@ from rest_framework.test import APITestCase
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
-from apps.configuration.models import BookingPolicy, Shift
+from apps.configuration.models import BookingPolicy, OperatingSchedule, Shift, Weekday
+from apps.configuration.tests.factories import create_operating_schedule
 from apps.operations.models import Reservation
+from apps.operations.services import invalidate_reservation_due_to_calendar_change
 
 
 class ReservationAPITest(APITestCase):
@@ -21,6 +23,13 @@ class ReservationAPITest(APITestCase):
             start_time=time(7, 0),
             end_time=time(10, 0),
             valid_from=self.today - timedelta(days=1),
+        )
+        OperatingSchedule.objects.all().delete()
+        create_operating_schedule(
+            valid_from=self.today - timedelta(days=1),
+            weekday_windows={
+                weekday: [(time(7), time(10))] for weekday in Weekday.values
+            },
         )
         BookingPolicy.objects.create(
             slot_duration_minutes=60,
@@ -197,6 +206,49 @@ class ReservationAPITest(APITestCase):
         self.assertEqual(valid_response.status_code, 201)
         self.assertEqual(past_response.status_code, 400)
 
+    def test_weekend_reservations_respect_regular_schedule(self):
+        OperatingSchedule.objects.all().delete()
+        create_operating_schedule()
+        friday = self.aware(date(2026, 8, 7), time(12))
+        saturday = date(2026, 8, 8)
+
+        with patch(
+            "apps.operations.services.reservations.timezone.now",
+            return_value=friday,
+        ):
+            before_close = self.client.post(
+                "/api/v1/reservations/",
+                self.create_payload(starts_at=self.aware(saturday, time(11, 15))),
+                format="json",
+            )
+            after_close = self.client.post(
+                "/api/v1/reservations/",
+                self.create_payload(starts_at=self.aware(saturday, time(14))),
+                format="json",
+            )
+
+        self.assertEqual(before_close.status_code, 201)
+        self.assertEqual(after_close.status_code, 400)
+
+    def test_sunday_reservation_is_rejected(self):
+        OperatingSchedule.objects.all().delete()
+        create_operating_schedule()
+        saturday = self.aware(date(2026, 8, 8), time(12))
+        sunday = date(2026, 8, 9)
+
+        with patch(
+            "apps.operations.services.reservations.timezone.now",
+            return_value=saturday,
+        ):
+            response = self.client.post(
+                "/api/v1/reservations/",
+                self.create_payload(starts_at=self.aware(sunday, time(8))),
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "RESERVATION_SLOT_INVALID")
+
     def test_cancellation_releases_slot_and_is_listed_as_mine(self):
         reservation = Reservation.objects.create(
             user_reference="aluno-si-001",
@@ -223,6 +275,38 @@ class ReservationAPITest(APITestCase):
             format="json",
         )
         self.assertEqual(replacement_response.status_code, 201)
+
+    def test_calendar_invalidation_releases_slot_and_keeps_reason_in_mine(self):
+        reservation = Reservation.objects.create(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(8)),
+            ends_at=self.aware(self.tomorrow, time(9)),
+            created_by_profile="ROOM_USER",
+        )
+        invalidate_reservation_due_to_calendar_change(
+            reservation_id=reservation.pk,
+            actor_profile="LIBRARY_SUPERVISOR",
+            reason="Horário reduzido durante o recesso.",
+        )
+
+        slots_response = self.client.get(
+            f"/api/v1/computers/{self.computer.pk}/slots/",
+            {"date": self.tomorrow.isoformat()},
+        )
+        mine_response = self.client.get("/api/v1/reservations/mine/")
+
+        slot = next(
+            item
+            for item in slots_response.data["slots"]
+            if item["starts_at"] == self.aware(self.tomorrow, time(8)).isoformat()
+        )
+        self.assertTrue(slot["selectable"])
+        self.assertEqual(mine_response.data[0]["status"], "INVALIDATED")
+        self.assertEqual(
+            mine_response.data[0]["invalidation_reason"],
+            "Horário reduzido durante o recesso.",
+        )
 
     def test_other_room_user_cannot_cancel_reservation(self):
         reservation = Reservation.objects.create(
