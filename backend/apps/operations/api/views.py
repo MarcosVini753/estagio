@@ -13,24 +13,23 @@ from apps.access.services import (
 )
 from apps.computers.models import Computer
 from apps.core.enums import DemoProfile
-from apps.operations.models import Reservation
-from apps.operations.models import UseSession
+from apps.operations.models import Reservation, UseSession
 from apps.operations.services import (
     cancel_reservation,
-    create_reservation,
     correct_usage_session,
+    create_reservation,
     finish_usage_session,
     start_usage_session,
     switch_computer,
 )
 
 from .serializers import (
+    ComputerSwitchSerializer,
     ReservationCancelSerializer,
     ReservationCreateSerializer,
     ReservationSerializer,
-    ComputerSwitchSerializer,
-    UsageSessionFinishSerializer,
     UsageSessionCorrectionSerializer,
+    UsageSessionFinishSerializer,
     UsageSessionStartSerializer,
     UseSessionSerializer,
 )

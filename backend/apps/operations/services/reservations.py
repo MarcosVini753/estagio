@@ -4,9 +4,9 @@ from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.selectors import get_booking_policy_for_date
-from apps.audit.models import AuditEvent
 from apps.core.api.errors import (
     ConfigurationRequired,
     ReservationCancellationNotAllowed,
