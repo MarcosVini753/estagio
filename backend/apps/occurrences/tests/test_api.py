@@ -3,14 +3,15 @@ from rest_framework.test import APITestCase
 
 from apps.computers.models import Computer
 from apps.occurrences.models import Occurrence
-from apps.operations.models import ComputerAllocation, UseSession
+from apps.operations.models import ComputerAllocation
+from apps.operations.tests.factories import create_use_session
 
 
 class OccurrenceAPITest(APITestCase):
     def setUp(self):
         self.computer = Computer.objects.create(code="PC-01")
         self.other_computer = Computer.objects.create(code="PC-02")
-        self.session = UseSession.objects.create(
+        self.session = create_use_session(
             user_reference="aluno-si-001",
             affiliation_type="STUDENT",
             institutional_unit="Sistemas de Informação",
@@ -90,7 +91,7 @@ class OccurrenceAPITest(APITestCase):
         self.assertEqual(missing_response.status_code, 404)
 
     def test_creation_rejects_allocation_from_another_session(self):
-        other_session = UseSession.objects.create(
+        other_session = create_use_session(
             user_reference="aluno-si-002",
             entry_recorded_by_profile="ROOM_USER",
         )

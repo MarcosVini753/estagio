@@ -8,14 +8,18 @@ from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.operations.models import ComputerAllocation, UseSession
 
+from .factories import create_use_session
+
 
 class SessionCorrectionAPITest(APITestCase):
     def setUp(self):
         self.today = timezone.localdate()
         self.computer = Computer.objects.create(code="PC-01")
-        self.session = UseSession.objects.create(
+        self.session = create_use_session(
             user_reference="aluno-si-001",
             started_at=self.aware(time(8, 0)),
+            planned_ends_at=self.aware(time(10)),
+            exit_deadline_at=self.aware(time(10, 3)),
             entry_recorded_by_profile="ROOM_USER",
         )
         self.allocation = ComputerAllocation.objects.create(
@@ -69,7 +73,7 @@ class SessionCorrectionAPITest(APITestCase):
     def test_corrects_entry_and_synchronizes_first_allocation(self):
         response = self.correct(
             {
-                "started_at": self.aware(time(7, 45)).isoformat(),
+                "started_at": self.aware(time(8, 5)).isoformat(),
                 "reason": "Horário de entrada digitado incorretamente.",
             }
         )
@@ -77,8 +81,8 @@ class SessionCorrectionAPITest(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.session.refresh_from_db()
         self.allocation.refresh_from_db()
-        self.assertEqual(self.session.started_at, self.aware(time(7, 45)))
-        self.assertEqual(self.allocation.started_at, self.aware(time(7, 45)))
+        self.assertEqual(self.session.started_at, self.aware(time(8, 5)))
+        self.assertEqual(self.allocation.started_at, self.aware(time(8, 5)))
 
     def test_corrects_last_interval_after_switch(self):
         self.allocation.ended_at = self.aware(time(9, 0))
@@ -157,7 +161,7 @@ class SessionCorrectionAPITest(APITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_rejects_overlap_with_another_session(self):
-        other_session = UseSession.objects.create(
+        other_session = create_use_session(
             user_reference="aluno-si-002",
             started_at=self.aware(time(7, 0)),
             ended_at=self.aware(time(7, 45)),

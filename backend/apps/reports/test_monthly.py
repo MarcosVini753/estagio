@@ -14,6 +14,7 @@ from apps.configuration.models import (
 from apps.configuration.tests.factories import create_operating_schedule
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.tests.factories import create_reservation, create_use_session
 from apps.reports.projections import NOT_INFORMED, overlap_minutes
 
 REPORT_TZ = ZoneInfo("America/Rio_Branco")
@@ -40,7 +41,7 @@ class MonthlyReportAPITest(APITestCase):
         shift=None,
         status=UseSession.Status.FINISHED,
     ):
-        return UseSession.objects.create(
+        return create_use_session(
             user_reference=reference,
             started_at=started_at,
             ended_at=ended_at,
@@ -148,7 +149,7 @@ class MonthlyReportAPITest(APITestCase):
             ended_at=report_datetime(2, 14, 11),
         )
 
-        Reservation.objects.create(
+        create_reservation(
             user_reference="demo-report-user-a",
             computer=computers[0],
             starts_at=report_datetime(2, 20, 8),
@@ -156,7 +157,7 @@ class MonthlyReportAPITest(APITestCase):
             status=Reservation.Status.USED,
             created_by_profile="ROOM_USER",
         )
-        Reservation.objects.create(
+        create_reservation(
             user_reference="demo-report-user-a",
             computer=computers[0],
             starts_at=report_datetime(3, 1, 8),
