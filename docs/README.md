@@ -22,7 +22,7 @@ docs/
 4. [Visão geral da arquitetura](architecture/00-visao-geral.md)
 5. [Módulos](architecture/01-modulos.md)
 6. [Modelo de domínio](architecture/02-modelo-de-dominio.md)
-7. [API v1](architecture/04-api-v1.md)
+7. [API](architecture/04-api.md)
 8. [Estado da implementação](architecture/08-estado-implementacao.md)
 9. [Índice de ADRs](adr/README.md)
 

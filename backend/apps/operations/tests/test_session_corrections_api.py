@@ -25,7 +25,7 @@ class SessionCorrectionAPITest(APITestCase):
             started_at=self.aware(time(8, 0)),
         )
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
@@ -38,7 +38,7 @@ class SessionCorrectionAPITest(APITestCase):
 
     def correct(self, payload):
         return self.client.post(
-            f"/api/v1/usage-sessions/{self.session.pk}/correct/",
+            f"/api/usage-sessions/{self.session.pk}/correct/",
             payload,
             format="json",
         )
@@ -137,7 +137,7 @@ class SessionCorrectionAPITest(APITestCase):
 
     def test_room_user_cannot_correct_session(self):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {
                 "profile": "ROOM_USER",
                 "user_reference": "aluno-si-001",

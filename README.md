@@ -59,7 +59,7 @@ A aplicação fica em `http://localhost:8000/`.
 - [Regras de negócio](docs/product/03-regras-de-negocio.md)
 - [Visão geral da arquitetura](docs/architecture/00-visao-geral.md)
 - [Modelo de domínio](docs/architecture/02-modelo-de-dominio.md)
-- [API v1](docs/architecture/04-api-v1.md)
+- [API](docs/architecture/04-api.md)
 - [Índice de ADRs](docs/adr/README.md)
 - [Índice dos diagramas](docs/diagrams/README.md)
 - [Instruções para agentes](AGENTS.md)
@@ -75,47 +75,47 @@ http://localhost:8000/api/redoc/
 ## Endpoints disponíveis
 
 ```text
-GET  /api/v1/health/
-GET  /api/v1/demo/context/
-POST /api/v1/demo/select-profile/
+GET  /api/health/
+GET  /api/demo/context/
+POST /api/demo/select-profile/
 
-GET  /api/v1/computers/
-POST /api/v1/computers/
-GET  /api/v1/computers/{id}/
-PATCH /api/v1/computers/{id}/
-PATCH /api/v1/computers/{id}/operational-state/
-GET  /api/v1/computers/availability/?date=YYYY-MM-DD
-GET  /api/v1/computers/{id}/slots/?date=YYYY-MM-DD
+GET  /api/computers/
+POST /api/computers/
+GET  /api/computers/{id}/
+PATCH /api/computers/{id}/
+PATCH /api/computers/{id}/operational-state/
+GET  /api/computers/availability/?date=YYYY-MM-DD
+GET  /api/computers/{id}/slots/?date=YYYY-MM-DD
 
-GET  /api/v1/shifts/
-POST /api/v1/shifts/
-PATCH /api/v1/shifts/{id}/
-POST /api/v1/shifts/{id}/replace/
-GET  /api/v1/calendar-exceptions/
-POST /api/v1/calendar-exceptions/
-PATCH /api/v1/calendar-exceptions/{id}/
-GET  /api/v1/booking-policy/
-PATCH /api/v1/booking-policy/
+GET  /api/shifts/
+POST /api/shifts/
+PATCH /api/shifts/{id}/
+POST /api/shifts/{id}/replace/
+GET  /api/calendar-exceptions/
+POST /api/calendar-exceptions/
+PATCH /api/calendar-exceptions/{id}/
+GET  /api/booking-policy/
+PATCH /api/booking-policy/
 
-GET  /api/v1/reservations/
-GET  /api/v1/reservations/mine/
-POST /api/v1/reservations/
-POST /api/v1/reservations/{id}/cancel/
+GET  /api/reservations/
+GET  /api/reservations/mine/
+POST /api/reservations/
+POST /api/reservations/{id}/cancel/
 
-GET  /api/v1/usage-sessions/current/
-GET  /api/v1/usage-sessions/active/
-GET  /api/v1/usage-sessions/history/
-POST /api/v1/usage-sessions/start/
-POST /api/v1/usage-sessions/{id}/switch-computer/
-POST /api/v1/usage-sessions/{id}/finish/
-POST /api/v1/usage-sessions/{id}/correct/
+GET  /api/usage-sessions/current/
+GET  /api/usage-sessions/active/
+GET  /api/usage-sessions/history/
+POST /api/usage-sessions/start/
+POST /api/usage-sessions/{id}/switch-computer/
+POST /api/usage-sessions/{id}/finish/
+POST /api/usage-sessions/{id}/correct/
 
-GET   /api/v1/occurrences/
-POST  /api/v1/occurrences/
-GET   /api/v1/occurrences/{id}/
-PATCH /api/v1/occurrences/{id}/
+GET   /api/occurrences/
+POST  /api/occurrences/
+GET   /api/occurrences/{id}/
+PATCH /api/occurrences/{id}/
 
-GET /api/v1/reports/monthly/?year=YYYY&month=M
+GET /api/reports/monthly/?year=YYYY&month=M
 ```
 
 ## Estrutura

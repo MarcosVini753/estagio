@@ -59,7 +59,7 @@ class UsageSessionAPITest(APITestCase):
         unit="Sistemas de Informação",
     ):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {
                 "profile": "ROOM_USER",
                 "user_reference": reference,
@@ -75,7 +75,7 @@ class UsageSessionAPITest(APITestCase):
             return_value=current or self.current,
         ):
             return self.client.post(
-                "/api/v1/usage-sessions/start/",
+                "/api/usage-sessions/start/",
                 payload or {"computer_id": self.computer.pk},
                 format="json",
             )
@@ -92,7 +92,7 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(allocation.computer, self.computer)
         self.assertEqual(allocation.sequence, 1)
 
-        current_response = self.client.get("/api/v1/usage-sessions/current/")
+        current_response = self.client.get("/api/usage-sessions/current/")
         self.assertEqual(current_response.status_code, 200)
         self.assertEqual(current_response.data["id"], session.pk)
         self.assertEqual(len(current_response.data["allocations"]), 1)
@@ -232,7 +232,7 @@ class UsageSessionAPITest(APITestCase):
 
     def test_operational_entry_requires_and_uses_identity_from_body(self):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
@@ -272,7 +272,7 @@ class UsageSessionAPITest(APITestCase):
             return_value=self.aware(time(9, 0)),
         ):
             response = self.client.post(
-                f"/api/v1/usage-sessions/{session.pk}/switch-computer/",
+                f"/api/usage-sessions/{session.pk}/switch-computer/",
                 {"computer_id": self.other_computer.pk, "reason": "Preferência."},
                 format="json",
             )
@@ -298,7 +298,7 @@ class UsageSessionAPITest(APITestCase):
         )
 
         response = self.client.post(
-            f"/api/v1/usage-sessions/{session.pk}/switch-computer/",
+            f"/api/usage-sessions/{session.pk}/switch-computer/",
             {"computer_id": self.other_computer.pk},
             format="json",
         )
@@ -315,11 +315,11 @@ class UsageSessionAPITest(APITestCase):
             return_value=self.aware(time(10, 0)),
         ):
             response = self.client.post(
-                f"/api/v1/usage-sessions/{session.pk}/finish/",
+                f"/api/usage-sessions/{session.pk}/finish/",
                 format="json",
             )
         duplicate = self.client.post(
-            f"/api/v1/usage-sessions/{session.pk}/finish/",
+            f"/api/usage-sessions/{session.pk}/finish/",
             format="json",
         )
 
@@ -337,13 +337,13 @@ class UsageSessionAPITest(APITestCase):
         self.start()
         session = UseSession.objects.get()
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
 
         missing_response = self.client.post(
-            f"/api/v1/usage-sessions/{session.pk}/finish/",
+            f"/api/usage-sessions/{session.pk}/finish/",
             format="json",
         )
         with patch(
@@ -351,7 +351,7 @@ class UsageSessionAPITest(APITestCase):
             return_value=self.aware(time(10, 0)),
         ):
             valid_response = self.client.post(
-                f"/api/v1/usage-sessions/{session.pk}/finish/",
+                f"/api/usage-sessions/{session.pk}/finish/",
                 {"reason": "Usuário esqueceu de registrar a saída."},
                 format="json",
             )
@@ -372,15 +372,15 @@ class UsageSessionAPITest(APITestCase):
             entry_recorded_by_profile="ROOM_USER",
         )
 
-        room_active = self.client.get("/api/v1/usage-sessions/active/")
-        room_history = self.client.get("/api/v1/usage-sessions/history/")
+        room_active = self.client.get("/api/usage-sessions/active/")
+        room_history = self.client.get("/api/usage-sessions/history/")
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
-        operational_active = self.client.get("/api/v1/usage-sessions/active/")
-        operational_history = self.client.get("/api/v1/usage-sessions/history/")
+        operational_active = self.client.get("/api/usage-sessions/active/")
+        operational_history = self.client.get("/api/usage-sessions/history/")
 
         self.assertEqual(room_active.status_code, 403)
         self.assertEqual(room_history.data, [])

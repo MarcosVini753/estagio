@@ -24,4 +24,4 @@ Os dados são fictícios e persistidos em `localStorage`. Não há backend, aute
 - troca preserva uma sessão com várias alocações;
 - relatórios derivados de registros operacionais.
 
-A integração real deve usar a API `/api/v1/` e evitar duas fontes de verdade.
+A integração real deve usar a API `/api/` e evitar duas fontes de verdade.

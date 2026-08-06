@@ -108,7 +108,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "API da Sala de Informática da Biblioteca da UFAC",
-    "DESCRIPTION": "API v1 do sistema de controle de uso da sala de informática.",
+    "DESCRIPTION": "API do sistema de controle de uso da sala de informática.",
     "VERSION": "0.2.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {

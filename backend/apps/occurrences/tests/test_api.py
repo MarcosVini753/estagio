@@ -25,7 +25,7 @@ class OccurrenceAPITest(APITestCase):
 
     def select_room_user(self, reference="aluno-si-001"):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {
                 "profile": "ROOM_USER",
                 "user_reference": reference,
@@ -37,14 +37,14 @@ class OccurrenceAPITest(APITestCase):
 
     def select_operational_profile(self):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
 
     def test_room_user_creates_occurrence_linked_to_current_allocation(self):
         response = self.client.post(
-            "/api/v1/occurrences/",
+            "/api/occurrences/",
             {
                 "computer_id": self.computer.pk,
                 "session_id": self.session.pk,
@@ -66,7 +66,7 @@ class OccurrenceAPITest(APITestCase):
 
     def test_creation_without_session_is_allowed(self):
         response = self.client.post(
-            "/api/v1/occurrences/",
+            "/api/occurrences/",
             {"description": "Problema observado antes da entrada."},
             format="json",
         )
@@ -76,12 +76,12 @@ class OccurrenceAPITest(APITestCase):
 
     def test_creation_rejects_empty_description_and_missing_computer(self):
         empty_response = self.client.post(
-            "/api/v1/occurrences/",
+            "/api/occurrences/",
             {"description": "   "},
             format="json",
         )
         missing_response = self.client.post(
-            "/api/v1/occurrences/",
+            "/api/occurrences/",
             {"computer_id": 9999, "description": "Computador inexistente."},
             format="json",
         )
@@ -96,7 +96,7 @@ class OccurrenceAPITest(APITestCase):
         )
 
         response = self.client.post(
-            "/api/v1/occurrences/",
+            "/api/occurrences/",
             {
                 "session_id": other_session.pk,
                 "allocation_id": self.allocation.pk,
@@ -118,10 +118,10 @@ class OccurrenceAPITest(APITestCase):
             description="Outra",
         )
 
-        list_response = self.client.get("/api/v1/occurrences/")
-        hidden_detail = self.client.get(f"/api/v1/occurrences/{other.pk}/")
+        list_response = self.client.get("/api/occurrences/")
+        hidden_detail = self.client.get(f"/api/occurrences/{other.pk}/")
         self.select_operational_profile()
-        operational_list = self.client.get("/api/v1/occurrences/")
+        operational_list = self.client.get("/api/occurrences/")
 
         self.assertEqual([item["id"] for item in list_response.data], [own.pk])
         self.assertEqual(hidden_detail.status_code, 404)
@@ -138,12 +138,12 @@ class OccurrenceAPITest(APITestCase):
         self.select_operational_profile()
 
         review_response = self.client.patch(
-            f"/api/v1/occurrences/{occurrence.pk}/",
+            f"/api/occurrences/{occurrence.pk}/",
             {"status": "IN_REVIEW"},
             format="json",
         )
         resolved_response = self.client.patch(
-            f"/api/v1/occurrences/{occurrence.pk}/",
+            f"/api/occurrences/{occurrence.pk}/",
             {
                 "status": "RESOLVED",
                 "resolution_notes": "Cabo reconectado.",
@@ -167,17 +167,17 @@ class OccurrenceAPITest(APITestCase):
         self.select_operational_profile()
 
         direct_resolution = self.client.patch(
-            f"/api/v1/occurrences/{occurrence.pk}/",
+            f"/api/occurrences/{occurrence.pk}/",
             {"status": "RESOLVED", "resolution_notes": "Resolvido."},
             format="json",
         )
         self.client.patch(
-            f"/api/v1/occurrences/{occurrence.pk}/",
+            f"/api/occurrences/{occurrence.pk}/",
             {"status": "IN_REVIEW"},
             format="json",
         )
         missing_notes = self.client.patch(
-            f"/api/v1/occurrences/{occurrence.pk}/",
+            f"/api/occurrences/{occurrence.pk}/",
             {"status": "RESOLVED"},
             format="json",
         )
@@ -192,7 +192,7 @@ class OccurrenceAPITest(APITestCase):
         )
 
         response = self.client.patch(
-            f"/api/v1/occurrences/{occurrence.pk}/",
+            f"/api/occurrences/{occurrence.pk}/",
             {"status": "IN_REVIEW"},
             format="json",
         )

@@ -26,7 +26,7 @@ def report_datetime(month, day, hour=0, minute=0):
 class MonthlyReportAPITest(APITestCase):
     def select_profile(self, profile="LIBRARY_SUPERVISOR"):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": profile},
             format="json",
         )
@@ -194,7 +194,7 @@ class MonthlyReportAPITest(APITestCase):
             "apps.reports.projections.timezone.now",
             return_value=report_datetime(2, 12, 19),
         ):
-            response = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+            response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["days"]), 28)
@@ -262,7 +262,7 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.select_profile()
 
-        response = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+        response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
         key = str(old.series_key)
         self.assertEqual(response.status_code, 200)
@@ -295,7 +295,7 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.select_profile()
 
-        response = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+        response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["summary"]["visits"], 1)
@@ -303,11 +303,11 @@ class MonthlyReportAPITest(APITestCase):
 
     def test_permissions_query_validation_and_interval_helper(self):
         self.select_profile("INTERN")
-        forbidden = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+        forbidden = self.client.get("/api/reports/monthly/?year=2026&month=2")
         self.select_profile()
-        invalid = self.client.get("/api/v1/reports/monthly/?year=2026&month=13")
+        invalid = self.client.get("/api/reports/monthly/?year=2026&month=13")
         self.select_profile("SYSTEM_ADMIN")
-        allowed = self.client.get("/api/v1/reports/monthly/?year=2028&month=2")
+        allowed = self.client.get("/api/reports/monthly/?year=2028&month=2")
 
         minutes = overlap_minutes(
             report_datetime(2, 10, 12, 30),
@@ -335,7 +335,7 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.select_profile()
 
-        response = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+        response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["days"][1]["calendar_status"], "SPECIAL_HOURS")

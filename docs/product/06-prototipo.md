@@ -26,7 +26,7 @@ O diretório `prototipos/` contém a referência visual original em HTML, CSS e 
 - permitir uso imediato somente hoje;
 - impedir horários passados;
 - substituir agregados simulados por sessões e alocações;
-- substituir gradualmente `localStorage` pela API `/api/v1/`.
+- substituir gradualmente `localStorage` pela API `/api/`.
 
 ## Estado atual
 

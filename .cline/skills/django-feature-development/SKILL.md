@@ -34,7 +34,7 @@ Evite scaffolding para funcionalidades futuras. Não crie nova camada se a arqui
 - Views e serializers devem coordenar entrada e saída, não duplicar regras.
 - Use `transaction.atomic()` e bloqueios quando houver risco de concorrência.
 - Use constraints do banco para invariantes persistentes.
-- Preserve a API em `/api/v1/`.
+- Preserve a API em `/api/`, sem segmento de versão no caminho.
 - Mantenha o frontend em Django Templates e JavaScript puro, salvo ADR contrário.
 
 ## 4. Testar
@@ -65,7 +65,7 @@ Atualize:
 - `docs/product/` quando o comportamento mudar;
 - `docs/architecture/` quando a estrutura corrente mudar;
 - ADR quando houver decisão arquitetural relevante;
-- OpenAPI e `docs/architecture/04-api-v1.md` quando o contrato da API mudar.
+- OpenAPI e `docs/architecture/04-api.md` quando o contrato da API mudar.
 
 ## 6. Relatório final
 

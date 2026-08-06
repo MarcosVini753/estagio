@@ -15,13 +15,13 @@ class ComputerAPITest(APITestCase):
                 }
             )
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             payload,
             format="json",
         )
 
     def test_requires_selected_demo_profile(self):
-        response = self.client.get("/api/v1/computers/")
+        response = self.client.get("/api/computers/")
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.data["code"], "PERMISSION_DENIED")
@@ -30,9 +30,9 @@ class ComputerAPITest(APITestCase):
         Computer.objects.create(code="PC-01")
         self.select_profile("ROOM_USER")
 
-        list_response = self.client.get("/api/v1/computers/")
+        list_response = self.client.get("/api/computers/")
         create_response = self.client.post(
-            "/api/v1/computers/",
+            "/api/computers/",
             {"code": "PC-02"},
             format="json",
         )
@@ -45,7 +45,7 @@ class ComputerAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/computers/",
+            "/api/computers/",
             {
                 "code": "PC-01",
                 "description": "Computador de demonstração",
@@ -63,7 +63,7 @@ class ComputerAPITest(APITestCase):
         self.select_profile("INTERN")
 
         response = self.client.patch(
-            f"/api/v1/computers/{computer.pk}/operational-state/",
+            f"/api/computers/{computer.pk}/operational-state/",
             {
                 "operational_state": "MAINTENANCE",
                 "reason": "Monitor sem imagem",
@@ -83,7 +83,7 @@ class ComputerAPITest(APITestCase):
         self.select_profile("INTERN")
 
         response = self.client.patch(
-            f"/api/v1/computers/{computer.pk}/operational-state/",
+            f"/api/computers/{computer.pk}/operational-state/",
             {"operational_state": "INACTIVE"},
             format="json",
         )

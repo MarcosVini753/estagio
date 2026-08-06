@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita
+Aceita. O caminho versionado da API foi substituído pela ADR 0018.
 
 ## Contexto
 

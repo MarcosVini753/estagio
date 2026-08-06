@@ -55,7 +55,7 @@ Cobrir:
 - filtros e paginação;
 - acesso por perfil simulado;
 - serialização temporal;
-- endpoints versionados.
+- rotas e contratos documentados no OpenAPI.
 
 ### Testes de integração
 

@@ -47,7 +47,7 @@ class ReservationAPITest(APITestCase):
 
     def select_room_user(self, reference):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {
                 "profile": "ROOM_USER",
                 "user_reference": reference,
@@ -67,7 +67,7 @@ class ReservationAPITest(APITestCase):
 
     def test_room_user_creates_slot_reservation_with_snapshots(self):
         response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(),
             format="json",
         )
@@ -84,13 +84,13 @@ class ReservationAPITest(APITestCase):
 
     def test_operational_profile_cannot_create_reservation(self):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
 
         response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(),
             format="json",
         )
@@ -98,7 +98,7 @@ class ReservationAPITest(APITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_room_user_cannot_list_all_reservations(self):
-        response = self.client.get("/api/v1/reservations/")
+        response = self.client.get("/api/reservations/")
 
         self.assertEqual(response.status_code, 403)
 
@@ -112,7 +112,7 @@ class ReservationAPITest(APITestCase):
         )
 
         response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(),
             format="json",
         )
@@ -129,7 +129,7 @@ class ReservationAPITest(APITestCase):
         )
 
         response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(),
             format="json",
         )
@@ -138,12 +138,12 @@ class ReservationAPITest(APITestCase):
 
     def test_rejects_non_slot_and_date_after_tomorrow(self):
         non_slot_response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(starts_at=self.aware(self.tomorrow, time(8, 30))),
             format="json",
         )
         later_response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(
                 starts_at=self.aware(self.today + timedelta(days=2), time(8, 0))
             ),
@@ -158,7 +158,7 @@ class ReservationAPITest(APITestCase):
         self.computer.operational_state = Computer.OperationalState.MAINTENANCE
         self.computer.save(update_fields=["operational_state", "updated_at"])
         maintenance_response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(),
             format="json",
         )
@@ -176,7 +176,7 @@ class ReservationAPITest(APITestCase):
         )
 
         limit_response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(),
             format="json",
         )
@@ -193,12 +193,12 @@ class ReservationAPITest(APITestCase):
             return_value=fixed_now,
         ):
             valid_response = self.client.post(
-                "/api/v1/reservations/",
+                "/api/reservations/",
                 self.create_payload(starts_at=self.aware(self.today, time(8, 0))),
                 format="json",
             )
             past_response = self.client.post(
-                "/api/v1/reservations/",
+                "/api/reservations/",
                 self.create_payload(starts_at=self.aware(self.today, time(7, 0))),
                 format="json",
             )
@@ -217,12 +217,12 @@ class ReservationAPITest(APITestCase):
             return_value=friday,
         ):
             before_close = self.client.post(
-                "/api/v1/reservations/",
+                "/api/reservations/",
                 self.create_payload(starts_at=self.aware(saturday, time(11, 15))),
                 format="json",
             )
             after_close = self.client.post(
-                "/api/v1/reservations/",
+                "/api/reservations/",
                 self.create_payload(starts_at=self.aware(saturday, time(14))),
                 format="json",
             )
@@ -241,7 +241,7 @@ class ReservationAPITest(APITestCase):
             return_value=saturday,
         ):
             response = self.client.post(
-                "/api/v1/reservations/",
+                "/api/reservations/",
                 self.create_payload(starts_at=self.aware(sunday, time(8))),
                 format="json",
             )
@@ -259,10 +259,10 @@ class ReservationAPITest(APITestCase):
         )
 
         cancel_response = self.client.post(
-            f"/api/v1/reservations/{reservation.pk}/cancel/",
+            f"/api/reservations/{reservation.pk}/cancel/",
             format="json",
         )
-        list_response = self.client.get("/api/v1/reservations/mine/")
+        list_response = self.client.get("/api/reservations/mine/")
 
         self.assertEqual(cancel_response.status_code, 200)
         self.assertEqual(cancel_response.data["status"], "CANCELLED")
@@ -270,7 +270,7 @@ class ReservationAPITest(APITestCase):
         self.assertEqual(list_response.data[0]["status"], "CANCELLED")
 
         replacement_response = self.client.post(
-            "/api/v1/reservations/",
+            "/api/reservations/",
             self.create_payload(),
             format="json",
         )
@@ -291,10 +291,10 @@ class ReservationAPITest(APITestCase):
         )
 
         slots_response = self.client.get(
-            f"/api/v1/computers/{self.computer.pk}/slots/",
+            f"/api/computers/{self.computer.pk}/slots/",
             {"date": self.tomorrow.isoformat()},
         )
-        mine_response = self.client.get("/api/v1/reservations/mine/")
+        mine_response = self.client.get("/api/reservations/mine/")
 
         slot = next(
             item
@@ -319,7 +319,7 @@ class ReservationAPITest(APITestCase):
         self.select_room_user("aluno-si-002")
 
         response = self.client.post(
-            f"/api/v1/reservations/{reservation.pk}/cancel/",
+            f"/api/reservations/{reservation.pk}/cancel/",
             format="json",
         )
 
@@ -334,13 +334,13 @@ class ReservationAPITest(APITestCase):
             created_by_profile="ROOM_USER",
         )
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
 
         response = self.client.post(
-            f"/api/v1/reservations/{reservation.pk}/cancel/",
+            f"/api/reservations/{reservation.pk}/cancel/",
             {"reason": "Solicitação da supervisão."},
             format="json",
         )
@@ -360,13 +360,13 @@ class ReservationAPITest(APITestCase):
             created_by_profile="ROOM_USER",
         )
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
 
         response = self.client.post(
-            f"/api/v1/reservations/{reservation.pk}/cancel/",
+            f"/api/reservations/{reservation.pk}/cancel/",
             format="json",
         )
 
@@ -392,7 +392,7 @@ class ReservationAPITest(APITestCase):
             return_value=self.aware(self.tomorrow, time(7, 31)),
         ):
             response = self.client.post(
-                f"/api/v1/reservations/{reservation.pk}/cancel/",
+                f"/api/reservations/{reservation.pk}/cancel/",
                 format="json",
             )
 

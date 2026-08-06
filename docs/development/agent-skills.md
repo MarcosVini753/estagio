@@ -118,7 +118,7 @@ Use ao criar ou alterar models, enums, constraints, índices e migrations.
 
 ### `api-endpoint`
 
-Use ao criar ou alterar endpoints em `/api/v1/`, serializers, erros e OpenAPI.
+Use ao criar ou alterar endpoints em `/api/`, serializers, erros e OpenAPI.
 
 ### `test-first-change`
 

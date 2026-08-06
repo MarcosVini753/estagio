@@ -1,8 +1,8 @@
-# API v1
+# API
 
-## Política de versionamento
+## Endereçamento
 
-A API começa em `/api/v1/`. A versão da API é independente da versão da aplicação. Novos campos opcionais e endpoints compatíveis permanecem em v1; mudanças incompatíveis exigem migração planejada ou nova versão.
+A API começa em `/api/` e não inclui versão nas URLs. Mudanças incompatíveis exigem migração planejada e nova decisão arquitetural, sem manter infraestrutura de versões paralelas enquanto não existir essa necessidade.
 
 ## Convenções
 
@@ -21,23 +21,23 @@ A API começa em `/api/v1/`. A versão da API é independente da versão da apli
 ### Sistema e demonstração
 
 ```text
-GET  /api/v1/health/
-GET  /api/v1/demo/context/
-POST /api/v1/demo/select-profile/
+GET  /api/health/
+GET  /api/demo/context/
+POST /api/demo/select-profile/
 ```
 
 A seleção de perfil simula autorização e não autentica uma identidade real.
 
-`POST /api/v1/demo/select-profile/` exige `user_reference`, `affiliation_type` e `institutional_unit` para `ROOM_USER`. `GET /api/v1/demo/context/` devolve os valores selecionados; perfis operacionais devolvem apenas a referência fictícia fixa.
+`POST /api/demo/select-profile/` exige `user_reference`, `affiliation_type` e `institutional_unit` para `ROOM_USER`. `GET /api/demo/context/` devolve os valores selecionados; perfis operacionais devolvem apenas a referência fictícia fixa.
 
 ### Computadores
 
 ```text
-GET   /api/v1/computers/
-POST  /api/v1/computers/
-GET   /api/v1/computers/{id}/
-PATCH /api/v1/computers/{id}/
-PATCH /api/v1/computers/{id}/operational-state/
+GET   /api/computers/
+POST  /api/computers/
+GET   /api/computers/{id}/
+PATCH /api/computers/{id}/
+PATCH /api/computers/{id}/operational-state/
 ```
 
 Leitura é permitida para qualquer perfil selecionado. Cadastro e edição são permitidos ao Supervisor e Administrador. A alteração de estado operacional também é permitida ao Monitor da Sala e sempre registra histórico.
@@ -47,8 +47,8 @@ O PATCH genérico não altera `operational_state`; a action específica deve ser
 ### Disponibilidade
 
 ```text
-GET /api/v1/computers/availability/?date=YYYY-MM-DD
-GET /api/v1/computers/{id}/slots/?date=YYYY-MM-DD
+GET /api/computers/availability/?date=YYYY-MM-DD
+GET /api/computers/{id}/slots/?date=YYYY-MM-DD
 ```
 
 A data deve ser hoje ou amanhã. O primeiro endpoint devolve um resumo por computador:
@@ -132,26 +132,26 @@ O bloco `room` explica ausência de slots. Domingo, por exemplo, retorna `status
 ### Configuração operacional
 
 ```text
-GET   /api/v1/shifts/
-POST  /api/v1/shifts/
-GET   /api/v1/shifts/{id}/
-PATCH /api/v1/shifts/{id}/
-POST  /api/v1/shifts/{id}/replace/
+GET   /api/shifts/
+POST  /api/shifts/
+GET   /api/shifts/{id}/
+PATCH /api/shifts/{id}/
+POST  /api/shifts/{id}/replace/
 
-GET  /api/v1/operating-schedules/
-POST /api/v1/operating-schedules/
-POST /api/v1/operating-schedules/impact-preview/
-GET   /api/v1/operating-schedules/{id}/
-PATCH /api/v1/operating-schedules/{id}/
-POST  /api/v1/operating-schedules/{id}/replace/
+GET  /api/operating-schedules/
+POST /api/operating-schedules/
+POST /api/operating-schedules/impact-preview/
+GET   /api/operating-schedules/{id}/
+PATCH /api/operating-schedules/{id}/
+POST  /api/operating-schedules/{id}/replace/
 
-GET   /api/v1/calendar-exceptions/
-POST  /api/v1/calendar-exceptions/
-GET   /api/v1/calendar-exceptions/{id}/
-PATCH /api/v1/calendar-exceptions/{id}/
+GET   /api/calendar-exceptions/
+POST  /api/calendar-exceptions/
+GET   /api/calendar-exceptions/{id}/
+PATCH /api/calendar-exceptions/{id}/
 
-GET   /api/v1/booking-policy/
-PATCH /api/v1/booking-policy/
+GET   /api/booking-policy/
+PATCH /api/booking-policy/
 ```
 
 Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
@@ -213,13 +213,13 @@ Sem `confirm_invalidation=true`, a aplicação responde `SCHEDULE_CHANGE_AFFECTS
 ### Status da sala e avisos
 
 ```text
-GET /api/v1/room-status/?date=YYYY-MM-DD
+GET /api/room-status/?date=YYYY-MM-DD
 
-GET /api/v1/room-notices/active/
-GET  /api/v1/room-notices/
-POST /api/v1/room-notices/
-GET   /api/v1/room-notices/{id}/
-PATCH /api/v1/room-notices/{id}/
+GET /api/room-notices/active/
+GET  /api/room-notices/
+POST /api/room-notices/
+GET   /api/room-notices/{id}/
+PATCH /api/room-notices/{id}/
 ```
 
 `room-status` e `room-notices/active` são públicos e funcionam antes da escolha de perfil. Os demais endpoints de aviso são restritos ao Supervisor e Administrador.
@@ -241,10 +241,10 @@ Um aviso possui tipo `CLOSURE`, `SCHEDULE_CHANGE` ou `SPECIAL_HOURS`, período e
 ### Reservas
 
 ```text
-GET  /api/v1/reservations/
-GET  /api/v1/reservations/mine/
-POST /api/v1/reservations/
-POST /api/v1/reservations/{id}/cancel/
+GET  /api/reservations/
+GET  /api/reservations/mine/
+POST /api/reservations/
+POST /api/reservations/{id}/cancel/
 ```
 
 `POST /reservations/` é exclusivo do Usuário da Sala e recebe `computer_id` e `starts_at`; o backend deriva `ends_at` do slot configurado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o slot.
@@ -255,18 +255,18 @@ Reservas invalidadas expõem `invalidated_at`, `invalidated_by_profile` e `inval
 ### Sessões e alocações
 
 ```text
-GET  /api/v1/usage-sessions/current/
-GET  /api/v1/usage-sessions/active/
-GET  /api/v1/usage-sessions/history/
-POST /api/v1/usage-sessions/start/
-POST /api/v1/usage-sessions/{id}/switch-computer/
-POST /api/v1/usage-sessions/{id}/finish/
+GET  /api/usage-sessions/current/
+GET  /api/usage-sessions/active/
+GET  /api/usage-sessions/history/
+POST /api/usage-sessions/start/
+POST /api/usage-sessions/{id}/switch-computer/
+POST /api/usage-sessions/{id}/finish/
 ```
 
 Entrada com reserva herda seus snapshots e aplica a tolerância configurada. Entrada imediata exige sala aberta e computador disponível. Troca encerra a alocação atual e cria a próxima na mesma sessão. Saída encerra a alocação atual e a sessão; saída operacional de terceiro exige justificativa e auditoria.
 
 ```text
-POST /api/v1/usage-sessions/{id}/correct/
+POST /api/usage-sessions/{id}/correct/
 ```
 
 A correção é restrita a perfis operacionais, exige justificativa e altera somente entrada, saída ou o último intervalo. A primeira e a última alocação são sincronizadas quando aplicável, toda a linha do tempo é validada e a mudança gera `AuditEvent`.
@@ -274,10 +274,10 @@ A correção é restrita a perfis operacionais, exige justificativa e altera som
 ### Ocorrências
 
 ```text
-GET   /api/v1/occurrences/
-POST  /api/v1/occurrences/
-GET   /api/v1/occurrences/{id}/
-PATCH /api/v1/occurrences/{id}/
+GET   /api/occurrences/
+POST  /api/occurrences/
+GET   /api/occurrences/{id}/
+PATCH /api/occurrences/{id}/
 ```
 
 Usuário da Sala consulta apenas as próprias ocorrências. Perfis operacionais consultam todas e realizam as transições de análise, resolução ou cancelamento. Computador, sessão e alocação devem ser compatíveis; criar ocorrência não altera o estado operacional do computador.
@@ -285,7 +285,7 @@ Usuário da Sala consulta apenas as próprias ocorrências. Perfis operacionais 
 ### Relatórios
 
 ```text
-GET /api/v1/reports/monthly/?year=YYYY&month=M
+GET /api/reports/monthly/?year=YYYY&month=M
 ```
 
 O relatório mensal é restrito ao Supervisor e Administrador. A resposta contém todos os dias do mês, `calendar_status`, `calendar_source`, `operating_minutes`, colunas por `Shift.series_key`, totais por turno e as métricas de visitas, pessoas distintas, reservas totais e `reservations_by_status`, ocorrências, computadores utilizados, minutos operacionais, minutos alocados e tempo médio das sessões finalizadas. Sessões sem turno são agrupadas em `NOT_INFORMED`.
@@ -295,9 +295,9 @@ O relatório mensal é restrito ao Supervisor e Administrador. A resposta conté
 ### Relatórios
 
 ```text
-GET /api/v1/reports/daily/
-GET /api/v1/reports/annual/
-GET /api/v1/reports/occupancy/
+GET /api/reports/daily/
+GET /api/reports/annual/
+GET /api/reports/occupancy/
 ```
 
 O relatório semanal permanece como evolução futura e não possui endpoint definido na Etapa 4.

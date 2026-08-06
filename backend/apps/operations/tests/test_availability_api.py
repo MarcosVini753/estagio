@@ -40,7 +40,7 @@ class AvailabilityAPITest(APITestCase):
             is_active=True,
         )
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {
                 "profile": "ROOM_USER",
                 "user_reference": "aluno-si-001",
@@ -66,7 +66,7 @@ class AvailabilityAPITest(APITestCase):
         )
 
         response = self.client.get(
-            f"/api/v1/computers/{self.computer.pk}/slots/",
+            f"/api/computers/{self.computer.pk}/slots/",
             {"date": self.tomorrow.isoformat()},
         )
 
@@ -93,7 +93,7 @@ class AvailabilityAPITest(APITestCase):
         )
 
         response = self.client.get(
-            f"/api/v1/computers/{self.computer.pk}/slots/",
+            f"/api/computers/{self.computer.pk}/slots/",
             {"date": self.tomorrow.isoformat()},
         )
 
@@ -107,7 +107,7 @@ class AvailabilityAPITest(APITestCase):
 
     def test_rejects_date_outside_today_and_tomorrow(self):
         response = self.client.get(
-            "/api/v1/computers/availability/",
+            "/api/computers/availability/",
             {"date": (self.today + timedelta(days=2)).isoformat()},
         )
 
@@ -133,7 +133,7 @@ class AvailabilityAPITest(APITestCase):
             return_value=fixed_now,
         ):
             response = self.client.get(
-                "/api/v1/computers/availability/",
+                "/api/computers/availability/",
                 {"date": self.today.isoformat()},
             )
 
@@ -150,7 +150,7 @@ class AvailabilityAPITest(APITestCase):
         )
 
         response = self.client.get(
-            f"/api/v1/computers/{self.computer.pk}/slots/",
+            f"/api/computers/{self.computer.pk}/slots/",
             {"date": self.tomorrow.isoformat()},
         )
 
@@ -167,7 +167,7 @@ class AvailabilityAPITest(APITestCase):
             return_value=saturday - timedelta(days=1),
         ):
             response = self.client.get(
-                f"/api/v1/computers/{self.computer.pk}/slots/",
+                f"/api/computers/{self.computer.pk}/slots/",
                 {"date": saturday.date().isoformat()},
             )
 
@@ -196,7 +196,7 @@ class AvailabilityAPITest(APITestCase):
             return_value=sunday_now,
         ):
             response = self.client.get(
-                "/api/v1/computers/availability/",
+                "/api/computers/availability/",
                 {"date": sunday_now.date().isoformat()},
             )
 

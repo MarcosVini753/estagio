@@ -43,7 +43,7 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 - Backend em Django 5.2 LTS e Django REST Framework.
 - Monólito modular em apps por domínio.
 - PostgreSQL como banco-alvo.
-- API versionada em `/api/v1/`.
+- API exposta em `/api/`, sem versão no caminho.
 - Django Templates e JavaScript puro.
 - OpenAPI com `drf-spectacular`.
 - Configurações separadas para local, testes e produção.
@@ -84,4 +84,4 @@ make test
 - `ponytail-review` para uma segunda revisão focada em sobre-engenharia;
 - `documentation-sync` para manter código e documentação coerentes.
 
-Antes de concluir uma implementação, execute os comandos de qualidade disponíveis no repositório. Não declare a tarefa concluída quando testes, lint, migrations ou verificações obrigatórias falharem. Mudanças arquiteturais exigem ADR. Mudanças funcionais atualizam `docs/product/`. Mudanças de endpoint atualizam OpenAPI, `docs/architecture/04-api-v1.md` e testes.
+Antes de concluir uma implementação, execute os comandos de qualidade disponíveis no repositório. Não declare a tarefa concluída quando testes, lint, migrations ou verificações obrigatórias falharem. Mudanças arquiteturais exigem ADR. Mudanças funcionais atualizam `docs/product/`. Mudanças de endpoint atualizam OpenAPI, `docs/architecture/04-api.md` e testes.

@@ -36,7 +36,7 @@ class OperatingScheduleAPITest(APITestCase):
                 affiliation_type="STUDENT",
                 institutional_unit="Sistemas de Informação",
             )
-        self.client.post("/api/v1/demo/select-profile/", payload, format="json")
+        self.client.post("/api/demo/select-profile/", payload, format="json")
 
     def temporary_payload(self, **overrides):
         payload = {
@@ -51,8 +51,8 @@ class OperatingScheduleAPITest(APITestCase):
         return payload
 
     def test_public_room_status_explains_saturday_and_sunday(self):
-        saturday = self.client.get("/api/v1/room-status/?date=2026-08-08")
-        sunday = self.client.get("/api/v1/room-status/?date=2026-08-09")
+        saturday = self.client.get("/api/room-status/?date=2026-08-08")
+        sunday = self.client.get("/api/room-status/?date=2026-08-09")
 
         self.assertEqual(saturday.status_code, 200)
         self.assertEqual(saturday.data["status"], "OPEN")
@@ -66,9 +66,9 @@ class OperatingScheduleAPITest(APITestCase):
 
     def test_room_user_reads_schedule_but_only_supervisor_creates(self):
         self.select_profile("ROOM_USER")
-        listed = self.client.get("/api/v1/operating-schedules/")
+        listed = self.client.get("/api/operating-schedules/")
         forbidden = self.client.post(
-            "/api/v1/operating-schedules/",
+            "/api/operating-schedules/",
             self.temporary_payload(),
             format="json",
         )
@@ -81,7 +81,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/operating-schedules/",
+            "/api/operating-schedules/",
             self.temporary_payload(days=days_payload()[:-1]),
             format="json",
         )
@@ -94,7 +94,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/operating-schedules/",
+            "/api/operating-schedules/",
             self.temporary_payload(
                 valid_from=today.isoformat(),
                 valid_until=(today + timedelta(days=30)).isoformat(),
@@ -115,7 +115,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/operating-schedules/",
+            "/api/operating-schedules/",
             self.temporary_payload(
                 valid_from=(today - timedelta(days=1)).isoformat(),
                 valid_until=(today + timedelta(days=30)).isoformat(),
@@ -136,7 +136,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/operating-schedules/impact-preview/",
+            "/api/operating-schedules/impact-preview/",
             self.temporary_payload(
                 valid_from=today.isoformat(),
                 valid_until=(today + timedelta(days=30)).isoformat(),
@@ -163,17 +163,17 @@ class OperatingScheduleAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         preview = self.client.post(
-            "/api/v1/operating-schedules/impact-preview/",
+            "/api/operating-schedules/impact-preview/",
             self.temporary_payload(),
             format="json",
         )
         rejected = self.client.post(
-            "/api/v1/operating-schedules/",
+            "/api/operating-schedules/",
             self.temporary_payload(),
             format="json",
         )
         confirmed = self.client.post(
-            "/api/v1/operating-schedules/",
+            "/api/operating-schedules/",
             self.temporary_payload(confirm_invalidation=True),
             format="json",
         )
@@ -227,7 +227,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/operating-schedules/{schedule.pk}/replace/",
+            f"/api/operating-schedules/{schedule.pk}/replace/",
             {
                 "effective_from": effective_from.isoformat(),
                 "reason": "Redução do atendimento.",
@@ -254,7 +254,7 @@ class OperatingScheduleAPITest(APITestCase):
         visible_from = timezone.now()
 
         response = self.client.post(
-            "/api/v1/operating-schedules/",
+            "/api/operating-schedules/",
             self.temporary_payload(
                 notify_users=True,
                 notice={
@@ -290,7 +290,7 @@ class OperatingScheduleAPITest(APITestCase):
             self.assertRaises(RuntimeError),
         ):
             self.client.post(
-                "/api/v1/operating-schedules/",
+                "/api/operating-schedules/",
                 payload,
                 format="json",
             )
@@ -344,20 +344,20 @@ class RoomNoticeAPITest(APITestCase):
             created_by_profile="LIBRARY_SUPERVISOR",
         )
 
-        response = self.client.get("/api/v1/room-notices/active/")
+        response = self.client.get("/api/room-notices/active/")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item["title"] for item in response.data], ["Aviso ativo"])
 
     def test_monitor_cannot_publish_notice(self):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "INTERN"},
             format="json",
         )
 
         response = self.client.post(
-            "/api/v1/room-notices/",
+            "/api/room-notices/",
             {
                 "notice_type": "CLOSURE",
                 "title": "Fechamento",

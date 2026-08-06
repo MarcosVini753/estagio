@@ -12,7 +12,7 @@ Navegador
         │
         ▼
 Django + DRF
-├── API /api/v1/
+├── API /api/
 ├── serviços de domínio
 ├── selectors e projeções
 └── autorização simulada em sessão

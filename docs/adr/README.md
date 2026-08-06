@@ -16,7 +16,7 @@ ADRs registram decisões arquiteturais, alternativas e consequências.
 - [0003 — Usar PostgreSQL como banco-alvo](0003-usar-postgresql.md)
 - [0004 — Usar Django Templates e JavaScript puro](0004-usar-templates-e-js.md)
 - [0005 — Adotar autorização simulada no MVP](0005-autorizacao-simulada.md)
-- [0006 — Versionar API em /api/v1](0006-versionar-api-v1.md)
+- [0006 — Versionar API em /api/v1 — substituída pela ADR 0018](0006-versionar-api-v1.md)
 - [0007 — Separar estado operacional e estado efetivo](0007-estados-do-computador.md)
 - [0008 — Separar sessão e alocação](0008-separar-sessao-e-alocacao.md)
 - [0009 — Definir janela temporal de reservas](0009-janela-temporal-reservas.md)
@@ -28,3 +28,4 @@ ADRs registram decisões arquiteturais, alternativas e consequências.
 - [0015 — Versionar historicamente os turnos](0015-versionamento-historico-de-turnos.md)
 - [0016 — Identidade lógica das versões de turno](0016-identidade-logica-das-versoes-de-turno.md)
 - [0017 — Separar calendário operacional de turnos](0017-separar-calendario-operacional-de-turnos.md)
+- [0018 — Manter API sem versão no caminho](0018-manter-api-sem-versao-no-caminho.md)

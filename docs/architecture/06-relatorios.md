@@ -88,7 +88,7 @@ Deve apresentar:
 Implementado em:
 
 ```text
-GET /api/v1/reports/monthly/?year=YYYY&month=M
+GET /api/reports/monthly/?year=YYYY&month=M
 ```
 
 O endpoint é restrito ao Supervisor e Administrador e reproduz o modelo atual:

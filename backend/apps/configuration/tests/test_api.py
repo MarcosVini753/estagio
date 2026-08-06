@@ -23,7 +23,7 @@ class ConfigurationAPITest(APITestCase):
                 }
             )
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             payload,
             format="json",
         )
@@ -36,9 +36,9 @@ class ConfigurationAPITest(APITestCase):
         )
         self.select_profile("ROOM_USER")
 
-        list_response = self.client.get("/api/v1/shifts/")
+        list_response = self.client.get("/api/shifts/")
         create_response = self.client.post(
-            "/api/v1/shifts/",
+            "/api/shifts/",
             {
                 "name": "Tarde",
                 "start_time": "13:00:00",
@@ -55,7 +55,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/shifts/",
+            "/api/shifts/",
             {
                 "name": "Manhã",
                 "start_time": "07:15:00",
@@ -77,7 +77,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/shifts/",
+            "/api/shifts/",
             {
                 "name": "Sobreposto",
                 "start_time": "12:00:00",
@@ -99,7 +99,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.patch(
-            "/api/v1/booking-policy/",
+            "/api/booking-policy/",
             {"slot_duration_minutes": 30},
             format="json",
         )
@@ -130,7 +130,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/shifts/{shift.pk}/replace/",
+            f"/api/shifts/{shift.pk}/replace/",
             {
                 "effective_from": effective_from.isoformat(),
                 "name": "1º Turno",
@@ -170,12 +170,12 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         time_response = self.client.patch(
-            f"/api/v1/shifts/{shift.pk}/",
+            f"/api/shifts/{shift.pk}/",
             {"start_time": "08:00:00"},
             format="json",
         )
         deactivate_response = self.client.patch(
-            f"/api/v1/shifts/{shift.pk}/",
+            f"/api/shifts/{shift.pk}/",
             {"is_active": False},
             format="json",
         )
@@ -194,7 +194,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.patch(
-            f"/api/v1/shifts/{shift.pk}/",
+            f"/api/shifts/{shift.pk}/",
             {"start_time": "08:00:00"},
             format="json",
         )
@@ -219,7 +219,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/shifts/{shift.pk}/replace/",
+            f"/api/shifts/{shift.pk}/replace/",
             {
                 "effective_from": (today + timedelta(days=1)).isoformat(),
                 "name": "Novo turno",
@@ -244,7 +244,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/shifts/{shift.pk}/replace/",
+            f"/api/shifts/{shift.pk}/replace/",
             {
                 "effective_from": timezone.localdate().isoformat(),
                 "name": "Novo turno",
@@ -269,7 +269,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/shifts/{shift.pk}/replace/",
+            f"/api/shifts/{shift.pk}/replace/",
             {
                 "effective_from": effective_from.isoformat(),
                 "name": "Novo turno",

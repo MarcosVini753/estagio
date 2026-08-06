@@ -80,6 +80,6 @@ Ao implementar uma operação, o agente deve relacionar:
 
 - regra funcional em `03-regras-de-negocio.md`;
 - modelo em `architecture/02-modelo-de-dominio.md`;
-- endpoint em `architecture/04-api-v1.md`;
+- endpoint em `architecture/04-api.md`;
 - diagrama UML correspondente;
 - testes unitários e de integração.

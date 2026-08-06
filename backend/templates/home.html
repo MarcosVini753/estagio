@@ -47,7 +47,7 @@
 
   <script>
     async function loadRoomNotices() {
-      const response = await fetch('/api/v1/room-notices/active/');
+      const response = await fetch('/api/room-notices/active/');
       if (!response.ok) return;
       const notices = await response.json();
       const root = document.getElementById('room-notices');
@@ -69,7 +69,7 @@
     }
 
     async function loadContext() {
-      const response = await fetch('/api/v1/demo/context/');
+      const response = await fetch('/api/demo/context/');
       const context = await response.json();
       document.getElementById('current-profile').textContent = context.profile || 'nenhum';
       document.getElementById('current-reference').textContent = context.user_reference || 'nenhuma';
@@ -88,7 +88,7 @@
     }
 
     async function selectProfile(profile, identity = {}) {
-      const response = await fetch('/api/v1/demo/select-profile/', {
+      const response = await fetch('/api/demo/select-profile/', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({profile, ...identity})
