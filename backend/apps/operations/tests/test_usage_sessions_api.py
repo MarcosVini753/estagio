@@ -17,6 +17,8 @@ from apps.configuration.tests.factories import create_operating_schedule
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 from apps.operations.services import start_usage_session
 
+from .factories import create_reservation, create_use_session
+
 
 class UsageSessionAPITest(APITestCase):
     def setUp(self):
@@ -38,8 +40,6 @@ class UsageSessionAPITest(APITestCase):
             },
         )
         BookingPolicy.objects.create(
-            slot_duration_minutes=60,
-            check_in_tolerance_minutes=15,
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
             is_active=True,
@@ -70,13 +70,17 @@ class UsageSessionAPITest(APITestCase):
         )
 
     def start(self, payload=None, current=None):
+        if payload is None:
+            payload = {"computer_id": self.computer.pk, "slot_count": 4}
+        elif "reservation_id" not in payload and "slot_count" not in payload:
+            payload = {**payload, "slot_count": 4}
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
             return_value=current or self.current,
         ):
             return self.client.post(
                 "/api/usage-sessions/start/",
-                payload or {"computer_id": self.computer.pk},
+                payload,
                 format="json",
             )
 
@@ -97,8 +101,46 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(current_response.data["id"], session.pk)
         self.assertEqual(len(current_response.data["allocations"]), 1)
 
+    def test_immediate_entry_uses_requested_duration_and_deadline(self):
+        current = self.aware(time(8, 21))
+
+        response = self.start(
+            {"computer_id": self.computer.pk, "slot_count": 2},
+            current=current,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["slot_count"], 2)
+        self.assertEqual(response.data["planned_starts_at"], current.isoformat())
+        self.assertEqual(
+            response.data["planned_ends_at"], self.aware(time(8, 51)).isoformat()
+        )
+        self.assertEqual(
+            response.data["exit_deadline_at"], self.aware(time(8, 54)).isoformat()
+        )
+
+    def test_immediate_entry_requires_positive_slot_count(self):
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.current,
+        ):
+            missing = self.client.post(
+                "/api/usage-sessions/start/",
+                {"computer_id": self.computer.pk},
+                format="json",
+            )
+            zero = self.client.post(
+                "/api/usage-sessions/start/",
+                {"computer_id": self.computer.pk, "slot_count": 0},
+                format="json",
+            )
+
+        self.assertEqual(missing.status_code, 400)
+        self.assertEqual(zero.status_code, 400)
+        self.assertFalse(UseSession.objects.exists())
+
     def test_reserved_entry_uses_reservation_snapshots_and_marks_it_used(self):
-        reservation = Reservation.objects.create(
+        reservation = create_reservation(
             user_reference="aluno-si-001",
             affiliation_type="STUDENT",
             institutional_unit="Sistemas de Informação",
@@ -117,7 +159,7 @@ class UsageSessionAPITest(APITestCase):
                 "computer_id": self.computer.pk,
                 "reservation_id": reservation.pk,
             },
-            current=self.aware(time(7, 50)),
+            current=self.aware(time(8, 0)),
         )
 
         self.assertEqual(response.status_code, 201)
@@ -126,10 +168,78 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(session.reservation, reservation)
         self.assertEqual(session.affiliation_type, "STUDENT")
         self.assertEqual(session.institutional_unit, "Sistemas de Informação")
+        self.assertEqual(session.planned_starts_at, reservation.starts_at)
+        self.assertEqual(session.planned_ends_at, reservation.ends_at)
+        self.assertEqual(session.exit_deadline_at, reservation.exit_deadline_at)
         self.assertEqual(reservation.status, Reservation.Status.USED)
 
+    def test_reserved_entry_rejects_slot_count(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.current,
+            ends_at=self.aware(time(9)),
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.start(
+            {
+                "computer_id": self.computer.pk,
+                "reservation_id": reservation.pk,
+                "slot_count": 4,
+            }
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(UseSession.objects.exists())
+
+    def test_reserved_entry_accepts_exact_check_in_deadline(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(time(9)),
+            ends_at=self.aware(time(10)),
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.start(
+            {
+                "computer_id": self.computer.pk,
+                "reservation_id": reservation.pk,
+            },
+            current=self.aware(time(9, 3)),
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.data["planned_ends_at"], self.aware(time(10)).isoformat()
+        )
+
+    def test_reserved_entry_after_deadline_is_rejected_and_marked_no_show(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(time(9)),
+            ends_at=self.aware(time(10)),
+            created_by_profile="ROOM_USER",
+        )
+        current = self.aware(time(9, 3, 1))
+
+        response = self.start(
+            {
+                "computer_id": self.computer.pk,
+                "reservation_id": reservation.pk,
+            },
+            current=current,
+        )
+
+        self.assertEqual(response.status_code, 409)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.NO_SHOW)
+        self.assertEqual(reservation.no_show_at, current)
+
     def test_reserved_entry_rejects_outside_tolerance(self):
-        reservation = Reservation.objects.create(
+        reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
             starts_at=self.aware(time(9, 0)),
@@ -149,7 +259,7 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(response.data["code"], "RESERVATION_CHECK_IN_UNAVAILABLE")
 
     def test_invalidated_reservation_cannot_be_used_for_check_in(self):
-        reservation = Reservation.objects.create(
+        reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
             starts_at=self.aware(time(8)),
@@ -194,11 +304,11 @@ class UsageSessionAPITest(APITestCase):
         )
         closed_response = self.start()
         CalendarException.objects.all().delete()
-        Reservation.objects.create(
+        create_reservation(
             user_reference="aluno-si-002",
             computer=self.computer,
-            starts_at=self.aware(time(7, 30)),
-            ends_at=self.aware(time(8, 30)),
+            starts_at=self.aware(time(8, 30)),
+            ends_at=self.aware(time(9, 30)),
             created_by_profile="ROOM_USER",
         )
         reserved_response = self.start()
@@ -207,12 +317,128 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(closed_response.data["code"], "ROOM_CLOSED")
         self.assertEqual(reserved_response.status_code, 409)
 
+    def test_immediate_entry_respects_own_reservation_on_another_computer(self):
+        create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.other_computer,
+            starts_at=self.aware(time(8, 30)),
+            ends_at=self.aware(time(9, 30)),
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.start()
+
+        self.assertEqual(response.status_code, 409)
+        self.assertFalse(UseSession.objects.exists())
+
+    def test_immediate_entry_can_end_when_next_reservation_starts(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-002",
+            computer=self.computer,
+            starts_at=self.aware(time(9)),
+            ends_at=self.aware(time(10)),
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.start()
+
+        self.assertEqual(response.status_code, 201)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.CONFIRMED)
+        self.assertEqual(
+            UseSession.objects.get().planned_ends_at,
+            reservation.starts_at,
+        )
+
+    def test_immediate_entry_may_use_checkout_tolerance_after_closing(self):
+        response = self.start(
+            {"computer_id": self.computer.pk, "slot_count": 1},
+            current=self.aware(time(12, 45)),
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            response.data["planned_ends_at"], self.aware(time(13)).isoformat()
+        )
+        self.assertEqual(
+            response.data["exit_deadline_at"], self.aware(time(13, 3)).isoformat()
+        )
+
+    def test_new_entry_reconciles_users_expired_session_on_other_computer(self):
+        expired_session = create_use_session(
+            user_reference="aluno-si-002",
+            started_at=self.aware(time(8)),
+            planned_ends_at=self.aware(time(8, 15)),
+            exit_deadline_at=self.aware(time(8, 18)),
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        old_allocation = ComputerAllocation.objects.create(
+            session=expired_session,
+            computer=self.other_computer,
+            sequence=1,
+            started_at=self.aware(time(8)),
+        )
+        self.select_room_user("aluno-si-002")
+
+        response = self.start(
+            {"computer_id": self.computer.pk, "slot_count": 1},
+            current=self.aware(time(8, 18)),
+        )
+
+        self.assertEqual(response.status_code, 201)
+        expired_session.refresh_from_db()
+        old_allocation.refresh_from_db()
+        self.assertEqual(expired_session.ended_at, self.aware(time(8, 18)))
+        self.assertEqual(
+            old_allocation.end_reason,
+            ComputerAllocation.EndReason.TIME_LIMIT_REACHED,
+        )
+
+    def test_next_reservation_can_enter_when_previous_tolerance_ends(self):
+        self.start()
+        previous_session = UseSession.objects.get()
+        reservation = create_reservation(
+            user_reference="aluno-si-002",
+            affiliation_type="STUDENT",
+            institutional_unit="Sistemas de Informação",
+            computer=self.computer,
+            starts_at=self.aware(time(9)),
+            ends_at=self.aware(time(10)),
+            created_by_profile="ROOM_USER",
+        )
+        self.select_room_user("aluno-si-002")
+
+        response = self.start(
+            {
+                "computer_id": self.computer.pk,
+                "reservation_id": reservation.pk,
+            },
+            current=self.aware(time(9, 3)),
+        )
+
+        self.assertEqual(response.status_code, 201)
+        previous_session.refresh_from_db()
+        previous_allocation = previous_session.allocations.get()
+        reservation.refresh_from_db()
+        self.assertEqual(previous_session.ended_at, self.aware(time(9, 3)))
+        self.assertEqual(
+            previous_allocation.end_reason,
+            ComputerAllocation.EndReason.TIME_LIMIT_REACHED,
+        )
+        self.assertEqual(reservation.status, Reservation.Status.USED)
+        self.assertEqual(
+            ComputerAllocation.objects.filter(ended_at__isnull=True).count(), 1
+        )
+
     def test_weekend_regular_schedule_controls_immediate_entry(self):
         OperatingSchedule.objects.all().delete()
         create_operating_schedule()
         saturday_before_close = self.aware(time(12, 30), date(2026, 8, 8))
 
-        allowed = self.start(current=saturday_before_close)
+        allowed = self.start(
+            {"computer_id": self.computer.pk, "slot_count": 2},
+            current=saturday_before_close,
+        )
 
         self.assertEqual(allowed.status_code, 201)
 
@@ -269,7 +495,7 @@ class UsageSessionAPITest(APITestCase):
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
-            return_value=self.aware(time(9, 0)),
+            return_value=self.aware(time(8, 30)),
         ):
             response = self.client.post(
                 f"/api/usage-sessions/{session.pk}/switch-computer/",
@@ -287,7 +513,7 @@ class UsageSessionAPITest(APITestCase):
     def test_switch_rejects_occupied_destination(self):
         self.start()
         session = UseSession.objects.get()
-        other_session = UseSession.objects.create(
+        other_session = create_use_session(
             user_reference="aluno-si-002",
             entry_recorded_by_profile="ROOM_USER",
         )
@@ -306,13 +532,77 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(session.allocations.count(), 1)
 
+    def test_switch_checks_destination_for_entire_remaining_interval(self):
+        self.start()
+        session = UseSession.objects.get()
+        create_reservation(
+            user_reference="aluno-si-002",
+            computer=self.other_computer,
+            starts_at=self.aware(time(8, 45)),
+            ends_at=self.aware(time(9, 45)),
+            created_by_profile="ROOM_USER",
+        )
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(8, 30)),
+        ):
+            response = self.client.post(
+                f"/api/usage-sessions/{session.pk}/switch-computer/",
+                {"computer_id": self.other_computer.pk},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(session.allocations.count(), 1)
+
+    def test_switch_is_rejected_during_checkout_tolerance(self):
+        self.start()
+        session = UseSession.objects.get()
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(9)),
+        ):
+            response = self.client.post(
+                f"/api/usage-sessions/{session.pk}/switch-computer/",
+                {"computer_id": self.other_computer.pk},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(session.allocations.count(), 1)
+
+    def test_switch_reconciles_session_at_its_exit_deadline(self):
+        self.start()
+        session = UseSession.objects.get()
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(9, 3)),
+        ):
+            response = self.client.post(
+                f"/api/usage-sessions/{session.pk}/switch-computer/",
+                {"computer_id": self.other_computer.pk},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 409)
+        session.refresh_from_db()
+        allocation = session.allocations.get()
+        self.assertEqual(session.ended_at, self.aware(time(9, 3)))
+        self.assertEqual(
+            allocation.end_reason,
+            ComputerAllocation.EndReason.TIME_LIMIT_REACHED,
+        )
+
     def test_finish_closes_current_allocation_and_rejects_duplicate(self):
         self.start()
         session = UseSession.objects.get()
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
-            return_value=self.aware(time(10, 0)),
+            return_value=self.aware(time(8, 30)),
         ):
             response = self.client.post(
                 f"/api/usage-sessions/{session.pk}/finish/",
@@ -333,6 +623,23 @@ class UsageSessionAPITest(APITestCase):
             ComputerAllocation.EndReason.SESSION_FINISHED,
         )
 
+    def test_finish_at_exit_deadline_is_accepted(self):
+        self.start()
+        session = UseSession.objects.get()
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(9, 3)),
+        ):
+            response = self.client.post(
+                f"/api/usage-sessions/{session.pk}/finish/",
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        session.refresh_from_db()
+        self.assertEqual(session.ended_at, self.aware(time(9, 3)))
+
     def test_operational_finish_requires_reason_and_creates_audit_event(self):
         self.start()
         session = UseSession.objects.get()
@@ -342,13 +649,17 @@ class UsageSessionAPITest(APITestCase):
             format="json",
         )
 
-        missing_response = self.client.post(
-            f"/api/usage-sessions/{session.pk}/finish/",
-            format="json",
-        )
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
-            return_value=self.aware(time(10, 0)),
+            return_value=self.aware(time(8, 30)),
+        ):
+            missing_response = self.client.post(
+                f"/api/usage-sessions/{session.pk}/finish/",
+                format="json",
+            )
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(8, 30)),
         ):
             valid_response = self.client.post(
                 f"/api/usage-sessions/{session.pk}/finish/",
@@ -364,7 +675,7 @@ class UsageSessionAPITest(APITestCase):
     def test_active_and_history_visibility_follow_profile(self):
         self.start()
         own_session = UseSession.objects.get()
-        other_session = UseSession.objects.create(
+        other_session = create_use_session(
             user_reference="aluno-si-002",
             started_at=self.current - timedelta(hours=1),
             status=UseSession.Status.FINISHED,
@@ -388,7 +699,7 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(operational_history.data[0]["id"], other_session.pk)
 
     def test_entry_rolls_back_when_allocation_creation_fails(self):
-        reservation = Reservation.objects.create(
+        reservation = create_reservation(
             user_reference="aluno-si-001",
             affiliation_type="STUDENT",
             institutional_unit="Sistemas de Informação",
