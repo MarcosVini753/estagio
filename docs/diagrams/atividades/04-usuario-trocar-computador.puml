@@ -10,16 +10,23 @@ start
 :Verifica se o usuario possui sessao ativa;
 
 if (Possui sessao ativa?) then (Sim)
-  :Consulta computadores disponiveis;
-  :Exibe lista de computadores disponiveis;
+  :Verifica se ainda resta tempo planejado;
+  if (Sessao esta na tolerancia?) then (Sim)
+    :Informa que a troca nao e mais permitida;
+    stop
+  else (Nao)
+    :Consulta computadores para o intervalo restante;
+    :Exibe destinos compativeis;
+  endif
 
   |Usuario da Sala|
   :Seleciona novo computador;
 
   |Sistema|
-  :Verifica se o novo computador continua disponivel;
+  :Reconcilia prazos vencidos no destino;
+  :Verifica reservas e sessoes em [agora, fim planejado);
 
-  if (Computador disponivel?) then (Sim)
+  if (Destino disponivel no intervalo restante?) then (Sim)
     :Encerra alocacao anterior;
     :Cria nova alocacao na mesma sessao;
     :Exibe confirmacao da troca;

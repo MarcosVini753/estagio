@@ -6,36 +6,40 @@ start
 :Acessa a opcao "Registrar entrada";
 :Informa ou confirma seus dados;
 :Seleciona computador desejado;
+:Informa reserva ou escolhe quantidade de slots;
 
 |Sistema|
+:Reconcilia prazos vencidos no computador;
 :Verifica se o usuario ja possui sessao ativa;
 
 if (Usuario ja possui sessao ativa?) then (Sim)
   :Informa que ja existe uma sessao em aberto;
   stop
 else (Nao)
-  :Verifica status do computador selecionado;
-
-  if (Computador disponivel?) then (Sim)
-    :Registra data e hora de entrada;
-    :Cria sessao de uso;
-    :Cria primeira alocacao do computador;
-    :Exibe confirmacao de entrada;
-    stop
-
-  else (Nao)
-    if (Computador reservado para o proprio usuario?) then (Sim)
-      :Confirma comparecimento ao agendamento;
-      :Registra data e hora de entrada;
-      :Cria sessao de uso;
-      :Cria primeira alocacao do computador;
+  if (Entrada vinculada a reserva?) then (Sim)
+    :Valida entrada entre inicio e prazo de check-in;
+    if (Dentro do prazo e sem antecipacao?) then (Sim)
+      :Copia intervalo planejado e prazo da reserva;
       :Marca reserva como utilizada;
-      :Exibe confirmacao de entrada;
-      stop
     else (Nao)
-      :Informa que o computador nao esta disponivel;
+      :Rejeita entrada;
       stop
     endif
+  else (Nao)
+    :Calcula intervalo a partir de agora e slot_count;
+    :Valida fechamento, reservas do computador e do usuario;
+  endif
+
+  :Verifica status e sessoes planejadas do computador;
+  if (Intervalo disponivel?) then (Sim)
+    :Registra horario real de entrada;
+    :Cria sessao com intervalo planejado e prazo de saida;
+    :Cria primeira alocacao do computador;
+    :Exibe fim planejado e prazo;
+    stop
+  else (Nao)
+    :Informa conflito no intervalo solicitado;
+    stop
   endif
 endif
 

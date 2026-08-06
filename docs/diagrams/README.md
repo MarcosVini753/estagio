@@ -33,5 +33,7 @@ O Administrador do Sistema existe arquiteturalmente, mas seus casos de uso detal
 - `OCCUPIED` e `RESERVED` são estados calculados;
 - autenticação real foi substituída, no MVP, por seleção de perfil de teste.
 - turnos são dimensões analíticas; calendário regular, temporário e exceções definem abertura.
+- reservas e sessões usam quantidades de slots consecutivos de 15 minutos;
+- o intervalo planejado bloqueia conflitos; a tolerância de três minutos afeta somente entrada e saída reais.
 
 Ao encontrar divergência, consulte `docs/product/`, `docs/architecture/` e os ADRs.

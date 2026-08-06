@@ -1,4 +1,6 @@
-const STORAGE_KEY = 'bibliotecaUfacPrototypeState.v1';
+const STORAGE_KEY = 'bibliotecaUfacPrototypeState.v2';
+const SLOT_DURATION_MINUTES = 15;
+const DEADLINE_TOLERANCE_MINUTES = 3;
 
 const defaultState = {
   role: 'usuario',
@@ -8,7 +10,7 @@ const defaultState = {
   search: '',
   activeSession: null,
   bookings: [
-    { id: 1, computerId: 4, dateKey: 'tomorrow', slot: '09:00 - 10:00', status: 'confirmado' }
+    { id: 1, computerId: 4, dateKey: 'tomorrow', startsAt: '09:00', slotCount: 4, slot: '09:00 - 10:00', checkInDeadlineAt: '09:03', exitDeadlineAt: '10:03', userOwned: true, status: 'confirmado' }
   ],
   incidents: [],
   turnos: [
@@ -55,6 +57,7 @@ const toast = document.getElementById('toast');
 
 let state = loadState();
 let selectedSlot = null;
+let selectedSlotCount = 0;
 let touchStartX = 0;
 
 function loadState() {
@@ -239,7 +242,8 @@ function activeSessionCard() {
       <div class="summary-row">
         <div>
           <p class="summary-title">Sessão ativa</p>
-          <p class="summary-subtitle">Computador ${computer?.number || '--'} · Entrada registrada às ${state.activeSession.startTime}</p>
+          <p class="summary-subtitle">Computador ${computer?.number || '--'} · Entrada às ${state.activeSession.startTime}</p>
+          <p class="helper-text">Uso planejado até ${state.activeSession.plannedEndsAt}. Saída permitida até ${state.activeSession.exitDeadlineAt}.</p>
         </div>
         <span class="badge info">Ativa</span>
       </div>
@@ -252,7 +256,7 @@ function activeSessionCard() {
 }
 
 function renderUserBookings() {
-  const userBookings = state.bookings.filter((booking) => booking.status === 'confirmado');
+  const userBookings = state.bookings.filter((booking) => booking.status === 'confirmado' && booking.userOwned !== false);
   app.innerHTML = `
     <section class="summary-card">
       <div class="summary-row">
@@ -307,6 +311,7 @@ function renderUserSession() {
     <section class="summary-card">
       <p class="summary-title">Sessão atual</p>
       <p class="summary-subtitle">Computador ${computer?.number || '--'} · início às ${state.activeSession.startTime}</p>
+      <p class="helper-text">Uso planejado até ${state.activeSession.plannedEndsAt}. A saída poderá ser registrada até ${state.activeSession.exitDeadlineAt}.</p>
       <div class="metric-grid">
         <div class="metric-card">
           <p class="helper-text">Status</p>
@@ -384,7 +389,7 @@ function openComputerModal(computerId) {
       <p class="summary-subtitle">${escapeHtml(computer.notes)} · ${computer.room}</p>
     </section>
     <div class="form-grid">
-      ${canEnter ? `<button class="btn primary full" onclick="registerEntry(${computer.id})">Registrar entrada</button>` : ''}
+      ${canEnter ? `<button class="btn primary full" onclick="openEntryModal(${computer.id})">Registrar entrada</button>` : ''}
       ${canExchange ? `<button class="btn primary full" onclick="exchangeComputer(${computer.id})">Trocar para este computador</button>` : ''}
       ${isMine ? `<button class="btn primary full" onclick="registerExit()">Registrar saída</button>` : ''}
       <button class="btn full" onclick="openScheduleModalById(${computer.id})">Consultar horários disponíveis</button>
@@ -402,20 +407,20 @@ function openScheduleModalById(computerId) {
 function openScheduleModal(computer) {
   const slots = slotsForDay('tomorrow');
   const available = availableSlots(computer.id, 'tomorrow');
-  const booked = state.bookings.filter((booking) => booking.computerId === computer.id && booking.dateKey === 'tomorrow' && booking.status === 'confirmado').map((booking) => booking.slot);
   openModal(`Agendar PC${computer.number}`, `
     <section class="summary-card">
       <p class="summary-title">Agendamento para o próximo dia</p>
-      <p class="summary-subtitle">Selecione um horário livre e confirme o agendamento.</p>
+      <p class="summary-subtitle">Selecione o início e a quantidade de slots consecutivos de 15 minutos.</p>
     </section>
     <div class="slot-grid">
       ${slots.map((slot) => `
-        <button class="slot-btn" data-slot="${slot}" ${booked.includes(slot) ? 'disabled' : ''}>${slot}</button>
+        <button class="slot-btn" data-slot="${slot}" ${available.includes(slot) ? '' : 'disabled'}>${slot}</button>
       `).join('')}
     </div>
+    <div id="reservationDuration"></div>
     <br />
     <button class="btn primary full" id="confirmScheduleBtn" disabled>Confirmar agendamento</button>
-    <p class="helper-text">Horários ocupados ficam desabilitados. Agendamento para datas posteriores ao próximo dia não é permitido nesta versão.</p>
+    <p class="helper-text">A seleção nunca atravessa uma reserva ou o fechamento. Datas posteriores ao próximo dia não são permitidas nesta versão.</p>
   `);
 
   modalBody.querySelectorAll('[data-slot]').forEach((button) => {
@@ -423,17 +428,24 @@ function openScheduleModal(computer) {
       selectedSlot = button.dataset.slot;
       modalBody.querySelectorAll('[data-slot]').forEach((item) => item.classList.remove('selected'));
       button.classList.add('selected');
-      document.getElementById('confirmScheduleBtn').disabled = false;
+      renderReservationDuration(computer.id, selectedSlot);
     });
   });
 
   document.getElementById('confirmScheduleBtn').addEventListener('click', () => {
-    if (!selectedSlot || !available.includes(selectedSlot)) return;
+    if (!selectedSlot || !selectedSlotCount || !available.includes(selectedSlot)) return;
+    const startsAt = slotStart(selectedSlot);
+    const endsAt = minutesToTime(timeToMinutes(startsAt) + selectedSlotCount * SLOT_DURATION_MINUTES);
     state.bookings.push({
       id: Date.now(),
       computerId: computer.id,
       dateKey: 'tomorrow',
-      slot: selectedSlot,
+      startsAt,
+      slotCount: selectedSlotCount,
+      slot: `${startsAt} - ${endsAt}`,
+      checkInDeadlineAt: addMinutes(startsAt, DEADLINE_TOLERANCE_MINUTES),
+      exitDeadlineAt: addMinutes(endsAt, DEADLINE_TOLERANCE_MINUTES),
+      userOwned: true,
       status: 'confirmado'
     });
     saveState();
@@ -452,6 +464,7 @@ function openBookingModal(bookingId) {
     <section class="summary-card">
       <p class="summary-title">Computador ${computer?.number || '--'}</p>
       <p class="summary-subtitle">${todayLabel(booking.dateKey)} · ${booking.slot}</p>
+      <p class="helper-text">Entrada entre ${booking.startsAt || slotStart(booking.slot)} e ${booking.checkInDeadlineAt || addMinutes(slotStart(booking.slot), DEADLINE_TOLERANCE_MINUTES)}. Saída até ${booking.exitDeadlineAt || addMinutes(slotEnd(booking.slot), DEADLINE_TOLERANCE_MINUTES)}.</p>
     </section>
     <button class="btn danger full" onclick="cancelBooking(${booking.id})">Cancelar agendamento</button>
   `);
@@ -465,7 +478,45 @@ function cancelBooking(bookingId) {
   showToast('Agendamento cancelado.');
 }
 
-function registerEntry(computerId) {
+function openEntryModal(computerId) {
+  const computer = state.computers.find((item) => item.id === computerId);
+  const maxSlotCount = maxImmediateSlotCount(computerId);
+  if (!computer || maxSlotCount < 1) {
+    showToast('Não há 15 minutos livres antes da próxima restrição.');
+    return;
+  }
+  const startTime = nowTime();
+  openModal(`Usar PC${computer.number}`, `
+    <section class="summary-card">
+      <p class="summary-title">Escolha a duração antes da entrada</p>
+      <p class="summary-subtitle">O uso começa agora, às ${startTime}.</p>
+    </section>
+    <div class="field">
+      <label for="immediateSlotCount">Duração solicitada</label>
+      <select id="immediateSlotCount">
+        ${durationOptions(maxSlotCount)}
+      </select>
+    </div>
+    <section class="summary-card" id="immediateDeadlineSummary"></section>
+    <button class="btn primary full" id="confirmEntryBtn">Confirmar entrada</button>
+  `);
+  const select = document.getElementById('immediateSlotCount');
+  const updateSummary = () => {
+    const slotCount = Number(select.value);
+    const plannedEndsAt = addMinutes(startTime, slotCount * SLOT_DURATION_MINUTES);
+    document.getElementById('immediateDeadlineSummary').innerHTML = `
+      <p class="summary-title">Uso planejado até ${plannedEndsAt}.</p>
+      <p class="summary-subtitle">A saída poderá ser registrada até ${addMinutes(plannedEndsAt, DEADLINE_TOLERANCE_MINUTES)}.</p>
+    `;
+  };
+  select.addEventListener('change', updateSummary);
+  updateSummary();
+  document.getElementById('confirmEntryBtn').addEventListener('click', () => {
+    registerEntry(computerId, Number(select.value), startTime);
+  });
+}
+
+function registerEntry(computerId, slotCount, startTime = nowTime()) {
   if (state.activeSession) {
     showToast('Já existe uma sessão ativa.');
     return;
@@ -475,11 +526,20 @@ function registerEntry(computerId) {
     showToast('Computador indisponível para entrada.');
     return;
   }
+  if (!Number.isInteger(slotCount) || slotCount < 1 || slotCount > maxImmediateSlotCount(computerId)) {
+    showToast('A duração escolhida atravessa uma reserva ou o fechamento.');
+    return;
+  }
+  const plannedEndsAt = addMinutes(startTime, slotCount * SLOT_DURATION_MINUTES);
   state.activeSession = {
     id: Date.now(),
     computerId,
     computerNumber: computer.number,
-    startTime: nowTime(),
+    startTime,
+    slotCount,
+    plannedEndsAt,
+    plannedEndMinutes: timeToMinutes(plannedEndsAt),
+    exitDeadlineAt: addMinutes(plannedEndsAt, DEADLINE_TOLERANCE_MINUTES),
     exchanges: []
   };
   computer.statusToday = 'busy';
@@ -497,8 +557,17 @@ function exchangeComputer(newComputerId) {
   }
   const current = state.computers.find((item) => item.id === state.activeSession.computerId);
   const target = state.computers.find((item) => item.id === newComputerId);
+  const currentMinutes = timeToMinutes(nowTime());
   if (!target || target.statusToday !== 'available') {
     showToast('Computador de destino indisponível.');
+    return;
+  }
+  if (currentMinutes >= state.activeSession.plannedEndMinutes) {
+    showToast('A troca não é permitida no período de tolerância.');
+    return;
+  }
+  if (hasBookingConflict(target.id, 'today', currentMinutes, state.activeSession.plannedEndMinutes)) {
+    showToast('O destino possui reserva antes do fim planejado da sessão.');
     return;
   }
   if (current) current.statusToday = 'available';
@@ -881,15 +950,138 @@ function totalUsage() {
 }
 
 function availableSlots(computerId, dayKey) {
-  const booked = state.bookings
-    .filter((booking) => booking.computerId === computerId && booking.dateKey === dayKey && booking.status === 'confirmado')
-    .map((booking) => booking.slot);
-  return slotsForDay(dayKey).filter((slot) => !booked.includes(slot));
+  return slotsForDay(dayKey).filter((slot) => !hasBookingConflict(
+    computerId,
+    dayKey,
+    timeToMinutes(slotStart(slot)),
+    timeToMinutes(slotEnd(slot))
+  ));
 }
 
 function slotsForDay(dayKey) {
-  if (dayKey === 'today') return ['08:00 - 09:00', '09:00 - 10:00', '10:00 - 11:00', '14:00 - 15:00', '15:00 - 16:00'];
-  return ['07:30 - 08:30', '08:30 - 09:30', '09:30 - 10:30', '10:30 - 11:30', '13:00 - 14:00', '14:00 - 15:00', '15:00 - 16:00', '16:00 - 17:00'];
+  return operatingWindows(dayKey).flatMap(([startsAt, endsAt]) => {
+    const slots = [];
+    for (let cursor = timeToMinutes(startsAt); cursor + SLOT_DURATION_MINUTES <= timeToMinutes(endsAt); cursor += SLOT_DURATION_MINUTES) {
+      slots.push(`${minutesToTime(cursor)} - ${minutesToTime(cursor + SLOT_DURATION_MINUTES)}`);
+    }
+    return slots;
+  });
+}
+
+function operatingWindows(dayKey) {
+  if (dayKey === 'today') return [['08:00', '11:00'], ['14:00', '16:00']];
+  return [['07:30', '11:30'], ['13:00', '17:00']];
+}
+
+function bookingStartMinutes(booking) {
+  return timeToMinutes(booking.startsAt || slotStart(booking.slot));
+}
+
+function bookingEndMinutes(booking) {
+  if (booking.slotCount) return bookingStartMinutes(booking) + booking.slotCount * SLOT_DURATION_MINUTES;
+  return timeToMinutes(slotEnd(booking.slot));
+}
+
+function hasBookingConflict(computerId, dayKey, startsAt, endsAt) {
+  return state.bookings.some((booking) => (
+    booking.computerId === computerId
+    && booking.dateKey === dayKey
+    && booking.status === 'confirmado'
+    && bookingStartMinutes(booking) < endsAt
+    && bookingEndMinutes(booking) > startsAt
+  ));
+}
+
+function maxConsecutiveSlotCount(computerId, dayKey, selected) {
+  const slots = slotsForDay(dayKey);
+  const available = new Set(availableSlots(computerId, dayKey));
+  const startIndex = slots.indexOf(selected);
+  if (startIndex < 0 || !available.has(selected)) return 0;
+  let count = 0;
+  for (let index = startIndex; index < slots.length; index += 1) {
+    const slot = slots[index];
+    const previous = slots[index - 1];
+    if (!available.has(slot) || (previous && index > startIndex && slotEnd(previous) !== slotStart(slot))) break;
+    count += 1;
+  }
+  return count;
+}
+
+function renderReservationDuration(computerId, selected) {
+  const maxSlotCount = maxConsecutiveSlotCount(computerId, 'tomorrow', selected);
+  const container = document.getElementById('reservationDuration');
+  const confirm = document.getElementById('confirmScheduleBtn');
+  if (maxSlotCount < 1) {
+    selectedSlotCount = 0;
+    confirm.disabled = true;
+    container.innerHTML = '<p class="helper-text">Não há sequência disponível a partir deste horário.</p>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="field">
+      <label for="reservationSlotCount">Quantidade de slots consecutivos</label>
+      <select id="reservationSlotCount">${durationOptions(maxSlotCount)}</select>
+    </div>
+    <section class="summary-card" id="reservationDeadlineSummary"></section>
+  `;
+  const select = document.getElementById('reservationSlotCount');
+  const updateSummary = () => {
+    selectedSlotCount = Number(select.value);
+    const startsAt = slotStart(selected);
+    const plannedEndsAt = addMinutes(startsAt, selectedSlotCount * SLOT_DURATION_MINUTES);
+    document.getElementById('reservationDeadlineSummary').innerHTML = `
+      <p class="summary-title">Reserva planejada: ${startsAt}–${plannedEndsAt}</p>
+      <p class="summary-subtitle">Entrada até ${addMinutes(startsAt, DEADLINE_TOLERANCE_MINUTES)} e saída até ${addMinutes(plannedEndsAt, DEADLINE_TOLERANCE_MINUTES)}.</p>
+    `;
+    confirm.disabled = false;
+  };
+  select.addEventListener('change', updateSummary);
+  updateSummary();
+}
+
+function durationOptions(maxSlotCount) {
+  return Array.from({ length: maxSlotCount }, (_, index) => index + 1)
+    .map((slotCount) => `<option value="${slotCount}">${slotCount * SLOT_DURATION_MINUTES} min (${slotCount} slot${slotCount > 1 ? 's' : ''})</option>`)
+    .join('');
+}
+
+function maxImmediateSlotCount(computerId) {
+  const current = timeToMinutes(nowTime());
+  const window = operatingWindows('today').find(([startsAt, endsAt]) => (
+    current >= timeToMinutes(startsAt) && current < timeToMinutes(endsAt)
+  ));
+  if (!window) return 0;
+  const limits = [timeToMinutes(window[1])];
+  state.bookings
+    .filter((booking) => (
+      booking.dateKey === 'today'
+      && booking.status === 'confirmado'
+      && (booking.computerId === computerId || booking.userOwned !== false)
+    ))
+    .forEach((booking) => {
+      if (bookingEndMinutes(booking) > current) {
+        limits.push(bookingStartMinutes(booking));
+      }
+    });
+  const limit = Math.min(...limits);
+  return Math.max(0, Math.floor((limit - current) / SLOT_DURATION_MINUTES));
+}
+
+function slotStart(slot) {
+  return slot.split(' - ')[0];
+}
+
+function slotEnd(slot) {
+  return slot.split(' - ')[1];
+}
+
+function minutesToTime(value) {
+  const normalized = ((value % (24 * 60)) + (24 * 60)) % (24 * 60);
+  return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
+}
+
+function addMinutes(value, minutes) {
+  return minutesToTime(timeToMinutes(value) + minutes);
 }
 
 function inferTurno(time) {
@@ -922,10 +1114,12 @@ function closeModal() {
   modalRoot.classList.add('hidden');
   modalRoot.setAttribute('aria-hidden', 'true');
   selectedSlot = null;
+  selectedSlotCount = 0;
 }
 
 window.cancelBooking = cancelBooking;
 window.registerEntry = registerEntry;
+window.openEntryModal = openEntryModal;
 window.registerExit = registerExit;
 window.exchangeComputer = exchangeComputer;
 window.openIncidentModal = openIncidentModal;

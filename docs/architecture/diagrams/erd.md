@@ -43,6 +43,9 @@ erDiagram
         bigint computer_id
         datetime starts_at
         datetime ends_at
+        datetime check_in_deadline_at
+        datetime exit_deadline_at
+        datetime no_show_at
         string status
         datetime invalidated_at
         string invalidated_by_profile
@@ -57,6 +60,9 @@ erDiagram
         bigint reservation_id
         bigint start_shift_id
         datetime started_at
+        datetime planned_starts_at
+        datetime planned_ends_at
+        datetime exit_deadline_at
         datetime ended_at
         string status
     }
@@ -68,6 +74,7 @@ erDiagram
         int sequence
         datetime started_at
         datetime ended_at
+        string end_reason
     }
 
     OCCURRENCE {
@@ -134,4 +141,4 @@ erDiagram
     }
 ```
 
-O diagrama é conceitual. Migrations registram constraints e índices definitivos, inclusive não sobreposição de calendários ativos do mesmo tipo, unicidade de dia por calendário e abertura anterior ao fechamento.
+O diagrama é conceitual. `slot_count` é derivado dos intervalos e não é persistido. Migrations registram constraints e índices definitivos, inclusive não sobreposição de calendários ativos do mesmo tipo, reservas confirmadas semiabertas, unicidade de dia por calendário e ordem dos intervalos planejados e deadlines.

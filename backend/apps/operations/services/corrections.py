@@ -43,6 +43,13 @@ def _overlaps_other_session(allocation, *, started_at, ended_at):
 
 
 def _validate_timeline(session, allocations):
+    if (
+        session.planned_starts_at >= session.planned_ends_at
+        or session.planned_ends_at > session.exit_deadline_at
+        or session.started_at < session.planned_starts_at
+        or session.started_at > session.exit_deadline_at
+    ):
+        raise SessionCorrectionInvalid()
     if session.ended_at is not None and session.ended_at < session.started_at:
         raise SessionCorrectionInvalid()
     if (
@@ -62,6 +69,8 @@ def _validate_timeline(session, allocations):
 
     for index, allocation in enumerate(allocations):
         if allocation.started_at < session.started_at:
+            raise SessionCorrectionInvalid()
+        if allocation.started_at >= session.planned_ends_at:
             raise SessionCorrectionInvalid()
         if (
             allocation.ended_at is not None

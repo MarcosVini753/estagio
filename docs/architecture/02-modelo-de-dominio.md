@@ -57,7 +57,9 @@ Tipos: `CLOSURE`, `SCHEDULE_CHANGE`, `SPECIAL_HOURS`. Períodos efetivo e visív
 
 ### `BookingPolicy`
 
-`slot_duration_minutes`, `check_in_tolerance_minutes`, `cancellation_limit_minutes`, `max_future_reservations_per_user`, `is_active`, `valid_from`.
+`cancellation_limit_minutes`, `max_future_reservations_per_user`, `is_active`, `valid_from`.
+
+A duração de 15 minutos e as tolerâncias de três minutos são regras fixas em `operations/rules.py`, não políticas administrativas.
 
 ### `ReportConfiguration`
 
@@ -79,27 +81,29 @@ Estado persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`. Não criar campos de 
 
 ### `Reservation`
 
-`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `computer`, `starts_at`, `ends_at`, `status`, perfis de criação/cancelamento, dados de cancelamento e `invalidated_at`, `invalidated_by_profile`, `invalidation_reason`.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `computer`, `starts_at`, `ends_at`, `check_in_deadline_at`, `exit_deadline_at`, `no_show_at`, `status`, perfis de criação/cancelamento, dados de cancelamento e `invalidated_at`, `invalidated_by_profile`, `invalidation_reason`.
 
 Estados: `CONFIRMED`, `CANCELLED`, `USED`, `NO_SHOW`, `INVALIDATED`.
 
-Constraints PostgreSQL impedem sobreposição de reservas confirmadas por computador e por usuário com intervalos `[)`. O serviço bloqueia computador e referência de usuário para validar slots, limite e disponibilidade antes da criação.
+`slot_count` é derivado de `(ends_at - starts_at) / 15 minutos`. Constraints PostgreSQL exigem início anterior ao fim, deadlines não anteriores aos respectivos horários e impedem sobreposição de reservas confirmadas por computador e por usuário com intervalos `[)`. O serviço bloqueia referência de usuário e computador para validar o intervalo completo, limite e disponibilidade antes da criação.
 
 `INVALIDATED` preserva a reserva incompatível com uma mudança de calendário, mas não participa das constraints condicionais de bloqueio e não permite check-in.
 
 ### `UseSession`
 
-`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `reservation`, `started_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `reservation`, `started_at`, `planned_starts_at`, `planned_ends_at`, `exit_deadline_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
 
 Os snapshots preservam vínculo e unidade no momento da reserva ou entrada. Registros legados usam `NOT_INFORMED` e unidade vazia.
 
 Estados: `ACTIVE`, `FINISHED`, `CANCELLED`.
 
-Constraint: uma sessão ativa por referência de usuário.
+O intervalo planejado representa a duração solicitada; `started_at` e `ended_at` representam uso real. Em sessão de reserva, o intervalo e o prazo são copiados da reserva. Em uso imediato, o início planejado é a entrada e o fim soma a quantidade solicitada de slots de 15 minutos.
+
+Constraints exigem uma sessão ativa por referência de usuário, início planejado anterior ao fim, prazo não anterior ao fim planejado e entrada real entre início planejado e prazo de saída.
 
 ### `ComputerAllocation`
 
-`session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`.
+`session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`. `TIME_LIMIT_REACHED` identifica o encerramento lógico automático no prazo da sessão.
 
 Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início; intervalos históricos do mesmo computador sem sobreposição.
 
