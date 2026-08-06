@@ -29,3 +29,4 @@ ADRs registram decisões arquiteturais, alternativas e consequências.
 - [0016 — Identidade lógica das versões de turno](0016-identidade-logica-das-versoes-de-turno.md)
 - [0017 — Separar calendário operacional de turnos](0017-separar-calendario-operacional-de-turnos.md)
 - [0018 — Manter API sem versão no caminho](0018-manter-api-sem-versao-no-caminho.md)
+- [0019 — Adotar sessões com duração solicitada](0019-adotar-sessoes-com-duracao-solicitada.md)
