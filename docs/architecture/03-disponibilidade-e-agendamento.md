@@ -54,7 +54,7 @@ Uma reserva pertencente ao usuário atual pode ser indicada adicionalmente por `
 
 Os slots são derivados de:
 
-- horário de funcionamento;
+- calendário operacional efetivo;
 - duração configurada;
 - exceções de calendário;
 - reservas válidas;
@@ -63,6 +63,30 @@ Os slots são derivados de:
 - horário atual quando a data é hoje.
 
 Não persistir todos os slots como registros se eles puderem ser calculados. Persistir somente eventos reais: reservas, sessões e alocações.
+
+## Resolução do funcionamento
+
+O resolvedor compartilhado em `configuration/calendar.py` aplica:
+
+```text
+CalendarException da data
+  > OperatingSchedule TEMPORARY
+  > OperatingSchedule REGULAR
+  > OPERATING_SCHEDULE_REQUIRED
+```
+
+Domingo é um dia regular explicitamente fechado, não ausência de configuração. O algoritmo de disponibilidade começa por:
+
+```python
+operating_day = resolve_operating_day(target_date)
+
+if operating_day.is_closed:
+    return no_slots(reason=operating_day.reason)
+
+slots = generate_slots(operating_day.windows)
+```
+
+De segunda a sexta o horário regular inicial é 07h15–21h; sábado é 07h15–13h. `Shift` não participa desta resolução.
 
 ## Uso imediato
 
@@ -109,6 +133,19 @@ Operação transacional:
 3. encerrar sessão;
 4. marcar reserva relacionada como `USED`, quando aplicável;
 5. produzir evento de auditoria se a saída for administrativa.
+
+## Mudança de calendário e reservas
+
+Antes de salvar uma redução de horário, o preview consulta reservas confirmadas dentro da vigência e identifica intervalos fora das novas janelas. Na confirmação, calendário, reservas e eventual aviso são gravados em uma transação:
+
+1. bloquear calendários do mesmo tipo e reservas confirmadas do período;
+2. salvar a configuração nova ou sua versão substituta;
+3. recalcular o calendário efetivo, preservando exceções e precedência;
+4. rejeitar com `SCHEDULE_CHANGE_AFFECTS_RESERVATIONS` se faltou confirmação;
+5. marcar conflitos como `INVALIDATED`, com perfil, horário e motivo;
+6. registrar auditoria do calendário e de cada reserva;
+7. criar aviso vinculado, quando solicitado;
+8. confirmar a transação.
 
 ## Concorrência
 

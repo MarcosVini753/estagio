@@ -1,5 +1,10 @@
 from rest_framework import serializers
 
+from apps.configuration.calendar import (
+    CALENDAR_SOURCE_CHOICES,
+    ROOM_STATUS_CHOICES,
+)
+
 
 class MonthlyReportQuerySerializer(serializers.Serializer):
     year = serializers.IntegerField(min_value=1, max_value=9998)
@@ -22,9 +27,9 @@ class ReportShiftSerializer(serializers.Serializer):
 class MonthlyReportDaySerializer(serializers.Serializer):
     date = serializers.DateField()
     day = serializers.IntegerField()
-    calendar_status = serializers.ChoiceField(
-        choices=["OPEN", "CLOSED", "OPTIONAL_HOLIDAY", "SPECIAL_HOURS"]
-    )
+    calendar_status = serializers.ChoiceField(choices=ROOM_STATUS_CHOICES)
+    calendar_source = serializers.ChoiceField(choices=CALENDAR_SOURCE_CHOICES)
+    operating_minutes = serializers.IntegerField(min_value=0)
     visits_by_shift = serializers.DictField(child=serializers.IntegerField(min_value=0))
     total = serializers.IntegerField(min_value=0)
 
@@ -33,10 +38,14 @@ class MonthlyReportSummarySerializer(serializers.Serializer):
     visits = serializers.IntegerField(min_value=0)
     distinct_users = serializers.IntegerField(min_value=0)
     reservations = serializers.IntegerField(min_value=0)
+    reservations_by_status = serializers.DictField(
+        child=serializers.IntegerField(min_value=0)
+    )
     occurrences = serializers.IntegerField(min_value=0)
     computers_used = serializers.IntegerField(min_value=0)
     allocated_minutes = serializers.IntegerField(min_value=0)
     average_stay_minutes = serializers.IntegerField(min_value=0)
+    operating_minutes = serializers.IntegerField(min_value=0)
 
 
 class MonthlyReportWarningsSerializer(serializers.Serializer):

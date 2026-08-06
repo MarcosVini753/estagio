@@ -6,7 +6,8 @@ from django.test import TransactionTestCase
 from django.utils import timezone
 
 from apps.computers.models import Computer
-from apps.configuration.models import BookingPolicy, Shift
+from apps.configuration.models import BookingPolicy, OperatingSchedule, Shift, Weekday
+from apps.configuration.tests.factories import create_operating_schedule
 from apps.core.api.errors import UsageSessionConflict
 from apps.operations.models import ComputerAllocation, UseSession
 from apps.operations.services import start_usage_session
@@ -25,6 +26,13 @@ class UsageSessionConcurrencyTest(TransactionTestCase):
             start_time=time(7, 0),
             end_time=time(13, 0),
             valid_from=self.today - timedelta(days=1),
+        )
+        OperatingSchedule.objects.all().delete()
+        create_operating_schedule(
+            valid_from=self.today - timedelta(days=1),
+            weekday_windows={
+                weekday: [(time(7), time(13))] for weekday in Weekday.values
+            },
         )
         BookingPolicy.objects.create(
             valid_from=self.today - timedelta(days=1),

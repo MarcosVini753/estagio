@@ -5,11 +5,15 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.computers.models import Computer
-from apps.configuration.models import CalendarException
+from apps.configuration.calendar import (
+    OperatingDayResult,
+    as_datetime_windows,
+    aware_at,
+    resolve_operating_day,
+    room_status_payload,
+)
 from apps.configuration.selectors import (
     get_booking_policy_for_date,
-    get_calendar_exception_for_date,
-    get_shifts_for_date,
 )
 from apps.core.api.errors import ConfigurationRequired, DateOutsideAllowedWindow
 from apps.operations.models import ComputerAllocation, Reservation
@@ -27,43 +31,10 @@ def validate_target_date(target_date: date, *, now=None) -> date:
     return today
 
 
-def _aware(target_date: date, target_time: time) -> datetime:
-    value = datetime.combine(target_date, target_time)
-    return timezone.make_aware(value, timezone.get_current_timezone())
-
-
-def get_operating_windows(target_date: date) -> list[tuple[datetime, datetime]]:
-    exception = get_calendar_exception_for_date(target_date)
-    if exception and exception.exception_type in {
-        CalendarException.ExceptionType.CLOSED,
-        CalendarException.ExceptionType.OPTIONAL_HOLIDAY,
-    }:
-        return []
-
-    if (
-        exception
-        and exception.exception_type == CalendarException.ExceptionType.SPECIAL_HOURS
-    ):
-        if not exception.opens_at or not exception.closes_at:
-            return []
-        return [
-            (
-                _aware(target_date, exception.opens_at),
-                _aware(target_date, exception.closes_at),
-            )
-        ]
-
-    return [
-        (
-            _aware(target_date, shift.start_time),
-            _aware(target_date, shift.end_time),
-        )
-        for shift in get_shifts_for_date(target_date)
-    ]
-
-
 def generate_slot_intervals(
     target_date: date,
+    *,
+    operating_day: OperatingDayResult | None = None,
 ) -> tuple[int, list[tuple[datetime, datetime]], list[tuple[datetime, datetime]]]:
     policy = get_booking_policy_for_date(target_date)
     if not policy:
@@ -71,7 +42,8 @@ def generate_slot_intervals(
             "Nenhuma política de reservas está ativa para a data."
         )
 
-    windows = get_operating_windows(target_date)
+    operating_day = operating_day or resolve_operating_day(target_date)
+    windows = as_datetime_windows(operating_day)
     duration = timedelta(minutes=policy.slot_duration_minutes)
     slots = []
     for window_start, window_end in windows:
@@ -105,7 +77,7 @@ def _load_events(
     if not computers:
         return allocations_by_computer, reservations_by_computer
 
-    day_start = _aware(target_date, time.min)
+    day_start = aware_at(target_date, time.min)
     day_end = day_start + timedelta(days=1)
     range_start = windows[0][0] if windows else day_start
     range_end = windows[-1][1] if windows else day_end
@@ -240,7 +212,11 @@ def get_computers_availability(
     current = now or timezone.now()
     today = validate_target_date(target_date, now=current)
     is_today = target_date == today
-    duration, windows, intervals = generate_slot_intervals(target_date)
+    operating_day = resolve_operating_day(target_date)
+    duration, windows, intervals = generate_slot_intervals(
+        target_date,
+        operating_day=operating_day,
+    )
     computer_list = list(computers)
     allocations, reservations = _load_events(
         computer_list,
@@ -307,12 +283,20 @@ def get_computers_availability(
             }
         )
 
+    room = room_status_payload(
+        target_date,
+        now=current,
+        operating_day=operating_day,
+    )
+    room.pop("date")
+    room.pop("is_open_now")
     return (
         {
             "date": target_date,
             "is_today": is_today,
             "slot_duration_minutes": duration,
             "generated_at": current,
+            "room": room,
             "computers": items,
         },
         slots_by_computer,
@@ -337,5 +321,6 @@ def get_computer_slots(
         "date": summary["date"],
         "is_today": summary["is_today"],
         "slot_duration_minutes": summary["slot_duration_minutes"],
+        "room": summary["room"],
         "slots": slots_by_computer[computer.pk],
     }

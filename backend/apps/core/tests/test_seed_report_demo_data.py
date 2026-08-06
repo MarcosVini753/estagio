@@ -5,7 +5,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase
 
 from apps.computers.models import Computer, ComputerOperationalStateChange
-from apps.configuration.models import CalendarException, Shift
+from apps.configuration.models import CalendarException, OperatingSchedule, Shift
 from apps.core.enums import AffiliationType
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
@@ -32,6 +32,7 @@ class SeedReportDemoDataTest(TestCase):
             "reservations": Reservation.objects.count(),
             "occurrences": Occurrence.objects.count(),
             "calendar": CalendarException.objects.count(),
+            "operating_schedules": OperatingSchedule.objects.count(),
             "state_changes": ComputerOperationalStateChange.objects.count(),
         }
 
@@ -40,7 +41,15 @@ class SeedReportDemoDataTest(TestCase):
 
         self.assertEqual(Computer.objects.count(), 8)
         self.assertEqual(Shift.objects.count(), 3)
-        self.assertEqual(UseSession.objects.count(), 27)
+        self.assertGreater(UseSession.objects.count(), 0)
+        self.assertLess(UseSession.objects.count(), 27)
+        self.assertEqual(
+            OperatingSchedule.objects.filter(
+                schedule_type=OperatingSchedule.ScheduleType.REGULAR,
+                is_active=True,
+            ).count(),
+            1,
+        )
         self.assertGreater(
             ComputerAllocation.objects.count(), UseSession.objects.count()
         )

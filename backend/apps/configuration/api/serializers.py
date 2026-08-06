@@ -2,7 +2,48 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.configuration.models import BookingPolicy, CalendarException, Shift
+from apps.configuration.calendar import (
+    CALENDAR_SOURCE_CHOICES,
+    ROOM_STATUS_CHOICES,
+)
+from apps.configuration.models import (
+    BookingPolicy,
+    CalendarException,
+    OperatingSchedule,
+    OperatingScheduleDay,
+    OperatingWindow,
+    RoomNotice,
+    Shift,
+    Weekday,
+)
+
+
+class RoomNoticeInlineSerializer(serializers.Serializer):
+    notice_type = serializers.ChoiceField(
+        choices=RoomNotice.NoticeType.choices,
+        required=False,
+    )
+    title = serializers.CharField(max_length=150)
+    message = serializers.CharField()
+    effective_from = serializers.DateField(required=False)
+    effective_until = serializers.DateField(required=False)
+    visible_from = serializers.DateTimeField()
+    visible_until = serializers.DateTimeField(required=False, allow_null=True)
+
+
+class WeekdayField(serializers.ChoiceField):
+    def __init__(self, **kwargs):
+        super().__init__(choices=Weekday.choices, **kwargs)
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data in Weekday.__members__:
+            return Weekday[data].value
+        return super().to_internal_value(data)
+
+    def to_representation(self, value):
+        if value in (None, ""):
+            return value
+        return Weekday(int(value)).name
 
 
 class ShiftSerializer(serializers.ModelSerializer):
@@ -94,6 +135,18 @@ class ShiftReplaceSerializer(serializers.Serializer):
 
 
 class CalendarExceptionSerializer(serializers.ModelSerializer):
+    confirm_invalidation = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=False,
+    )
+    notify_users = serializers.BooleanField(
+        write_only=True,
+        required=False,
+        default=False,
+    )
+    notice = RoomNoticeInlineSerializer(write_only=True, required=False)
+
     class Meta:
         model = CalendarException
         fields = [
@@ -103,6 +156,9 @@ class CalendarExceptionSerializer(serializers.ModelSerializer):
             "opens_at",
             "closes_at",
             "description",
+            "confirm_invalidation",
+            "notify_users",
+            "notice",
             "created_at",
             "updated_at",
         ]
@@ -110,6 +166,10 @@ class CalendarExceptionSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         instance = self.instance
+        if instance and "date" in attrs and attrs["date"] != instance.date:
+            raise serializers.ValidationError(
+                {"date": "A data da exceção não pode ser alterada."}
+            )
         exception_type = attrs.get(
             "exception_type",
             instance.exception_type if instance else None,
@@ -129,6 +189,10 @@ class CalendarExceptionSerializer(serializers.ModelSerializer):
         elif opens_at or closes_at:
             raise serializers.ValidationError(
                 "Horários só devem ser informados para uma exceção de horário especial."
+            )
+        if attrs.get("notify_users") and not attrs.get("notice"):
+            raise serializers.ValidationError(
+                {"notice": "Informe o aviso quando notify_users for verdadeiro."}
             )
         return attrs
 
@@ -171,3 +235,224 @@ class BookingPolicyUpdateSerializer(serializers.Serializer):
                 "Informe ao menos um campo para atualização."
             )
         return attrs
+
+
+class OperatingWindowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OperatingWindow
+        fields = ["id", "opens_at", "closes_at", "display_order"]
+        read_only_fields = ["id"]
+
+
+class OperatingScheduleDaySerializer(serializers.ModelSerializer):
+    weekday = WeekdayField()
+    windows = OperatingWindowSerializer(many=True)
+
+    class Meta:
+        model = OperatingScheduleDay
+        fields = ["id", "weekday", "is_open", "windows"]
+        read_only_fields = ["id"]
+
+
+class OperatingScheduleSerializer(serializers.ModelSerializer):
+    days = OperatingScheduleDaySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = OperatingSchedule
+        fields = [
+            "id",
+            "series_key",
+            "name",
+            "schedule_type",
+            "valid_from",
+            "valid_until",
+            "reason",
+            "is_active",
+            "created_by_profile",
+            "days",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class OperatingWindowWriteSerializer(serializers.Serializer):
+    opens_at = serializers.TimeField()
+    closes_at = serializers.TimeField()
+    display_order = serializers.IntegerField(min_value=0, required=False)
+
+
+class OperatingScheduleDayWriteSerializer(serializers.Serializer):
+    weekday = WeekdayField()
+    is_open = serializers.BooleanField()
+    windows = OperatingWindowWriteSerializer(many=True)
+
+
+class OperatingScheduleCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120)
+    schedule_type = serializers.ChoiceField(
+        choices=OperatingSchedule.ScheduleType.choices
+    )
+    valid_from = serializers.DateField()
+    valid_until = serializers.DateField(
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    reason = serializers.CharField(required=False, allow_blank=True, default="")
+    days = OperatingScheduleDayWriteSerializer(many=True)
+    confirm_invalidation = serializers.BooleanField(required=False, default=False)
+    notify_users = serializers.BooleanField(required=False, default=False)
+    notice = RoomNoticeInlineSerializer(required=False)
+
+    def validate(self, attrs):
+        if attrs.get("notify_users") and not attrs.get("notice"):
+            raise serializers.ValidationError(
+                {"notice": "Informe o aviso quando notify_users for verdadeiro."}
+            )
+        return attrs
+
+
+class OperatingScheduleUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120, required=False)
+    valid_from = serializers.DateField(required=False)
+    valid_until = serializers.DateField(required=False, allow_null=True)
+    reason = serializers.CharField(required=False, allow_blank=True)
+    is_active = serializers.BooleanField(required=False)
+    days = OperatingScheduleDayWriteSerializer(many=True, required=False)
+    confirm_invalidation = serializers.BooleanField(required=False, default=False)
+
+    def validate(self, attrs):
+        if not set(attrs) - {"confirm_invalidation"}:
+            raise serializers.ValidationError(
+                "Informe ao menos um campo para atualização."
+            )
+        return attrs
+
+
+class OperatingScheduleReplaceSerializer(serializers.Serializer):
+    effective_from = serializers.DateField()
+    name = serializers.CharField(max_length=120, required=False)
+    reason = serializers.CharField(required=False, allow_blank=True)
+    days = OperatingScheduleDayWriteSerializer(many=True, required=False)
+    confirm_invalidation = serializers.BooleanField(required=False, default=False)
+    notify_users = serializers.BooleanField(required=False, default=False)
+    notice = RoomNoticeInlineSerializer(required=False)
+
+    def validate(self, attrs):
+        if attrs.get("notify_users") and not attrs.get("notice"):
+            raise serializers.ValidationError(
+                {"notice": "Informe o aviso quando notify_users for verdadeiro."}
+            )
+        return attrs
+
+
+class OperatingScheduleImpactSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120)
+    schedule_type = serializers.ChoiceField(
+        choices=OperatingSchedule.ScheduleType.choices
+    )
+    valid_from = serializers.DateField()
+    valid_until = serializers.DateField(
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    reason = serializers.CharField(required=False, allow_blank=True, default="")
+    days = OperatingScheduleDayWriteSerializer(many=True)
+
+
+class AffectedPeriodSerializer(serializers.Serializer):
+    starts_on = serializers.DateField()
+    ends_on = serializers.DateField(allow_null=True)
+
+
+class ConflictingReservationSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    user_reference = serializers.CharField()
+    computer_id = serializers.IntegerField()
+    starts_at = serializers.DateTimeField()
+    ends_at = serializers.DateTimeField()
+    reason = serializers.CharField()
+
+
+class OperatingScheduleImpactResponseSerializer(serializers.Serializer):
+    affected_period = AffectedPeriodSerializer()
+    conflicting_reservations = ConflictingReservationSerializer(many=True)
+    total = serializers.IntegerField(min_value=0)
+
+
+class RoomNoticeSerializer(serializers.ModelSerializer):
+    operating_schedule_id = serializers.IntegerField(read_only=True)
+    calendar_exception_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = RoomNotice
+        fields = [
+            "id",
+            "notice_type",
+            "title",
+            "message",
+            "effective_from",
+            "effective_until",
+            "visible_from",
+            "visible_until",
+            "is_active",
+            "created_by_profile",
+            "operating_schedule_id",
+            "calendar_exception_id",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class RoomNoticeCreateSerializer(serializers.Serializer):
+    notice_type = serializers.ChoiceField(choices=RoomNotice.NoticeType.choices)
+    title = serializers.CharField(max_length=150)
+    message = serializers.CharField()
+    effective_from = serializers.DateField()
+    effective_until = serializers.DateField()
+    visible_from = serializers.DateTimeField()
+    visible_until = serializers.DateTimeField(required=False, allow_null=True)
+    is_active = serializers.BooleanField(required=False, default=True)
+
+
+class RoomNoticeUpdateSerializer(serializers.Serializer):
+    notice_type = serializers.ChoiceField(
+        choices=RoomNotice.NoticeType.choices,
+        required=False,
+    )
+    title = serializers.CharField(max_length=150, required=False)
+    message = serializers.CharField(required=False)
+    effective_from = serializers.DateField(required=False)
+    effective_until = serializers.DateField(required=False)
+    visible_from = serializers.DateTimeField(required=False)
+    visible_until = serializers.DateTimeField(required=False, allow_null=True)
+    is_active = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError(
+                "Informe ao menos um campo para atualização."
+            )
+        return attrs
+
+
+class RoomStatusQuerySerializer(serializers.Serializer):
+    date = serializers.DateField(required=False, default=timezone.localdate)
+
+
+class RoomStatusWindowSerializer(serializers.Serializer):
+    opens_at = serializers.TimeField()
+    closes_at = serializers.TimeField()
+
+
+class RoomStatusSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    status = serializers.ChoiceField(choices=ROOM_STATUS_CHOICES)
+    source = serializers.ChoiceField(choices=CALENDAR_SOURCE_CHOICES)
+    is_open_now = serializers.BooleanField()
+    reason = serializers.CharField(allow_blank=True)
+    operating_windows = RoomStatusWindowSerializer(many=True)
+    active_notices = RoomNoticeSerializer(many=True)

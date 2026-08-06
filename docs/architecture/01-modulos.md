@@ -30,15 +30,21 @@ A autenticação real será tratada em etapa futura. O nome `access` evita criar
 Responsável por:
 
 - turnos;
-- horário de funcionamento;
+- calendários semanais regulares e temporários;
+- resolução do horário de funcionamento;
 - exceções de calendário;
+- avisos internos;
 - parâmetros de reserva;
 - parâmetros de relatório.
 
-Entidades iniciais:
+Entidades:
 
 - `Shift`;
+- `OperatingSchedule`;
+- `OperatingScheduleDay`;
+- `OperatingWindow`;
 - `CalendarException`;
+- `RoomNotice`;
 - `BookingPolicy`;
 - `ReportConfiguration`.
 
@@ -68,6 +74,7 @@ Núcleo transacional do sistema:
 - troca de computador;
 - saída;
 - correções operacionais.
+- invalidação de reservas decorrente de mudança de calendário.
 
 Entidades:
 
@@ -110,6 +117,9 @@ Responsável por eventos administrativos sensíveis:
 - alteração de estado operacional;
 - correção de registros;
 - mudança de parâmetros;
+- criação, substituição ou edição de calendário e exceção;
+- publicação ou desativação de aviso;
+- invalidação de reserva por mudança de funcionamento;
 - ações futuras de contas e permissões.
 
 Entidade futura ou inicial:

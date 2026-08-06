@@ -4,7 +4,7 @@ from importlib import import_module
 from django.apps import apps
 from django.test import TestCase
 
-from apps.configuration.models import Shift
+from apps.configuration.models import OperatingSchedule, Shift, Weekday
 
 
 class ShiftSeriesKeyMigrationTest(TestCase):
@@ -36,3 +36,28 @@ class ShiftSeriesKeyMigrationTest(TestCase):
         other.refresh_from_db()
         self.assertEqual(first.series_key, second.series_key)
         self.assertNotEqual(first.series_key, other.series_key)
+
+
+class RegularOperatingScheduleMigrationTest(TestCase):
+    def test_seeds_week_schedule_without_changing_shifts(self):
+        shifts_before = list(Shift.objects.values_list("pk", flat=True))
+        OperatingSchedule.objects.all().delete()
+        migration = import_module(
+            "apps.configuration.migrations.0004_seed_regular_operating_schedule"
+        )
+
+        migration.seed_regular_schedule(apps, None)
+
+        schedule = OperatingSchedule.objects.get(
+            schedule_type=OperatingSchedule.ScheduleType.REGULAR
+        )
+        self.assertEqual(schedule.days.count(), 7)
+        saturday = schedule.days.get(weekday=Weekday.SATURDAY)
+        sunday = schedule.days.get(weekday=Weekday.SUNDAY)
+        self.assertEqual(saturday.windows.get().closes_at, time(13))
+        self.assertFalse(sunday.is_open)
+        self.assertFalse(sunday.windows.exists())
+        self.assertEqual(
+            list(Shift.objects.values_list("pk", flat=True)),
+            shifts_before,
+        )

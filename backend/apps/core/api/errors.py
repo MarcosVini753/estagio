@@ -14,6 +14,85 @@ class ConfigurationRequired(APIException):
     default_code = "CONFIGURATION_REQUIRED"
 
 
+class OperatingScheduleRequired(ConfigurationRequired):
+    default_detail = "Nenhum calendário operacional regular atende à data."
+    default_code = "OPERATING_SCHEDULE_REQUIRED"
+
+
+class OperatingScheduleOverlap(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "O calendário sobrepõe outro calendário ativo do mesmo tipo."
+    default_code = "OPERATING_SCHEDULE_OVERLAP"
+
+
+class OperatingScheduleStartInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = (
+        "Novos calendários devem começar após hoje; use uma substituição futura "
+        "ou uma exceção para mudanças no dia atual."
+    )
+    default_code = "OPERATING_SCHEDULE_START_INVALID"
+
+
+class TemporaryScheduleEndRequired(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Horário temporário exige uma data final."
+    default_code = "TEMPORARY_SCHEDULE_END_REQUIRED"
+
+
+class OperatingDayConfigurationInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "A configuração dos dias de funcionamento é inválida."
+    default_code = "OPERATING_DAY_CONFIGURATION_INVALID"
+
+
+class OperatingWindowOverlap(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "As janelas de funcionamento do mesmo dia se sobrepõem."
+    default_code = "OPERATING_WINDOW_OVERLAP"
+
+
+class OperatingWindowInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "A janela de funcionamento é inválida."
+    default_code = "OPERATING_WINDOW_INVALID"
+
+
+class ScheduleChangeAffectsReservations(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_code = "SCHEDULE_CHANGE_AFFECTS_RESERVATIONS"
+
+    def __init__(self, reservation_ids):
+        reservation_ids = list(reservation_ids)
+        super().__init__(
+            {
+                "detail": (
+                    "A alteração afetará "
+                    f"{len(reservation_ids)} reserva(s) confirmada(s)."
+                ),
+                "reservation_ids": reservation_ids,
+            }
+        )
+
+
+class ScheduleReplacementInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "A substituição do calendário não é válida para esta versão."
+    default_code = "SCHEDULE_REPLACEMENT_INVALID"
+
+
+class RoomNoticeInvalidPeriod(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "O período do aviso é inválido."
+    default_code = "ROOM_NOTICE_INVALID_PERIOD"
+
+
+class RoomNoticeMessageRequired(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Informe a mensagem do aviso."
+    default_code = "ROOM_NOTICE_MESSAGE_REQUIRED"
+
+
 class ComputerStateUnchanged(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "O computador já possui o estado operacional informado."

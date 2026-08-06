@@ -7,7 +7,18 @@
 - Uso imediato é permitido somente hoje.
 - Reserva antecipada pode ser criada para hoje (futuro do dia corrente) ou amanhã.
 - Datas anteriores ou posteriores a amanhã devem ser rejeitadas.
-- Horários devem respeitar o funcionamento da sala e os turnos configurados.
+- O calendário semanal regular inicial abre de segunda a sexta, das 07h15 às 21h; aos sábados, das 07h15 às 13h; e registra domingo explicitamente como fechado.
+- O funcionamento aplicável a uma data segue a precedência: exceção específica, horário temporário, horário semanal regular e, por último, erro de configuração se o calendário regular não existir.
+- Um horário temporário deve ter início e fim. Ao terminar sua vigência, o horário regular volta a valer automaticamente.
+- Uma exceção pontual pode fechar a sala ou substituir as janelas de uma única data e sempre prevalece sobre horário temporário e regular.
+- Cada calendário configura exatamente os sete dias. Dia aberto tem ao menos uma janela; dia fechado não tem janelas; janelas do mesmo dia não se sobrepõem.
+- Reservas, entrada imediata, slots e tempo operacional disponível devem respeitar o calendário aplicável, independentemente dos turnos.
+- Alterações em calendário já iniciado são feitas por nova versão futura. Para emergência no próprio dia, deve ser criada uma exceção pontual.
+- Uma alteração não pode sobrescrever retroativamente os horários que explicam sessões e relatórios históricos.
+- Antes de aplicar mudança que reduza funcionamento, o Supervisor visualiza as reservas confirmadas afetadas. A aplicação exige confirmação para invalidá-las na mesma transação.
+- Reserva invalidada deixa de bloquear o computador, não pode ser usada no check-in, permanece em “Minhas reservas” com justificativa e é contabilizada separadamente.
+- Avisos operacionais ativos são internos e de transmissão geral; não existe confirmação de leitura nem envio externo no MVP.
+- Turnos são faixas analíticas para classificar visitas e não definem quando a sala abre.
 - Um turno já usado por sessão não pode ter seus horários ou vigência alterados retroativamente.
 - A substituição de turno cria uma nova versão futura e encerra a vigência da versão anterior no dia anterior.
 
@@ -40,6 +51,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - Reservas válidas de um mesmo computador não podem se sobrepor.
 - O usuário não pode possuir reservas conflitantes.
 - Reserva cancelada não bloqueia disponibilidade.
+- Reserva invalidada por alteração de calendário não bloqueia disponibilidade.
 - A criação recebe somente computador e início de um slot; o sistema calcula o fim.
 - Somente o proprietário ou perfil operacional pode cancelar antes do início e do limite da política.
 - Cancelamento realizado por perfil operacional em nome de terceiro exige justificativa e auditoria.
@@ -76,10 +88,12 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 
 - Relatórios são projeções calculadas, não entidades de lançamento manual.
 - As fontes são sessões, alocações, reservas, ocorrências, turnos e histórico operacional.
+- O calendário operacional efetivo é a fonte dos dias abertos, janelas e tempo operacional disponível; turnos permanecem apenas como dimensão analítica.
 - Uma troca conta como uma sessão e múltiplas alocações.
 - O relatório mensal deve reproduzir dias nas linhas, turnos nas colunas e totais no rodapé.
 - Total de visitas significa quantidade de sessões, não quantidade de alocações.
 - Taxa de ocupação usa tempo alocado dividido pelo tempo operacional disponível.
+- Domingo regular e demais dias fechados possuem zero tempo operacional; no sábado regular, o denominador termina às 13h.
 - Períodos de manutenção e inatividade devem ser excluídos do tempo operacional disponível quando houver histórico suficiente.
 
 ## Fora do domínio

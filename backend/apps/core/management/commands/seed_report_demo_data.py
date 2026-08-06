@@ -7,15 +7,19 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.computers.models import Computer, ComputerOperationalStateChange
+from apps.configuration.calendar import as_datetime_windows, resolve_operating_day
 from apps.configuration.models import (
     BookingPolicy,
     CalendarException,
+    OperatingSchedule,
     ReportConfiguration,
     Shift,
 )
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+
+from .seed_demo_data import ensure_regular_operating_schedule
 
 DEMO_PREFIX = "demo-report-"
 BASE_VALID_FROM = date(2025, 1, 1)
@@ -79,7 +83,8 @@ class Command(BaseCommand):
 
         sessions_by_date = {}
         for target_date in dates:
-            if target_date == closed_date:
+            operating_day = resolve_operating_day(target_date)
+            if operating_day.is_closed:
                 sessions_by_date[target_date] = []
                 continue
             sessions_by_date[target_date] = self._create_day_sessions(
@@ -88,6 +93,7 @@ class Command(BaseCommand):
                 rng=random.Random(f"{seed}:{target_date.isoformat()}"),
                 computers=computers,
                 shifts=shifts,
+                operating_day=operating_day,
             )
             self._create_reservation(
                 target_date=target_date,
@@ -126,6 +132,11 @@ class Command(BaseCommand):
         CalendarException.objects.filter(description__startswith=DEMO_PREFIX).delete()
 
     def _ensure_canonical_data(self):
+        if not OperatingSchedule.objects.filter(
+            schedule_type=OperatingSchedule.ScheduleType.REGULAR,
+            is_active=True,
+        ).exists():
+            ensure_regular_operating_schedule()
         computers = []
         for number in range(1, 9):
             computer, _ = Computer.objects.get_or_create(
@@ -190,8 +201,10 @@ class Command(BaseCommand):
         rng,
         computers,
         shifts,
+        operating_day,
     ):
         sessions = []
+        operating_windows = as_datetime_windows(operating_day)
         for shift_index, (_, _, _, _, entry_time) in enumerate(SHIFTS):
             identity_index = (
                 target_date.toordinal() * len(SHIFTS) + shift_index
@@ -199,8 +212,18 @@ class Command(BaseCommand):
             affiliation, unit = IDENTITIES[identity_index]
             reference = f"{DEMO_PREFIX}{seed}-user-{identity_index:02d}"
             started_at = aware(target_date, entry_time)
+            window_end = next(
+                (
+                    ends_at
+                    for starts_at, ends_at in operating_windows
+                    if starts_at <= started_at < ends_at
+                ),
+                None,
+            )
+            if window_end is None:
+                continue
             duration = rng.choice([60, 90, 120, 150])
-            ended_at = started_at + timedelta(minutes=duration)
+            ended_at = min(started_at + timedelta(minutes=duration), window_end)
             session, _ = UseSession.objects.get_or_create(
                 user_reference=reference,
                 started_at=started_at,

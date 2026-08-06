@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
 from django.utils import timezone
@@ -6,7 +6,14 @@ from rest_framework.test import APITestCase
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
-from apps.configuration.models import BookingPolicy, CalendarException, Shift
+from apps.configuration.models import (
+    BookingPolicy,
+    CalendarException,
+    OperatingSchedule,
+    Shift,
+    Weekday,
+)
+from apps.configuration.tests.factories import create_operating_schedule
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 from apps.operations.services import start_usage_session
 
@@ -22,6 +29,13 @@ class UsageSessionAPITest(APITestCase):
             start_time=time(7, 0),
             end_time=time(13, 0),
             valid_from=self.today - timedelta(days=1),
+        )
+        OperatingSchedule.objects.all().delete()
+        create_operating_schedule(
+            valid_from=self.today - timedelta(days=1),
+            weekday_windows={
+                weekday: [(time(7), time(13))] for weekday in Weekday.values
+            },
         )
         BookingPolicy.objects.create(
             slot_duration_minutes=60,
@@ -134,6 +148,30 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data["code"], "RESERVATION_CHECK_IN_UNAVAILABLE")
 
+    def test_invalidated_reservation_cannot_be_used_for_check_in(self):
+        reservation = Reservation.objects.create(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(time(8)),
+            ends_at=self.aware(time(9)),
+            status=Reservation.Status.INVALIDATED,
+            invalidated_by_profile="LIBRARY_SUPERVISOR",
+            invalidated_at=self.current - timedelta(hours=1),
+            invalidation_reason="Fechamento excepcional.",
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.start(
+            {
+                "computer_id": self.computer.pk,
+                "reservation_id": reservation.pk,
+            },
+            current=self.current,
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "RESERVATION_CHECK_IN_UNAVAILABLE")
+
     def test_entry_rejects_active_user_occupied_and_maintenance_computer(self):
         self.start()
         duplicate = self.start({"computer_id": self.other_computer.pk})
@@ -168,6 +206,29 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(closed_response.status_code, 409)
         self.assertEqual(closed_response.data["code"], "ROOM_CLOSED")
         self.assertEqual(reserved_response.status_code, 409)
+
+    def test_weekend_regular_schedule_controls_immediate_entry(self):
+        OperatingSchedule.objects.all().delete()
+        create_operating_schedule()
+        saturday_before_close = self.aware(time(12, 30), date(2026, 8, 8))
+
+        allowed = self.start(current=saturday_before_close)
+
+        self.assertEqual(allowed.status_code, 201)
+
+    def test_saturday_after_13_and_sunday_reject_immediate_entry(self):
+        OperatingSchedule.objects.all().delete()
+        create_operating_schedule()
+        saturday_after_close = self.aware(time(13, 1), date(2026, 8, 8))
+        sunday = self.aware(time(8), date(2026, 8, 9))
+
+        saturday_response = self.start(current=saturday_after_close)
+        sunday_response = self.start(current=sunday)
+
+        self.assertEqual(saturday_response.status_code, 409)
+        self.assertEqual(saturday_response.data["code"], "ROOM_CLOSED")
+        self.assertEqual(sunday_response.status_code, 409)
+        self.assertEqual(sunday_response.data["code"], "ROOM_CLOSED")
 
     def test_operational_entry_requires_and_uses_identity_from_body(self):
         self.client.post(

@@ -111,4 +111,15 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API v1 do sistema de controle de uso da sala de informática.",
     "VERSION": "0.2.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "DemoProfileEnum": "apps.core.enums.DemoProfile",
+        "EffectiveComputerStatusEnum": (
+            "apps.computers.api.serializers.EFFECTIVE_STATUS_CHOICES"
+        ),
+        "RoomStatusEnum": "apps.configuration.calendar.ROOM_STATUS_CHOICES",
+        "CalendarSourceEnum": "apps.configuration.calendar.CALENDAR_SOURCE_CHOICES",
+        "ReservationStatusEnum": "apps.operations.models.Reservation.Status",
+        "UseSessionStatusEnum": "apps.operations.models.UseSession.Status",
+        "OccurrenceStatusEnum": "apps.occurrences.models.Occurrence.Status",
+    },
 }

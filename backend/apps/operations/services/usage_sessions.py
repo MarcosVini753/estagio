@@ -5,6 +5,11 @@ from django.utils import timezone
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
+from apps.configuration.calendar import (
+    is_open_at,
+    lock_operating_date,
+    resolve_operating_day,
+)
 from apps.configuration.selectors import (
     get_booking_policy_for_date,
     get_shifts_for_date,
@@ -19,7 +24,6 @@ from apps.core.api.errors import (
     UsageSessionReasonRequired,
 )
 from apps.core.enums import AffiliationType, DemoProfile
-from apps.operations.availability import get_operating_windows
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 from apps.operations.services.reservations import lock_user_reference
 
@@ -31,9 +35,9 @@ OPERATIONAL_PROFILES = {
 
 
 def _room_is_open(current: datetime) -> bool:
-    return any(
-        starts_at <= current < ends_at
-        for starts_at, ends_at in get_operating_windows(timezone.localdate(current))
+    return is_open_at(
+        resolve_operating_day(timezone.localdate(current)),
+        current,
     )
 
 
@@ -115,6 +119,7 @@ def start_usage_session(
     now: datetime | None = None,
 ) -> UseSession:
     current = now or timezone.now()
+    lock_operating_date(timezone.localdate(current))
     reservation = None
 
     if reservation_id is not None:
@@ -130,8 +135,8 @@ def start_usage_session(
             affiliation_type=affiliation_type,
             institutional_unit=institutional_unit,
         )
-        if not _room_is_open(current):
-            raise RoomClosed()
+    if not _room_is_open(current):
+        raise RoomClosed()
 
     computer = Computer.objects.select_for_update().get(pk=computer_id)
     lock_user_reference(user_reference)

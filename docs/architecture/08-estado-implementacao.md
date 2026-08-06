@@ -21,7 +21,7 @@
 - endpoints de turnos e exceções de calendário;
 - consulta e versionamento da política de reservas;
 - validação de sobreposição de turnos ativos;
-- geração de slots a partir de turnos, exceções e duração configurada;
+- geração de slots a partir do calendário efetivo, exceções e duração configurada;
 - consulta de disponibilidade somente para hoje ou amanhã;
 - descarte de slots iniciados no passado;
 - cálculo dos estados efetivos `OCCUPIED` e `RESERVED`;
@@ -57,12 +57,27 @@
 - métricas mensais derivadas de sessões, alocações, reservas e ocorrências;
 - agrupamento `NOT_INFORMED`, calendário completo e recorte temporal de alocações.
 
+## Concluído na entrega do calendário operacional
+
+- calendário semanal regular versionado, com segunda a sexta 07h15–21h, sábado 07h15–13h e domingo fechado;
+- horários temporários com início e fim e retorno automático ao regular;
+- precedência de exceção pontual sobre temporário e regular;
+- separação entre funcionamento da sala e turnos analíticos;
+- status público da sala e contexto de fechamento nas respostas de disponibilidade;
+- preview de reservas afetadas, confirmação e invalidação auditada em transação;
+- metadados de invalidação expostos em “Minhas reservas” e check-in bloqueado;
+- avisos internos públicos por período de visibilidade e banner na página inicial;
+- auditoria das mutações administrativas de calendário, exceção e aviso;
+- relatório mensal com origem, minutos operacionais por dia e reservas por estado;
+- seeds regular e histórico coerentes com o calendário;
+- ADR, OpenAPI, regras, arquitetura e diagramas sincronizados.
+
 ## Não implementado
 
 - demais projeções e exportadores de relatórios;
-- migração do protótipo para Django Templates;
+- migração das demais telas do protótipo para Django Templates;
 - autenticação real.
 
 ## Próxima fatia recomendada
 
-Implementar o relatório diário e reutilizar a projeção nas exportações futuras.
+Implementar o relatório diário e reutilizar calendário e projeção mensal nas exportações futuras.

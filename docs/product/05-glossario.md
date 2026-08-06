@@ -46,7 +46,35 @@ Início de sessão hoje, em computador disponível e horário ainda não passado
 
 ## Turno
 
-Faixa de horário configurável usada para classificação e consolidação dos registros.
+Faixa de horário configurável usada somente para classificação e consolidação analítica dos registros. Não define abertura da sala.
+
+## Calendário operacional
+
+Configuração versionada que determina, para cada dia da semana, se a sala abre e em quais janelas.
+
+## Horário regular
+
+Calendário semanal permanente usado quando não há exceção nem horário temporário aplicável.
+
+## Horário temporário
+
+Calendário com início e fim, usado para recessos ou períodos equivalentes. Depois do término, o horário regular volta a valer automaticamente.
+
+## Janela de funcionamento
+
+Intervalo contínuo de abertura dentro de um dia. Um dia aberto pode possuir uma ou mais janelas sem sobreposição.
+
+## Exceção de calendário
+
+Fechamento ou horário especial para uma data específica, com precedência sobre horários temporários e regulares.
+
+## Aviso da sala
+
+Comunicação interna de transmissão geral, exibida enquanto ativa e dentro do período de visibilidade configurado.
+
+## Reserva invalidada
+
+Reserva antes confirmada que se tornou incompatível com uma alteração do calendário. Não bloqueia disponibilidade nem permite check-in, mas preserva justificativa e histórico.
 
 ## Ocorrência
 

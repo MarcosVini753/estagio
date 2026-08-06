@@ -7,6 +7,13 @@ start
 :Escolhe consultar dia atual ou dia seguinte;
 
 |Sistema|
+:Resolve excecao, horario temporario ou regular;
+if (Sala fechada?) then (Sim)
+  :Exibe motivo, janelas vazias e avisos ativos;
+  stop
+else (Nao)
+  :Exibe origem, janelas e avisos ativos;
+endif
 :Carrega computadores cadastrados;
 :Verifica status dos computadores;
 :Verifica horarios ocupados e agendados;
@@ -18,8 +25,9 @@ if (Deseja agendar?) then (Sim)
   :Seleciona horario disponivel;
 
   |Sistema|
-  :Valida se a data e o dia seguinte;
+  :Valida se a data e hoje ou amanha;
   if (Data valida?) then (Sim)
+    :Valida se o slot esta contido no calendario efetivo;
     :Verifica conflito de agendamento;
     if (Horario ainda disponivel?) then (Sim)
       :Registra agendamento;
