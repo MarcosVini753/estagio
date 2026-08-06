@@ -38,8 +38,6 @@ from .models import (
 )
 
 BOOKING_POLICY_FIELDS = (
-    "slot_duration_minutes",
-    "check_in_tolerance_minutes",
     "cancellation_limit_minutes",
     "max_future_reservations_per_user",
 )

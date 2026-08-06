@@ -21,7 +21,7 @@
 - endpoints de turnos e exceções de calendário;
 - consulta e versionamento da política de reservas;
 - validação de sobreposição de turnos ativos;
-- geração de slots a partir do calendário efetivo, exceções e duração configurada;
+- geração de slots fixos de 15 minutos a partir do calendário efetivo e exceções;
 - consulta de disponibilidade somente para hoje ou amanhã;
 - descarte de slots iniciados no passado;
 - cálculo dos estados efetivos `OCCUPIED` e `RESERVED`;
@@ -71,6 +71,21 @@
 - relatório mensal com origem, minutos operacionais por dia e reservas por estado;
 - seeds regular e histórico coerentes com o calendário;
 - ADR, OpenAPI, regras, arquitetura e diagramas sincronizados.
+
+## Concluído na entrega do Modelo C
+
+- reservas e usos imediatos com `slot_count` consecutivo e intervalo planejado;
+- duração fixa de 15 minutos e tolerâncias fixas de três minutos fora de `BookingPolicy`;
+- deadlines de check-in e saída, `no_show_at` e motivo `TIME_LIMIT_REACHED`;
+- check-in sem antecipação e sem deslocar o fim da reserva;
+- conflitos por todo o intervalo planejado contra reservas, sessões e fechamento;
+- troca validada até o fim planejado e bloqueada durante a tolerância;
+- disponibilidade futura limitada por `planned_ends_at` e estado atual por `exit_deadline_at`;
+- resposta `immediate_usage` com máximo de slots e fator limitante;
+- reconciliação oportunista e comando periódico para sessões e `NO_SHOW`;
+- migração em três fases com bloqueio explícito de sessões legadas ativas;
+- testes de constraints, APIs, deadlines, backfill e corridas entre reserva, entrada e troca;
+- protótipo, ADR, documentação e diagramas sincronizados.
 
 ## Não implementado
 

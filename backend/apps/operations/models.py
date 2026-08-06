@@ -9,6 +9,8 @@ from apps.configuration.models import Shift
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.core.models import TimeStampedModel
 
+from .rules import SLOT_DURATION_MINUTES
+
 
 class Reservation(TimeStampedModel):
     class Status(models.TextChoices):
@@ -30,6 +32,9 @@ class Reservation(TimeStampedModel):
     )
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
+    check_in_deadline_at = models.DateTimeField()
+    exit_deadline_at = models.DateTimeField()
+    no_show_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.CONFIRMED
     )
@@ -63,6 +68,14 @@ class Reservation(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(starts_at__lt=F("ends_at")),
                 name="reservation_start_before_end",
+            ),
+            models.CheckConstraint(
+                condition=Q(starts_at__lte=F("check_in_deadline_at")),
+                name="reservation_checkin_after_start",
+            ),
+            models.CheckConstraint(
+                condition=Q(ends_at__lte=F("exit_deadline_at")),
+                name="reservation_exit_after_end",
             ),
             ExclusionConstraint(
                 name="reservation_computer_no_overlap",
@@ -103,6 +116,13 @@ class Reservation(TimeStampedModel):
     def __str__(self) -> str:
         return f"{self.user_reference} - {self.computer} - {self.starts_at}"
 
+    @property
+    def slot_count(self) -> int:
+        return int(
+            (self.ends_at - self.starts_at).total_seconds()
+            // (SLOT_DURATION_MINUTES * 60)
+        )
+
 
 class UseSession(TimeStampedModel):
     class Status(models.TextChoices):
@@ -125,6 +145,9 @@ class UseSession(TimeStampedModel):
         blank=True,
     )
     started_at = models.DateTimeField(default=timezone.now)
+    planned_starts_at = models.DateTimeField()
+    planned_ends_at = models.DateTimeField()
+    exit_deadline_at = models.DateTimeField()
     ended_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.ACTIVE
@@ -155,16 +178,40 @@ class UseSession(TimeStampedModel):
                 condition=Q(ended_at__isnull=True) | Q(ended_at__gte=F("started_at")),
                 name="session_end_not_before_start",
             ),
+            models.CheckConstraint(
+                condition=Q(planned_starts_at__lt=F("planned_ends_at")),
+                name="session_planned_start_before_end",
+            ),
+            models.CheckConstraint(
+                condition=Q(planned_ends_at__lte=F("exit_deadline_at")),
+                name="session_exit_after_planned_end",
+            ),
+            models.CheckConstraint(
+                condition=Q(started_at__gte=F("planned_starts_at")),
+                name="session_start_not_early",
+            ),
+            models.CheckConstraint(
+                condition=Q(started_at__lte=F("exit_deadline_at")),
+                name="session_start_before_exit_deadline",
+            ),
         ]
 
     def __str__(self) -> str:
         return f"Sessão {self.pk} - {self.user_reference}"
+
+    @property
+    def slot_count(self) -> int:
+        return int(
+            (self.planned_ends_at - self.planned_starts_at).total_seconds()
+            // (SLOT_DURATION_MINUTES * 60)
+        )
 
 
 class ComputerAllocation(TimeStampedModel):
     class EndReason(models.TextChoices):
         SWITCH = "SWITCH", "Troca de computador"
         SESSION_FINISHED = "SESSION_FINISHED", "Sessão encerrada"
+        TIME_LIMIT_REACHED = "TIME_LIMIT_REACHED", "Limite de tempo atingido"
         ADMIN_CORRECTION = "ADMIN_CORRECTION", "Correção administrativa"
         CANCELLED = "CANCELLED", "Cancelada"
 

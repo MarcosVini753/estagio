@@ -74,19 +74,25 @@ A data deve ser hoje ou amanhã. O primeiro endpoint devolve um resumo por compu
       "code": "PC-01",
       "description": "Computador da Sala de Informática",
       "operational_state": "AVAILABLE",
-      "effective_status_now": "OCCUPIED",
-      "can_start_now": false,
+      "effective_status_now": "AVAILABLE",
+      "can_start_now": true,
+      "immediate_usage": {
+        "can_start_now": true,
+        "max_slot_count": 2,
+        "max_planned_ends_at": "2026-07-14T10:00:00-05:00",
+        "limited_by": "NEXT_RESERVATION"
+      },
       "available_slot_count": 4,
       "next_available_slot": {
-        "starts_at": "2026-07-14T10:15:00-05:00",
-        "ends_at": "2026-07-14T11:15:00-05:00"
+        "starts_at": "2026-07-14T09:45:00-05:00",
+        "ends_at": "2026-07-14T10:00:00-05:00"
       }
     }
   ]
 }
 ```
 
-`effective_status_now` é preenchido somente para hoje. Para amanhã, seu valor é `null`; a disponibilidade deve ser consultada pelos slots.
+`effective_status_now` é preenchido somente para hoje. Para amanhã, seu valor é `null`; a disponibilidade deve ser consultada pelos slots. `immediate_usage.limited_by` pode ser `NEXT_RESERVATION`, `USER_RESERVATION`, `ROOM_CLOSING`, `ACTIVE_ALLOCATION` ou `COMPUTER_UNAVAILABLE`. O máximo considera slots inteiros de 15 minutos a partir do instante real.
 
 O endpoint de slots devolve intervalos derivados, não registros persistidos:
 
@@ -100,6 +106,12 @@ O endpoint de slots devolve intervalos derivados, não registros persistidos:
   "date": "2026-07-15",
   "is_today": false,
   "slot_duration_minutes": 15,
+  "immediate_usage": {
+    "can_start_now": false,
+    "max_slot_count": 0,
+    "max_planned_ends_at": null,
+    "limited_by": null
+  },
   "room": {
     "status": "OPEN",
     "source": "REGULAR_SCHEDULE",
@@ -112,7 +124,7 @@ O endpoint de slots devolve intervalos derivados, não registros persistidos:
   "slots": [
     {
       "starts_at": "2026-07-15T07:15:00-05:00",
-      "ends_at": "2026-07-15T08:15:00-05:00",
+      "ends_at": "2026-07-15T07:30:00-05:00",
       "effective_status": "AVAILABLE",
       "reserved_by_current_user": false,
       "selectable": true
@@ -154,7 +166,7 @@ GET   /api/booking-policy/
 PATCH /api/booking-policy/
 ```
 
-Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual.
+Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual. A política expõe somente limite de cancelamento e máximo de reservas futuras; duração de 15 minutos e tolerâncias de três minutos são regras fixas.
 
 Calendários recebem exatamente sete dias. A API aceita `weekday` pelos nomes `MONDAY` a `SUNDAY`. Exemplo de criação temporária:
 
@@ -247,10 +259,20 @@ POST /api/reservations/
 POST /api/reservations/{id}/cancel/
 ```
 
-`POST /reservations/` é exclusivo do Usuário da Sala e recebe `computer_id` e `starts_at`; o backend deriva `ends_at` do slot configurado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o slot.
+`POST /reservations/` é exclusivo do Usuário da Sala e recebe:
+
+```json
+{
+  "computer_id": 12,
+  "starts_at": "2026-08-07T09:00:00-05:00",
+  "slot_count": 4
+}
+```
+
+O início deve estar alinhado à grade da janela operacional. O backend calcula `ends_at=10:00`, `check_in_deadline_at=09:03` e `exit_deadline_at=10:03`, validando todo o intervalo consecutivo. A resposta inclui esses campos, `no_show_at` e o `slot_count` derivado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o intervalo.
 Cancelamento de terceiro exige justificativa e gera evento de auditoria.
 
-Reservas invalidadas expõem `invalidated_at`, `invalidated_by_profile` e `invalidation_reason`. Elas permanecem em `mine/`, deixam de bloquear slots e não podem iniciar sessão.
+Reservas invalidadas expõem `invalidated_at`, `invalidated_by_profile` e `invalidation_reason`. Elas permanecem em `mine/`, deixam de bloquear slots e não podem iniciar sessão. Entrada é aceita somente entre `starts_at` e `check_in_deadline_at`, inclusive; depois disso a reconciliação registra `NO_SHOW` e `no_show_at`.
 
 ### Sessões e alocações
 
@@ -263,7 +285,28 @@ POST /api/usage-sessions/{id}/switch-computer/
 POST /api/usage-sessions/{id}/finish/
 ```
 
-Entrada com reserva herda seus snapshots e aplica a tolerância configurada. Entrada imediata exige sala aberta e computador disponível. Troca encerra a alocação atual e cria a próxima na mesma sessão. Saída encerra a alocação atual e a sessão; saída operacional de terceiro exige justificativa e auditoria.
+Uso imediato recebe computador e duração:
+
+```json
+{
+  "computer_id": 12,
+  "slot_count": 2
+}
+```
+
+Se a entrada ocorrer às 08h21, a sessão responde com `planned_starts_at=08:21`, `planned_ends_at=08:51` e `exit_deadline_at=08:54`. O intervalo inteiro deve caber antes do fechamento e não pode invadir reserva confirmada ou sessão planejada.
+
+Entrada com reserva recebe `computer_id` e `reservation_id`; enviar também `slot_count` é erro 400. A sessão herda snapshots, intervalo e deadlines da reserva. Entrada antecipada é rejeitada e entrada atrasada não desloca o fim planejado.
+
+Troca encerra a alocação atual e cria a próxima na mesma sessão depois de validar o destino até `planned_ends_at`; é rejeitada durante a tolerância. Saída antecipada ou exatamente no prazo é aceita. Saída operacional de terceiro exige justificativa e auditoria. Sessões vencidas são encerradas em `exit_deadline_at` com alocação `TIME_LIMIT_REACHED`.
+
+O comando periódico é:
+
+```text
+python manage.py reconcile_operational_deadlines
+```
+
+Ele deve ser agendado externamente a cada minuto, encerra sessões com `now >= exit_deadline_at` e marca reservas como `NO_SHOW` quando `now > check_in_deadline_at`. Entrada e troca também reconciliam os computadores envolvidos antes de prosseguir; na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
 
 ```text
 POST /api/usage-sessions/{id}/correct/

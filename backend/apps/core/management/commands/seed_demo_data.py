@@ -95,8 +95,6 @@ class Command(BaseCommand):
 
         if not BookingPolicy.objects.filter(is_active=True).exists():
             BookingPolicy.objects.create(
-                slot_duration_minutes=15,
-                check_in_tolerance_minutes=7,
                 cancellation_limit_minutes=0,
                 max_future_reservations_per_user=1,
                 valid_from=BASE_VALID_FROM,

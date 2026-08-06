@@ -10,9 +10,9 @@ Casos de uso principais:
 - `UC-USR-Consultar funcionamento`: consultar estado, origem e janelas da sala;
 - `UC-USR-Visualizar aviso`: visualizar avisos internos ativos;
 - consultar horários disponíveis;
-- selecionar horário;
-- confirmar reserva (hoje ou amanhã);
-- registrar entrada;
+- selecionar início e quantidade de slots consecutivos;
+- confirmar reserva com duração solicitada (hoje ou amanhã);
+- registrar entrada imediata escolhendo duração ou usar integralmente uma reserva;
 - registrar saída;
 - trocar de computador durante sessão ativa;
 - informar problema.
@@ -25,6 +25,8 @@ Fluxos críticos:
 4. troca de computador;
 5. saída;
 6. comunicação de problema.
+
+Na reserva, o usuário seleciona um início alinhado e uma quantidade positiva de slots consecutivos. Na entrada imediata, escolhe a duração antes de confirmar. O sistema apresenta o fim planejado e o prazo de saída. Entrada com reserva só ocorre entre o início e três minutos depois; a troca considera todo o intervalo restante e não ocorre durante a tolerância.
 
 ## Monitor da Sala
 
@@ -73,6 +75,7 @@ O papel existe na arquitetura, mas seus casos de uso detalhados serão documenta
 - estados ocupado e reservado são calculados, não persistidos;
 - a tela inicial de escolha de perfil substitui autenticação real no MVP;
 - calendário operacional e turnos foram separados para impedir que classificação analítica altere a abertura da sala.
+- intervalos planejados foram separados dos horários reais para impedir sessões sem limite e preservar a tolerância operacional de três minutos.
 
 ## Rastreabilidade
 

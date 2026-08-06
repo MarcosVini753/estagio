@@ -8,6 +8,7 @@ from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import OperatingSchedule, RoomNotice, Weekday
 from apps.operations.models import Reservation
+from apps.operations.tests.factories import create_reservation
 
 from .factories import create_operating_schedule
 
@@ -153,7 +154,7 @@ class OperatingScheduleAPITest(APITestCase):
             datetime(2026, 12, 22, 18),
             timezone.get_current_timezone(),
         )
-        reservation = Reservation.objects.create(
+        reservation = create_reservation(
             user_reference="aluno-afetado",
             computer=computer,
             starts_at=starts_at,

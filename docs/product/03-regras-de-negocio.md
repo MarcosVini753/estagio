@@ -13,6 +13,7 @@
 - Uma exceção pontual pode fechar a sala ou substituir as janelas de uma única data e sempre prevalece sobre horário temporário e regular.
 - Cada calendário configura exatamente os sete dias. Dia aberto tem ao menos uma janela; dia fechado não tem janelas; janelas do mesmo dia não se sobrepõem.
 - Reservas, entrada imediata, slots e tempo operacional disponível devem respeitar o calendário aplicável, independentemente dos turnos.
+- Cada slot possui duração fixa de 15 minutos. Novas reservas e usos imediatos solicitam uma quantidade inteira positiva de slots consecutivos.
 - Alterações em calendário já iniciado são feitas por nova versão futura. Para emergência no próprio dia, deve ser criada uma exceção pontual.
 - Uma alteração não pode sobrescrever retroativamente os horários que explicam sessões e relatórios históricos.
 - Antes de aplicar mudança que reduza funcionamento, o Supervisor visualiza as reservas confirmadas afetadas. A aplicação exige confirmação para invalidá-las na mesma transação.
@@ -25,7 +26,7 @@
 ## Computadores
 
 - O estado operacional persistido é apenas `AVAILABLE`, `MAINTENANCE` ou `INACTIVE`.
-- `OCCUPIED` é calculado quando existe alocação ativa no instante consultado.
+- `OCCUPIED` usa o prazo de saída para o estado atual, o término planejado para disponibilidade futura e os horários reais para histórico.
 - `RESERVED` é calculado quando existe reserva válida sobreposta ao período consultado.
 - `INACTIVE` e `MAINTENANCE` têm precedência sobre estados calculados.
 - Computador em manutenção ou inativo não pode receber reserva, entrada ou troca.
@@ -52,22 +53,32 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - O usuário não pode possuir reservas conflitantes.
 - Reserva cancelada não bloqueia disponibilidade.
 - Reserva invalidada por alteração de calendário não bloqueia disponibilidade.
-- A criação recebe somente computador e início de um slot; o sistema calcula o fim.
+- A criação recebe computador, início alinhado à grade de 15 minutos e `slot_count`; o sistema calcula o fim.
+- Todo o intervalo `[starts_at, ends_at)` deve caber em uma única janela de funcionamento e não pode sobrepor reserva confirmada nem sessão planejada do computador ou do usuário.
+- Intervalos adjacentes são permitidos: uma reserva que termina às 09h não conflita com outra que começa às 09h.
+- `check_in_deadline_at` é três minutos após o início e `exit_deadline_at` é três minutos após o fim.
+- Entrada antecipada não é permitida. A entrada é aceita do início até o `check_in_deadline_at`, inclusive, e não desloca o fim planejado.
+- Uma reserva confirmada torna-se `NO_SHOW` somente depois de ultrapassado o prazo de check-in.
 - Somente o proprietário ou perfil operacional pode cancelar antes do início e do limite da política.
 - Cancelamento realizado por perfil operacional em nome de terceiro exige justificativa e auditoria.
-- Ao registrar entrada dentro de uma reserva válida, a sessão pode ser vinculada à reserva.
-- Reservas não utilizadas devem poder ser classificadas como `NO_SHOW` por regra configurável futura.
+- Ao registrar entrada dentro de uma reserva válida, a sessão copia integralmente seu intervalo planejado e prazos.
 
 ## Sessões
 
 - Um usuário pode possuir no máximo uma sessão ativa.
 - A sessão registra entrada e saída reais.
+- A sessão registra também início planejado, fim planejado e prazo máximo de saída.
+- No uso imediato, o início planejado é a entrada real e o fim soma `slot_count × 15 minutos`.
+- O intervalo planejado não pode invadir reserva confirmada, outra sessão planejada ou o fechamento.
+- A tolerância de saída de três minutos não participa dos conflitos planejados. Ela pode avançar sobre a reserva seguinte ou o fechamento.
 - O registro de entrada cria uma sessão ativa e sua primeira alocação.
 - O registro de saída encerra a alocação atual e a sessão.
 - Saída registrada por perfil operacional em nome de terceiro exige justificativa e auditoria.
 - A hora de saída não pode ser anterior à hora de entrada.
 - O turno principal da visita é calculado a partir do horário de entrada.
 - Correções administrativas exigem justificativa e auditoria.
+- A saída antecipada é permitida. A sessão vencida é encerrada logicamente no prazo de saída, com motivo `TIME_LIMIT_REACHED`.
+- Não existe extensão de sessão neste P0.
 
 ## Alocações e troca de computador
 
@@ -76,6 +87,8 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - Trocar de computador encerra a alocação atual e cria outra na mesma sessão.
 - O histórico anterior nunca deve ser sobrescrito.
 - A troca deve ocorrer atomicamente para impedir que duas pessoas ocupem o mesmo computador.
+- A troca verifica o destino em todo o intervalo entre o instante atual e o fim planejado.
+- A troca é rejeitada quando não resta tempo planejado ou quando a sessão está na tolerância de saída.
 
 ## Ocorrências
 

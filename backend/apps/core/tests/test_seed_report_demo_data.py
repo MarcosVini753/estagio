@@ -9,6 +9,7 @@ from apps.configuration.models import CalendarException, OperatingSchedule, Shif
 from apps.core.enums import AffiliationType
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.tests.factories import create_use_session
 
 
 class SeedReportDemoDataTest(TestCase):
@@ -93,7 +94,7 @@ class SeedReportDemoDataTest(TestCase):
             description="Descrição manual",
         )
         external_computer = Computer.objects.create(code="MANUAL-01")
-        manual_session = UseSession.objects.create(
+        manual_session = create_use_session(
             user_reference="manual-user",
             status=UseSession.Status.FINISHED,
             ended_at="2026-01-01T09:00:00-05:00",

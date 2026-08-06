@@ -30,11 +30,27 @@ Situação calculada para um instante ou intervalo: pode resultar em `AVAILABLE`
 
 ## Reserva
 
-Bloqueio antecipado de um computador em intervalo específico. No MVP, pode ser criada para hoje (futuro do dia corrente) ou amanhã.
+Bloqueio antecipado de um computador por uma quantidade de slots consecutivos de 15 minutos. No MVP, pode ser criada para hoje (futuro do dia corrente) ou amanhã.
 
 ## Sessão de uso
 
-Registro da visita real de um usuário, iniciado na entrada e encerrado na saída.
+Registro da visita de um usuário. Mantém o intervalo planejado solicitado e, separadamente, os horários reais de entrada e saída.
+
+## Slot
+
+Unidade fixa de 15 minutos usada para compor a duração consecutiva de reservas e usos imediatos.
+
+## Intervalo planejado
+
+Compromisso semiaberto `[início, fim)` usado para validar reservas, sessões, trocas e fechamento. A tolerância operacional não o amplia.
+
+## Prazo de saída
+
+Instante três minutos após o fim planejado. Até ele a saída pode ser registrada; ao atingi-lo a sessão pode ser encerrada logicamente.
+
+## Tolerância operacional
+
+Exceção de três minutos para check-in atrasado e saída atrasada. Não desloca o fim planejado nem participa do cálculo de conflitos.
 
 ## Alocação de computador
 
@@ -42,7 +58,7 @@ Intervalo em que determinado computador foi utilizado dentro de uma sessão. Uma
 
 ## Uso imediato
 
-Início de sessão hoje, em computador disponível e horário ainda não passado. Não cria reserva para hoje.
+Início de sessão hoje, em computador disponível, com quantidade de slots escolhida antes da entrada. Não cria reserva para hoje.
 
 ## Turno
 

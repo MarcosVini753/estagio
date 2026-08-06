@@ -1,8 +1,13 @@
+from datetime import timedelta
+
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.computers.models import Computer
-from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.models import ComputerAllocation, Reservation
+
+from .factories import create_reservation, create_use_session
 
 
 class OperationConstraintTest(TestCase):
@@ -10,20 +15,20 @@ class OperationConstraintTest(TestCase):
         self.computer = Computer.objects.create(code="PC-01")
 
     def test_user_cannot_have_two_active_sessions(self):
-        UseSession.objects.create(
+        create_use_session(
             user_reference="demo-user", entry_recorded_by_profile="ROOM_USER"
         )
 
         with self.assertRaises(IntegrityError), transaction.atomic():
-            UseSession.objects.create(
+            create_use_session(
                 user_reference="demo-user", entry_recorded_by_profile="ROOM_USER"
             )
 
     def test_computer_cannot_have_two_active_allocations(self):
-        first_session = UseSession.objects.create(
+        first_session = create_use_session(
             user_reference="user-1", entry_recorded_by_profile="ROOM_USER"
         )
-        second_session = UseSession.objects.create(
+        second_session = create_use_session(
             user_reference="user-2", entry_recorded_by_profile="ROOM_USER"
         )
         ComputerAllocation.objects.create(
@@ -36,14 +41,14 @@ class OperationConstraintTest(TestCase):
             )
 
     def test_historical_snapshots_default_to_not_informed(self):
-        reservation = Reservation.objects.create(
+        reservation = create_reservation(
             user_reference="legacy-user",
             computer=self.computer,
             starts_at="2026-01-01T08:00:00-05:00",
             ends_at="2026-01-01T09:00:00-05:00",
             created_by_profile="ROOM_USER",
         )
-        session = UseSession.objects.create(
+        session = create_use_session(
             user_reference="legacy-user",
             entry_recorded_by_profile="ROOM_USER",
         )
@@ -53,7 +58,7 @@ class OperationConstraintTest(TestCase):
         self.assertEqual(session.affiliation_type, "NOT_INFORMED")
 
     def test_confirmed_reservations_cannot_overlap_for_computer_or_user(self):
-        Reservation.objects.create(
+        create_reservation(
             user_reference="user-1",
             computer=self.computer,
             starts_at="2026-08-01T08:00:00-05:00",
@@ -62,7 +67,7 @@ class OperationConstraintTest(TestCase):
         )
 
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Reservation.objects.create(
+            create_reservation(
                 user_reference="user-2",
                 computer=self.computer,
                 starts_at="2026-08-01T08:30:00-05:00",
@@ -72,7 +77,7 @@ class OperationConstraintTest(TestCase):
 
         other_computer = Computer.objects.create(code="PC-02")
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Reservation.objects.create(
+            create_reservation(
                 user_reference="user-1",
                 computer=other_computer,
                 starts_at="2026-08-01T08:30:00-05:00",
@@ -81,21 +86,21 @@ class OperationConstraintTest(TestCase):
             )
 
     def test_adjacent_and_cancelled_reservations_do_not_overlap(self):
-        Reservation.objects.create(
+        create_reservation(
             user_reference="user-1",
             computer=self.computer,
             starts_at="2026-08-01T08:00:00-05:00",
             ends_at="2026-08-01T09:00:00-05:00",
             created_by_profile="ROOM_USER",
         )
-        Reservation.objects.create(
+        create_reservation(
             user_reference="user-2",
             computer=self.computer,
             starts_at="2026-08-01T09:00:00-05:00",
             ends_at="2026-08-01T10:00:00-05:00",
             created_by_profile="ROOM_USER",
         )
-        Reservation.objects.create(
+        create_reservation(
             user_reference="user-3",
             computer=self.computer,
             starts_at="2026-08-01T08:30:00-05:00",
@@ -103,3 +108,50 @@ class OperationConstraintTest(TestCase):
             status=Reservation.Status.CANCELLED,
             created_by_profile="ROOM_USER",
         )
+
+    def test_reservation_deadlines_cannot_precede_their_reference_times(self):
+        starts_at = timezone.now() + timedelta(days=1)
+        ends_at = starts_at + timedelta(hours=1)
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_reservation(
+                user_reference="invalid-check-in",
+                computer=self.computer,
+                starts_at=starts_at,
+                ends_at=ends_at,
+                check_in_deadline_at=starts_at - timedelta(seconds=1),
+                created_by_profile="ROOM_USER",
+            )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_reservation(
+                user_reference="invalid-exit",
+                computer=self.computer,
+                starts_at=starts_at,
+                ends_at=ends_at,
+                exit_deadline_at=ends_at - timedelta(seconds=1),
+                created_by_profile="ROOM_USER",
+            )
+
+    def test_session_enforces_planned_interval_and_no_early_entry(self):
+        starts_at = timezone.now()
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_use_session(
+                user_reference="invalid-interval",
+                started_at=starts_at,
+                planned_starts_at=starts_at,
+                planned_ends_at=starts_at,
+                exit_deadline_at=starts_at + timedelta(minutes=3),
+                entry_recorded_by_profile="ROOM_USER",
+            )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_use_session(
+                user_reference="early-entry",
+                started_at=starts_at,
+                planned_starts_at=starts_at + timedelta(minutes=1),
+                planned_ends_at=starts_at + timedelta(minutes=16),
+                exit_deadline_at=starts_at + timedelta(minutes=19),
+                entry_recorded_by_profile="ROOM_USER",
+            )

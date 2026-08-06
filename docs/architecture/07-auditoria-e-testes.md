@@ -27,6 +27,8 @@ Cobrir:
 - rejeição de horários passados;
 - precedência do estado efetivo;
 - cálculo de slots;
+- cálculo do intervalo por `slot_count` e do máximo para uso imediato;
+- separação entre fim planejado, prazo de saída e término real;
 - classificação de turnos;
 - projeções de relatórios.
 
@@ -36,12 +38,16 @@ Cobrir:
 
 - criação de reserva;
 - conflito de reserva;
+- intervalos adjacentes e intervalos que atravessam reserva ou fechamento;
 - entrada imediata;
 - entrada com reserva;
+- check-in sem antecipação, em `+3:00` e após o prazo;
 - sessão duplicada;
 - alocação duplicada;
 - troca de computador;
-- saída;
+- troca pelo intervalo planejado restante e rejeição durante tolerância;
+- saída antecipada, no prazo e expiração lógica;
+- reconciliação de `NO_SHOW` e `TIME_LIMIT_REACHED`;
 - correção auditada;
 - alteração de estado operacional.
 - substituição transacional de turno e preservação da versão usada por sessão.
@@ -64,7 +70,8 @@ Usar PostgreSQL para validar:
 - constraints condicionais;
 - bloqueios transacionais;
 - concorrência de reservas;
-- concorrência de entrada e troca;
+- concorrência entre reserva e entrada imediata;
+- concorrência entre reserva e troca;
 - consultas agregadas.
 
 ### Testes de interface
@@ -76,8 +83,9 @@ Cobrir os fluxos principais do protótipo:
 3. iniciar e encerrar sessão;
 4. trocar de computador;
 5. reservar amanhã;
-6. registrar ocorrência;
-7. acessar painel operacional e relatórios.
+6. selecionar vários slots consecutivos e conferir fim planejado e prazo;
+7. registrar ocorrência;
+8. acessar painel operacional e relatórios.
 
 ## Invariantes que devem falhar no banco ou serviço
 
@@ -85,6 +93,9 @@ Cobrir os fluxos principais do protótipo:
 - mais de uma alocação ativa por computador;
 - mais de uma alocação ativa na mesma sessão;
 - reserva sobreposta válida;
+- reserva ou sessão planejada fora de uma janela operacional;
+- entrada anterior ao início planejado;
+- sessão sem fim planejado ou prazo de saída;
 - intervalo com término anterior ao início;
 - uso imediato em data diferente de hoje;
 
@@ -97,6 +108,7 @@ Criar factories para:
 - turnos;
 - reservas;
 - sessões e alocações;
+- deadlines e reconciliação operacional;
 - ocorrências.
 
 Nenhum teste ou fixture inicial deve conter dados pessoais reais.

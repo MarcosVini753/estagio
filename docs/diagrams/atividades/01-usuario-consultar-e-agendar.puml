@@ -22,19 +22,21 @@ endif
 |Usuario da Sala|
 if (Deseja agendar?) then (Sim)
   :Seleciona computador;
-  :Seleciona horario disponivel;
+  :Seleciona inicio alinhado;
+  :Seleciona quantidade de slots consecutivos;
 
   |Sistema|
   :Valida se a data e hoje ou amanha;
   if (Data valida?) then (Sim)
-    :Valida se o slot esta contido no calendario efetivo;
-    :Verifica conflito de agendamento;
-    if (Horario ainda disponivel?) then (Sim)
-      :Registra agendamento;
+    :Calcula fim por slot_count x 15 minutos;
+    :Valida todo o intervalo na mesma janela operacional;
+    :Verifica reservas e sessoes planejadas do computador e usuario;
+    if (Intervalo ainda disponivel?) then (Sim)
+      :Registra reserva e deadlines de tres minutos;
       :Exibe confirmacao;
       stop
     else (Nao)
-      :Informa que o horario ficou indisponivel;
+      :Informa que o intervalo ficou indisponivel;
       :Retorna a consulta de horarios;
       stop
     endif

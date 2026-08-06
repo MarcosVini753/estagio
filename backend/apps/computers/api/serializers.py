@@ -6,6 +6,7 @@ from apps.configuration.api.serializers import (
     RoomStatusWindowSerializer,
 )
 from apps.configuration.calendar import CALENDAR_SOURCE_CHOICES, ROOM_STATUS_CHOICES
+from apps.operations.slotting import IMMEDIATE_USAGE_LIMIT_CHOICES
 
 EFFECTIVE_STATUS_CHOICES = [
     Computer.OperationalState.AVAILABLE,
@@ -77,6 +78,16 @@ class NextAvailableSlotSerializer(serializers.Serializer):
     ends_at = serializers.DateTimeField()
 
 
+class ImmediateUsageSerializer(serializers.Serializer):
+    can_start_now = serializers.BooleanField()
+    max_slot_count = serializers.IntegerField(min_value=0)
+    max_planned_ends_at = serializers.DateTimeField(allow_null=True)
+    limited_by = serializers.ChoiceField(
+        choices=IMMEDIATE_USAGE_LIMIT_CHOICES,
+        allow_null=True,
+    )
+
+
 class ComputerAvailabilityItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     code = serializers.CharField()
@@ -89,6 +100,7 @@ class ComputerAvailabilityItemSerializer(serializers.Serializer):
         allow_null=True,
     )
     can_start_now = serializers.BooleanField()
+    immediate_usage = ImmediateUsageSerializer()
     available_slot_count = serializers.IntegerField()
     next_available_slot = NextAvailableSlotSerializer(allow_null=True)
 
@@ -115,5 +127,6 @@ class ComputerSlotsResponseSerializer(serializers.Serializer):
     date = serializers.DateField()
     is_today = serializers.BooleanField()
     slot_duration_minutes = serializers.IntegerField()
+    immediate_usage = ImmediateUsageSerializer()
     room = RoomAvailabilitySerializer()
     slots = AvailabilitySlotSerializer(many=True)

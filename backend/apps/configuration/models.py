@@ -295,14 +295,6 @@ class RoomNotice(TimeStampedModel):
 
 
 class BookingPolicy(TimeStampedModel):
-    slot_duration_minutes = models.PositiveSmallIntegerField(
-        default=60,
-        validators=[MinValueValidator(1)],
-    )
-    check_in_tolerance_minutes = models.PositiveSmallIntegerField(
-        default=15,
-        validators=[MinValueValidator(0)],
-    )
     cancellation_limit_minutes = models.PositiveSmallIntegerField(
         default=0,
         validators=[MinValueValidator(0)],

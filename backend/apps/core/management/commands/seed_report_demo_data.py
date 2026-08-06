@@ -18,6 +18,10 @@ from apps.configuration.models import (
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.rules import (
+    LATE_CHECK_IN_TOLERANCE_MINUTES,
+    LATE_CHECK_OUT_TOLERANCE_MINUTES,
+)
 
 from .seed_demo_data import ensure_regular_operating_schedule
 
@@ -166,8 +170,6 @@ class Command(BaseCommand):
 
         if not BookingPolicy.objects.filter(is_active=True).exists():
             BookingPolicy.objects.create(
-                slot_duration_minutes=60,
-                check_in_tolerance_minutes=15,
                 max_future_reservations_per_user=1,
                 valid_from=BASE_VALID_FROM,
             )
@@ -231,6 +233,10 @@ class Command(BaseCommand):
                     "affiliation_type": affiliation,
                     "institutional_unit": unit,
                     "ended_at": ended_at,
+                    "planned_starts_at": started_at,
+                    "planned_ends_at": ended_at,
+                    "exit_deadline_at": ended_at
+                    + timedelta(minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES),
                     "status": UseSession.Status.FINISHED,
                     "start_shift": shifts[shift_index],
                     "entry_recorded_by_profile": DemoProfile.ROOM_USER,
@@ -307,10 +313,22 @@ class Command(BaseCommand):
         defaults = {
             "affiliation_type": affiliation,
             "institutional_unit": unit,
-            "ends_at": started_at + timedelta(hours=1),
+            "ends_at": (
+                session.planned_ends_at
+                if session is not None
+                else started_at + timedelta(hours=1)
+            ),
             "status": reservation_status,
             "created_by_profile": DemoProfile.ROOM_USER,
         }
+        defaults["check_in_deadline_at"] = started_at + timedelta(
+            minutes=LATE_CHECK_IN_TOLERANCE_MINUTES
+        )
+        defaults["exit_deadline_at"] = defaults["ends_at"] + timedelta(
+            minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES
+        )
+        if reservation_status == Reservation.Status.NO_SHOW:
+            defaults["no_show_at"] = defaults["check_in_deadline_at"]
         if reservation_status == Reservation.Status.CANCELLED:
             defaults.update(
                 cancelled_by_profile=DemoProfile.ROOM_USER,

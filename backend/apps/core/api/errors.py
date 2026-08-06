@@ -119,7 +119,10 @@ class ShiftReplacementConflict(APIException):
 
 class ReservationSlotInvalid(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
-    default_detail = "O horário deve corresponder a um slot configurado e futuro."
+    default_detail = (
+        "O início deve estar alinhado à grade de 15 minutos, ser futuro e o "
+        "intervalo deve caber no funcionamento da sala."
+    )
     default_code = "RESERVATION_SLOT_INVALID"
 
 

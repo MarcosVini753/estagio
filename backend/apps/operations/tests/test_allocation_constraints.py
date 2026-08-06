@@ -7,6 +7,8 @@ from django.utils import timezone
 from apps.computers.models import Computer
 from apps.operations.models import ComputerAllocation, UseSession
 
+from .factories import create_use_session
+
 
 class AllocationTemporalConstraintTest(TransactionTestCase):
     def setUp(self):
@@ -20,7 +22,7 @@ class AllocationTemporalConstraintTest(TransactionTestCase):
         )
 
     def allocation(self, user_reference, starts_at, ends_at):
-        session = UseSession.objects.create(
+        session = create_use_session(
             user_reference=user_reference,
             started_at=starts_at,
             ended_at=ends_at,
