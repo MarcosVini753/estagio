@@ -349,7 +349,9 @@ def _switch_computer(
         actor_reference=actor_reference,
     )
     allocation = session.allocations.select_for_update().get(ended_at__isnull=True)
-    if current < allocation.started_at or current >= session.planned_ends_at:
+    if current < allocation.started_at:
+        raise UsageSessionConflict("A troca não pode anteceder a alocação atual.")
+    if current >= session.planned_ends_at:
         raise UsageSessionConflict(
             "A troca exige tempo planejado restante e não ocorre na tolerância."
         )
