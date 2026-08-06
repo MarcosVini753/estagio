@@ -306,7 +306,7 @@ O comando periódico é:
 python manage.py reconcile_operational_deadlines
 ```
 
-Ele deve ser agendado externamente a cada minuto, encerra sessões com `now >= exit_deadline_at` e marca reservas como `NO_SHOW` quando `now > check_in_deadline_at`. Entrada e troca também reconciliam os computadores envolvidos antes de prosseguir.
+Ele deve ser agendado externamente a cada minuto, encerra sessões com `now >= exit_deadline_at` e marca reservas como `NO_SHOW` quando `now > check_in_deadline_at`. Entrada e troca também reconciliam os computadores envolvidos antes de prosseguir; na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
 
 ```text
 POST /api/usage-sessions/{id}/correct/

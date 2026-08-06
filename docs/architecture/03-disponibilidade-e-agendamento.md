@@ -95,7 +95,7 @@ De segunda a sexta o horário regular inicial é 07h15–21h; sábado é 07h15�
 Operação transacional:
 
 1. receber computador e `slot_count >= 1`;
-2. reconciliar prazos vencidos no computador;
+2. reconciliar prazos vencidos no computador, nas sessões ativas do usuário e em suas reservas confirmadas já vencidas;
 3. calcular `[agora, agora + slot_count × 15 minutos)`;
 4. validar que todo o intervalo cabe na janela operacional;
 5. bloquear referência de usuário e computador;
@@ -139,7 +139,7 @@ Operação transacional:
 3. encerrar alocação atual e sessão com o horário real;
 4. produzir evento de auditoria se a saída for administrativa.
 
-Quando `now >= exit_deadline_at`, a reconciliação encerra logicamente sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `NO_SHOW`. O comando `reconcile_operational_deadlines` executa ambas as rotinas, deve ser agendado externamente a cada minuto e as entradas/trocas reconciliam oportunisticamente os computadores envolvidos.
+Quando `now >= exit_deadline_at`, a reconciliação encerra logicamente sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `NO_SHOW`. O comando `reconcile_operational_deadlines` executa ambas as rotinas, deve ser agendado externamente a cada minuto e as entradas/trocas reconciliam oportunisticamente os computadores envolvidos. Na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
 
 ## Planejado, atual e histórico
 

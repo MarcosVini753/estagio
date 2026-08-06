@@ -42,6 +42,8 @@ def backfill_model_c_deadlines(apps, schema_editor):
         else:
             planned_starts_at = session.started_at
             planned_ends_at = session.ended_at
+            if planned_ends_at == planned_starts_at:
+                planned_ends_at += timedelta.resolution
             exit_deadline_at = session.ended_at + TOLERANCE
         session.planned_starts_at = planned_starts_at
         session.planned_ends_at = planned_ends_at

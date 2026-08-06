@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from importlib import import_module
 
 from django.apps import apps as django_apps
@@ -88,3 +88,22 @@ class ModelCMigrationTest(TestCase):
             "Finalize as sessões legadas ativas antes de aplicar o Modelo C.",
         ):
             backfill_model_c_deadlines(django_apps, None)
+
+    def test_backfill_normalizes_zero_duration_legacy_session(self):
+        instant = self.aware(time(10))
+        session = create_use_session(
+            user_reference="zero-duration-user",
+            started_at=instant,
+            planned_ends_at=instant + timedelta(minutes=15),
+            exit_deadline_at=instant + timedelta(minutes=18),
+            ended_at=instant,
+            status=UseSession.Status.FINISHED,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+
+        backfill_model_c_deadlines(django_apps, None)
+
+        session.refresh_from_db()
+        self.assertEqual(session.planned_starts_at, instant)
+        self.assertEqual(session.planned_ends_at, instant + timedelta.resolution)
+        self.assertEqual(session.exit_deadline_at, instant + timedelta(minutes=3))

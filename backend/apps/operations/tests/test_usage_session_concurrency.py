@@ -106,7 +106,7 @@ class UsageSessionConcurrencyTest(TransactionTestCase):
                     now=self.current,
                 )
                 results.append("reservation")
-            except (ReservationConflict, ReservationUnavailable):
+            except ReservationConflict, ReservationUnavailable:
                 results.append("conflict")
             finally:
                 connections.close_all()
@@ -178,7 +178,7 @@ class UsageSessionConcurrencyTest(TransactionTestCase):
                     now=self.current,
                 )
                 results.append("reservation")
-            except (ReservationConflict, ReservationUnavailable):
+            except ReservationConflict, ReservationUnavailable:
                 results.append("conflict")
             finally:
                 connections.close_all()

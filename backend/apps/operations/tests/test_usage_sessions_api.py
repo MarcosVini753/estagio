@@ -331,6 +331,22 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(response.status_code, 409)
         self.assertFalse(UseSession.objects.exists())
 
+    def test_immediate_entry_reconciles_overdue_own_reservation_elsewhere(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.other_computer,
+            starts_at=self.aware(time(7, 30)),
+            ends_at=self.aware(time(8, 30)),
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.start()
+
+        self.assertEqual(response.status_code, 201)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.NO_SHOW)
+        self.assertEqual(reservation.no_show_at, self.current)
+
     def test_immediate_entry_can_end_when_next_reservation_starts(self):
         reservation = create_reservation(
             user_reference="aluno-si-002",

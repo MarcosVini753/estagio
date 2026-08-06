@@ -9,7 +9,7 @@ start
 :Informa reserva ou escolhe quantidade de slots;
 
 |Sistema|
-:Reconcilia prazos vencidos no computador;
+:Reconcilia prazos no computador e nas reservas do usuario;
 :Verifica se o usuario ja possui sessao ativa;
 
 if (Usuario ja possui sessao ativa?) then (Sim)

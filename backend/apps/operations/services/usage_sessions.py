@@ -148,6 +148,13 @@ def start_usage_session(
     computer_ids = {computer_id}
     if reconciliation_user_reference:
         computer_ids.update(
+            Reservation.objects.filter(
+                user_reference=reconciliation_user_reference,
+                status=Reservation.Status.CONFIRMED,
+                check_in_deadline_at__lt=current,
+            ).values_list("computer_id", flat=True)
+        )
+        computer_ids.update(
             ComputerAllocation.objects.filter(
                 session__user_reference=reconciliation_user_reference,
                 session__status=UseSession.Status.ACTIVE,
