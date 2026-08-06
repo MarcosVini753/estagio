@@ -184,7 +184,7 @@ Calendários recebem exatamente sete dias. A API aceita `weekday` pelos nomes `M
 }
 ```
 
-O exemplo omite os outros cinco itens apenas por brevidade; a requisição real exige os sete. `TEMPORARY` exige `valid_until`. Calendários ativos do mesmo tipo não podem sobrepor. `PATCH` é aceito somente para configuração futura; calendário iniciado usa `replace/` com `effective_from` posterior a hoje. Emergência no próprio dia usa `CalendarException`.
+O exemplo omite os outros cinco itens apenas por brevidade; a requisição real exige os sete. `TEMPORARY` exige `valid_until`. Criação, preview e alteração de calendário futuro exigem `valid_from` posterior a hoje. Calendários ativos do mesmo tipo não podem sobrepor. `PATCH` é aceito somente para configuração futura; calendário iniciado usa `replace/` com `effective_from` posterior a hoje. Emergência no próprio dia usa `CalendarException`.
 
 O preview recebe os dados do calendário proposto e devolve:
 

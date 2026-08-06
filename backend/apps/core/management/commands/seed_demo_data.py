@@ -19,16 +19,22 @@ BASE_VALID_FROM = date(2025, 1, 1)
 
 
 def ensure_regular_operating_schedule():
-    schedule, _ = OperatingSchedule.objects.update_or_create(
+    schedule = (
+        OperatingSchedule.objects.filter(
+            schedule_type=OperatingSchedule.ScheduleType.REGULAR
+        )
+        .order_by("-valid_from", "-pk")
+        .first()
+    )
+    if schedule is not None:
+        return schedule
+
+    schedule = OperatingSchedule.objects.create(
         schedule_type=OperatingSchedule.ScheduleType.REGULAR,
         valid_from=BASE_VALID_FROM,
-        defaults={
-            "name": "Horário regular da Sala de Informática",
-            "valid_until": None,
-            "reason": "Horário regular inicial do ambiente de demonstração.",
-            "is_active": True,
-            "created_by_profile": DemoProfile.SYSTEM_ADMIN,
-        },
+        name="Horário regular da Sala de Informática",
+        reason="Horário regular inicial do ambiente de demonstração.",
+        created_by_profile=DemoProfile.SYSTEM_ADMIN,
     )
     for weekday in Weekday.values:
         is_open = weekday != Weekday.SUNDAY

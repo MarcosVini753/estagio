@@ -25,6 +25,15 @@ class OperatingScheduleOverlap(APIException):
     default_code = "OPERATING_SCHEDULE_OVERLAP"
 
 
+class OperatingScheduleStartInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = (
+        "Novos calendários devem começar após hoje; use uma substituição futura "
+        "ou uma exceção para mudanças no dia atual."
+    )
+    default_code = "OPERATING_SCHEDULE_START_INVALID"
+
+
 class TemporaryScheduleEndRequired(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
     default_detail = "Horário temporário exige uma data final."

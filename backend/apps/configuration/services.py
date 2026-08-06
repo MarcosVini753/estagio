@@ -9,6 +9,7 @@ from apps.core.api.errors import (
     OperatingDayConfigurationInvalid,
     OperatingScheduleOverlap,
     OperatingScheduleRequired,
+    OperatingScheduleStartInvalid,
     OperatingWindowInvalid,
     OperatingWindowOverlap,
     RoomNoticeInvalidPeriod,
@@ -224,6 +225,8 @@ def _validate_schedule_period(
     valid_from: date,
     valid_until: date | None,
 ) -> None:
+    if valid_from <= timezone.localdate():
+        raise OperatingScheduleStartInvalid()
     if valid_until is not None and valid_until < valid_from:
         raise ScheduleReplacementInvalid(
             "A validade final não pode anteceder a inicial."

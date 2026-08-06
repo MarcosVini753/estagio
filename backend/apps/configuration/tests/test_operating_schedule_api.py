@@ -89,6 +89,64 @@ class OperatingScheduleAPITest(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["code"], "OPERATING_DAY_CONFIGURATION_INVALID")
 
+    def test_create_rejects_schedule_starting_today(self):
+        today = timezone.localdate()
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            "/api/v1/operating-schedules/",
+            self.temporary_payload(
+                valid_from=today.isoformat(),
+                valid_until=(today + timedelta(days=30)).isoformat(),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "OPERATING_SCHEDULE_START_INVALID")
+        self.assertFalse(
+            OperatingSchedule.objects.filter(
+                schedule_type=OperatingSchedule.ScheduleType.TEMPORARY
+            ).exists()
+        )
+
+    def test_create_rejects_schedule_starting_in_the_past(self):
+        today = timezone.localdate()
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            "/api/v1/operating-schedules/",
+            self.temporary_payload(
+                valid_from=(today - timedelta(days=1)).isoformat(),
+                valid_until=(today + timedelta(days=30)).isoformat(),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "OPERATING_SCHEDULE_START_INVALID")
+        self.assertFalse(
+            OperatingSchedule.objects.filter(
+                schedule_type=OperatingSchedule.ScheduleType.TEMPORARY
+            ).exists()
+        )
+
+    def test_impact_preview_rejects_non_future_schedule(self):
+        today = timezone.localdate()
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            "/api/v1/operating-schedules/impact-preview/",
+            self.temporary_payload(
+                valid_from=today.isoformat(),
+                valid_until=(today + timedelta(days=30)).isoformat(),
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "OPERATING_SCHEDULE_START_INVALID")
+
     def test_preview_then_confirm_invalidates_conflicting_reservation(self):
         computer = Computer.objects.create(code="PC-CAL-01")
         starts_at = timezone.make_aware(
