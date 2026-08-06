@@ -186,6 +186,7 @@ class UsageSessionStartAPIView(APIView):
         session = start_usage_session(
             computer_id=data["computer_id"],
             reservation_id=reservation_id,
+            slot_count=data.get("slot_count"),
             actor_profile=get_demo_profile(request),
             actor_reference=get_demo_user_reference(request),
             user_reference=data.get("user_reference", get_demo_user_reference(request)),

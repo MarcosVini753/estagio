@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
-from apps.configuration.calendar import lock_operating_date
+from apps.configuration.calendar import lock_operating_date, resolve_operating_day
 from apps.configuration.selectors import get_booking_policy_for_date
 from apps.core.api.errors import (
     ConfigurationRequired,
@@ -19,8 +19,17 @@ from apps.core.api.errors import (
     ReservationUnavailable,
 )
 from apps.core.enums import DemoProfile
-from apps.operations.availability import generate_slot_intervals, validate_target_date
-from apps.operations.models import ComputerAllocation, Reservation
+from apps.operations.availability import validate_target_date
+from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.rules import (
+    LATE_CHECK_IN_TOLERANCE_MINUTES,
+    LATE_CHECK_OUT_TOLERANCE_MINUTES,
+)
+from apps.operations.slotting import (
+    calculate_interval,
+    validate_interval_inside_operating_window,
+    validate_reservation_slot_start,
+)
 
 
 def lock_user_reference(user_reference: str) -> None:
@@ -33,8 +42,11 @@ def _overlapping_allocations(
 ):
     return ComputerAllocation.objects.filter(
         computer_id=computer_id,
-        started_at__lt=ends_at,
-    ).filter(Q(ended_at__isnull=True) | Q(ended_at__gt=starts_at))
+        ended_at__isnull=True,
+        session__status=UseSession.Status.ACTIVE,
+        session__planned_starts_at__lt=ends_at,
+        session__planned_ends_at__gt=starts_at,
+    )
 
 
 @transaction.atomic
@@ -42,6 +54,7 @@ def create_reservation(
     *,
     computer_id: int,
     starts_at: datetime,
+    slot_count: int,
     user_reference: str,
     affiliation_type: str,
     institutional_unit: str,
@@ -52,23 +65,40 @@ def create_reservation(
     target_date = timezone.localdate(starts_at)
     today = validate_target_date(target_date, now=current)
     lock_operating_date(target_date)
-    _, _, slots = generate_slot_intervals(target_date)
-    ends_at = next((end for start, end in slots if start == starts_at), None)
+    operating_day = resolve_operating_day(target_date)
+    try:
+        ends_at = calculate_interval(starts_at, slot_count)
+        validate_reservation_slot_start(starts_at, operating_day)
+        validate_interval_inside_operating_window(starts_at, ends_at, operating_day)
+    except ValueError as error:
+        raise ReservationSlotInvalid() from error
 
-    if ends_at is None or (target_date == today and starts_at <= current):
+    if target_date == today and starts_at <= current:
         raise ReservationSlotInvalid()
 
+    lock_user_reference(user_reference)
     computer = Computer.objects.select_for_update().get(pk=computer_id)
     if computer.operational_state != Computer.OperationalState.AVAILABLE:
         raise ReservationUnavailable()
 
-    lock_user_reference(user_reference)
     if _overlapping_allocations(
         computer_id=computer.pk,
         starts_at=starts_at,
         ends_at=ends_at,
     ).exists():
         raise ReservationUnavailable()
+
+    if (
+        UseSession.objects.select_for_update()
+        .filter(
+            status=UseSession.Status.ACTIVE,
+            user_reference=user_reference,
+            planned_starts_at__lt=ends_at,
+            planned_ends_at__gt=starts_at,
+        )
+        .exists()
+    ):
+        raise ReservationConflict()
 
     conflicts = Reservation.objects.select_for_update().filter(
         status=Reservation.Status.CONFIRMED,
@@ -95,6 +125,12 @@ def create_reservation(
 
     try:
         with transaction.atomic():
+            check_in_deadline_at = starts_at + timedelta(
+                minutes=LATE_CHECK_IN_TOLERANCE_MINUTES
+            )
+            exit_deadline_at = ends_at + timedelta(
+                minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES
+            )
             return Reservation.objects.create(
                 user_reference=user_reference,
                 affiliation_type=affiliation_type,
@@ -102,6 +138,8 @@ def create_reservation(
                 computer=computer,
                 starts_at=starts_at,
                 ends_at=ends_at,
+                check_in_deadline_at=check_in_deadline_at,
+                exit_deadline_at=exit_deadline_at,
                 created_by_profile=created_by_profile,
             )
     except IntegrityError as error:

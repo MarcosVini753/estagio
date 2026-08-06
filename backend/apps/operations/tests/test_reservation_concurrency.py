@@ -32,7 +32,6 @@ class ReservationConcurrencyTest(TransactionTestCase):
             },
         )
         BookingPolicy.objects.create(
-            slot_duration_minutes=60,
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
             is_active=True,
@@ -53,6 +52,7 @@ class ReservationConcurrencyTest(TransactionTestCase):
                 create_reservation(
                     computer_id=self.computer.pk,
                     starts_at=starts_at,
+                    slot_count=4,
                     user_reference="aluno-si-001",
                     affiliation_type="STUDENT",
                     institutional_unit="Sistemas de Informação",
