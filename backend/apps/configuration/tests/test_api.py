@@ -9,6 +9,7 @@ from apps.configuration.models import BookingPolicy, Shift
 from apps.configuration.selectors import get_shifts_for_date
 from apps.configuration.services import replace_shift
 from apps.operations.models import UseSession
+from apps.operations.tests.factories import create_use_session
 
 
 class ConfigurationAPITest(APITestCase):
@@ -92,7 +93,6 @@ class ConfigurationAPITest(APITestCase):
     def test_booking_policy_update_preserves_previous_version(self):
         previous_date = timezone.localdate() - timedelta(days=1)
         old_policy = BookingPolicy.objects.create(
-            slot_duration_minutes=60,
             valid_from=previous_date,
             is_active=True,
         )
@@ -100,15 +100,34 @@ class ConfigurationAPITest(APITestCase):
 
         response = self.client.patch(
             "/api/booking-policy/",
-            {"slot_duration_minutes": 30},
+            {"cancellation_limit_minutes": 30},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["slot_duration_minutes"], 30)
+        self.assertEqual(response.data["cancellation_limit_minutes"], 30)
         old_policy.refresh_from_db()
         self.assertFalse(old_policy.is_active)
         self.assertEqual(BookingPolicy.objects.filter(is_active=True).count(), 1)
+
+    def test_booking_policy_does_not_expose_fixed_slot_or_tolerance_rules(self):
+        BookingPolicy.objects.create(is_active=True)
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        read_response = self.client.get("/api/booking-policy/")
+        update_response = self.client.patch(
+            "/api/booking-policy/",
+            {
+                "slot_duration_minutes": 60,
+                "check_in_tolerance_minutes": 15,
+            },
+            format="json",
+        )
+
+        self.assertEqual(read_response.status_code, 200)
+        self.assertNotIn("slot_duration_minutes", read_response.data)
+        self.assertNotIn("check_in_tolerance_minutes", read_response.data)
+        self.assertEqual(update_response.status_code, 400)
 
     def test_replace_preserves_historical_shift_reference(self):
         today = timezone.localdate()
@@ -118,7 +137,7 @@ class ConfigurationAPITest(APITestCase):
             end_time=time(12, 0),
             valid_from=today - timedelta(days=7),
         )
-        session = UseSession.objects.create(
+        session = create_use_session(
             user_reference="aluno-historico",
             start_shift=shift,
             started_at=timezone.now() - timedelta(days=1),
@@ -161,7 +180,7 @@ class ConfigurationAPITest(APITestCase):
             start_time=time(7, 0),
             end_time=time(12, 0),
         )
-        UseSession.objects.create(
+        create_use_session(
             user_reference="aluno-historico",
             start_shift=shift,
             status=UseSession.Status.FINISHED,

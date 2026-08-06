@@ -202,8 +202,6 @@ class BookingPolicySerializer(serializers.ModelSerializer):
         model = BookingPolicy
         fields = [
             "id",
-            "slot_duration_minutes",
-            "check_in_tolerance_minutes",
             "cancellation_limit_minutes",
             "max_future_reservations_per_user",
             "is_active",
@@ -221,8 +219,6 @@ class BookingPolicySerializer(serializers.ModelSerializer):
 
 
 class BookingPolicyUpdateSerializer(serializers.Serializer):
-    slot_duration_minutes = serializers.IntegerField(min_value=1, required=False)
-    check_in_tolerance_minutes = serializers.IntegerField(min_value=0, required=False)
     cancellation_limit_minutes = serializers.IntegerField(min_value=0, required=False)
     max_future_reservations_per_user = serializers.IntegerField(
         min_value=1,

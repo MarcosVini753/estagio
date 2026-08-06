@@ -29,7 +29,6 @@ class CalendarChangeConcurrencyTest(TransactionTestCase):
             },
         )
         BookingPolicy.objects.create(
-            slot_duration_minutes=60,
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
             is_active=True,
@@ -85,6 +84,7 @@ class CalendarChangeConcurrencyTest(TransactionTestCase):
                         datetime.combine(self.tomorrow, time(8)),
                         timezone.get_current_timezone(),
                     ),
+                    slot_count=4,
                     user_reference="aluno-concorrente",
                     affiliation_type="STUDENT",
                     institutional_unit="Sistemas de Informação",
