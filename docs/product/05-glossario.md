@@ -6,7 +6,7 @@ Aluno, professor ou técnico-administrativo autorizado a utilizar a Sala de Info
 
 ## Monitor da Sala
 
-Papel operacional responsável por acompanhar a sala, corrigir registros, tratar ocorrências e gerar relatórios operacionais.
+Papel operacional responsável por acompanhar a sala, corrigir registros e tratar ocorrências. Não acessa relatórios.
 
 ## Supervisor da Biblioteca
 
@@ -30,7 +30,11 @@ Situação calculada para um instante ou intervalo: pode resultar em `AVAILABLE`
 
 ## Reserva
 
-Bloqueio antecipado de um computador por uma quantidade de slots consecutivos de 15 minutos. No MVP, pode ser criada para hoje (futuro do dia corrente) ou amanhã.
+Bloqueio antecipado de um computador por uma quantidade de slots consecutivos de 15 minutos. Pode estar confirmada, cancelada ou utilizada e referencia a política vigente em sua criação.
+
+## Política de reserva
+
+Versão temporal das regras de cancelamento e limite de reservas, delimitada por `valid_from` e `valid_until`. Reservas existentes continuam vinculadas à versão originalmente aplicada.
 
 ## Sessão de uso
 
@@ -88,17 +92,9 @@ Fechamento ou horário especial para uma data específica, com precedência sobr
 
 Comunicação interna de transmissão geral, exibida enquanto ativa e dentro do período de visibilidade configurado.
 
-## Reserva invalidada
-
-Reserva antes confirmada que se tornou incompatível com uma alteração do calendário. Não bloqueia disponibilidade nem permite check-in, mas preserva justificativa e histórico.
-
 ## Ocorrência
 
 Registro de problema técnico ou operacional associado opcionalmente a computador, sessão e alocação.
-
-## Relatório operacional
-
-Projeção voltada ao acompanhamento cotidiano pelo Monitor da Sala.
 
 ## Relatório consolidado
 

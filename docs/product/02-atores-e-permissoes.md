@@ -46,7 +46,8 @@ Pode:
 - registrar e consultar ocorrências;
 - corrigir registros com justificativa;
 - consultar histórico de uso;
-- gerar e exportar relatórios operacionais.
+
+Não pode acessar indicadores, relatórios ou exportações.
 
 O Supervisor da Biblioteca herda todas estas capacidades.
 
@@ -61,7 +62,7 @@ Pode executar **todas** as ações do Monitor da Sala e, adicionalmente:
 - cadastrar e versionar o horário semanal regular;
 - criar horário temporário com início e fim para recessos;
 - registrar fechamento excepcional ou horário especial;
-- visualizar reservas afetadas e confirmar sua invalidação com justificativa;
+- visualizar reservas afetadas e confirmar seu cancelamento com justificativa;
 - publicar e desativar avisos internos;
 - configurar parâmetros de relatórios;
 - consultar indicadores gerenciais;
@@ -91,7 +92,7 @@ Sugestão de identificadores internos:
 
 ```text
 ROOM_USER
-INTERN
+ROOM_MONITOR
 LIBRARY_SUPERVISOR
 SYSTEM_ADMIN
 ```

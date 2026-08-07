@@ -6,6 +6,7 @@ erDiagram
     COMPUTER ||--o{ RESERVATION : recebe
     COMPUTER ||--o{ COMPUTER_ALLOCATION : recebe
     COMPUTER ||--o{ OCCURRENCE : relacionado
+    BOOKING_POLICY ||--o{ RESERVATION : rege
     RESERVATION o|--o| USE_SESSION : origina
     USE_SESSION ||--|{ COMPUTER_ALLOCATION : contem
     USE_SESSION ||--o{ OCCURRENCE : relacionado
@@ -41,15 +42,15 @@ erDiagram
         string affiliation_type
         string institutional_unit
         bigint computer_id
+        bigint booking_policy_id
         datetime starts_at
         datetime ends_at
         datetime check_in_deadline_at
         datetime exit_deadline_at
-        datetime no_show_at
         string status
-        datetime invalidated_at
-        string invalidated_by_profile
-        string invalidation_reason
+        datetime cancelled_at
+        string cancelled_by_profile
+        string cancellation_reason
     }
 
     USE_SESSION {
@@ -129,6 +130,14 @@ erDiagram
         time closes_at
     }
 
+    BOOKING_POLICY {
+        bigint id
+        int cancellation_limit_minutes
+        int max_future_reservations_per_user
+        date valid_from
+        date valid_until
+    }
+
     ROOM_NOTICE {
         bigint id
         string notice_type
@@ -141,4 +150,4 @@ erDiagram
     }
 ```
 
-O diagrama é conceitual. `slot_count` é derivado dos intervalos e não é persistido. Migrations registram constraints e índices definitivos, inclusive não sobreposição de calendários ativos do mesmo tipo, reservas confirmadas semiabertas, unicidade de dia por calendário e ordem dos intervalos planejados e deadlines.
+O diagrama é conceitual. `slot_count` é derivado dos intervalos e não é persistido. Migrations registram constraints e índices definitivos, inclusive não sobreposição de calendários ativos do mesmo tipo, políticas de reserva versionadas sem sobreposição, reservas confirmadas semiabertas, unicidade de dia por calendário e ordem dos intervalos planejados e deadlines.

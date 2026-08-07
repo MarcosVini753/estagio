@@ -9,6 +9,8 @@ Eventos mínimos:
 - alteração de estado operacional;
 - correção de sessão ou alocação;
 - cancelamento administrativo;
+- realocação automática de reserva;
+- encerramento de sessão por computador indisponível;
 - alteração de turno;
 - alteração de política de reserva;
 - alteração de parâmetros de relatório;
@@ -47,9 +49,9 @@ Cobrir:
 - troca de computador;
 - troca pelo intervalo planejado restante e rejeição durante tolerância;
 - saída antecipada, no prazo e expiração lógica;
-- reconciliação de `NO_SHOW` e `TIME_LIMIT_REACHED`;
+- reconciliação de cancelamento por check-in expirado e `TIME_LIMIT_REACHED`;
 - correção auditada;
-- alteração de estado operacional.
+- alteração de estado operacional com transferência/encerramento de sessão e realocação/cancelamento de reservas;
 - substituição transacional de turno e preservação da versão usada por sessão.
 
 ### Testes de API
@@ -72,6 +74,8 @@ Usar PostgreSQL para validar:
 - concorrência de reservas;
 - concorrência entre reserva e entrada imediata;
 - concorrência entre reserva e troca;
+- concorrência entre manutenção e reserva ou entrada;
+- duas indisponibilizações disputando o mesmo destino;
 - consultas agregadas.
 
 ### Testes de interface

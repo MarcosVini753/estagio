@@ -22,7 +22,7 @@ Construir um sistema web para registrar, acompanhar e analisar o uso dos computa
 ## Atores
 
 - **Usuário da Sala:** aluno, professor ou técnico-administrativo da UFAC.
-- **Monitor da Sala:** acompanha operação, corrige registros, trata ocorrências e gera relatórios operacionais.
+- **Monitor da Sala:** acompanha a operação, corrige registros e trata ocorrências, sem acesso a relatórios.
 - **Supervisor da Biblioteca:** configura dados, acompanha indicadores e gera relatórios consolidados.
 - **Administrador do Sistema:** papel arquitetural futuro para contas, permissões, parâmetros e auditoria.
 

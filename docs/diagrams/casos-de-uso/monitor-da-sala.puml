@@ -22,11 +22,9 @@ rectangle "Sistema de Controle de Uso da Sala de Informática da Biblioteca da U
     usecase "Consultar ocorrências" as UC05
   }
 
-  package "Registros e relatórios" {
+  package "Registros" {
     usecase "Consultar histórico\nde uso da sala" as UC06
     usecase "Corrigir registro\nde uso" as UC07
-    usecase "Gerar relatório\noperacional" as UC08
-    usecase "Exportar relatório" as UC09
   }
 }
 
@@ -37,9 +35,4 @@ Monitor --> UC04
 Monitor --> UC05
 Monitor --> UC06
 Monitor --> UC07
-Monitor --> UC08
-Monitor --> UC09
-
-UC09 .> UC08 : <<include>>
-
 @enduml

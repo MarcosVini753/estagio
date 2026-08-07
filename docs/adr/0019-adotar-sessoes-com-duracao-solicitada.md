@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita.
+Aceita. A semântica de `NO_SHOW` foi substituída pela ADR 0021; intervalos planejados e deadlines permanecem vigentes.
 
 ## Contexto
 

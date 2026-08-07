@@ -64,8 +64,8 @@
 - precedência de exceção pontual sobre temporário e regular;
 - separação entre funcionamento da sala e turnos analíticos;
 - status público da sala e contexto de fechamento nas respostas de disponibilidade;
-- preview de reservas afetadas, confirmação e invalidação auditada em transação;
-- metadados de invalidação expostos em “Minhas reservas” e check-in bloqueado;
+- preview de reservas afetadas, confirmação e cancelamento auditado em transação;
+- metadados administrativos de cancelamento expostos em “Minhas reservas” e check-in bloqueado;
 - avisos internos públicos por período de visibilidade e banner na página inicial;
 - auditoria das mutações administrativas de calendário, exceção e aviso;
 - relatório mensal com origem, minutos operacionais por dia e reservas por estado;
@@ -76,16 +76,27 @@
 
 - reservas e usos imediatos com `slot_count` consecutivo e intervalo planejado;
 - duração fixa de 15 minutos e tolerâncias fixas de três minutos fora de `BookingPolicy`;
-- deadlines de check-in e saída, `no_show_at` e motivo `TIME_LIMIT_REACHED`;
+- deadlines de check-in e saída e motivo `TIME_LIMIT_REACHED`;
 - check-in sem antecipação e sem deslocar o fim da reserva;
 - conflitos por todo o intervalo planejado contra reservas, sessões e fechamento;
 - troca validada até o fim planejado e bloqueada durante a tolerância;
 - disponibilidade futura limitada por `planned_ends_at` e estado atual por `exit_deadline_at`;
 - resposta `immediate_usage` com máximo de slots e fator limitante;
-- reconciliação oportunista e comando periódico para sessões e `NO_SHOW`;
+- reconciliação oportunista e comando periódico para sessões e cancelamentos por check-in expirado;
 - migração em três fases com bloqueio explícito de sessões legadas ativas;
 - testes de constraints, APIs, deadlines, backfill e corridas entre reserva, entrada e troca;
 - protótipo, ADR, documentação e diagramas sincronizados.
+
+## Concluído na normalização do domínio e indisponibilidade operacional
+
+- perfis persistidos e simulados usam `ROOM_MONITOR` e referência `demo-room-monitor`;
+- reservas possuem somente `CONFIRMED`, `CANCELLED` e `USED`;
+- check-in expirado e mudança de calendário usam cancelamento administrativo comum;
+- `CalendarException` possui somente `CLOSED` e `SPECIAL_HOURS`;
+- `BookingPolicy` é versionada por vigência e cada reserva referencia a versão aplicada;
+- `AVAILABLE -> MAINTENANCE/INACTIVE` transfere ou encerra sessão ativa e realoca ou cancela reservas atomicamente;
+- resposta do endpoint de estado descreve o impacto e as corridas usam locks determinísticos;
+- Monitor continua sem acesso ao relatório mensal.
 
 ## Não implementado
 

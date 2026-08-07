@@ -34,7 +34,6 @@ A seleção controla menus e autorizações simuladas. Não existe autenticaçã
 - alterar estado operacional;
 - registrar e consultar ocorrências registradas por usuários;
 - consultar e corrigir histórico com justificativa;
-- gerar e exportar relatórios operacionais.
 
 ## Supervisor
 
@@ -43,7 +42,7 @@ A seleção controla menus e autorizações simuladas. Não existe autenticaçã
 - configurar turnos analíticos sem alterar o horário de abertura;
 - configurar o horário semanal regular e horários temporários de recesso;
 - registrar exceções pontuais de fechamento ou horário especial;
-- visualizar reservas afetadas e confirmar sua invalidação auditada;
+- visualizar reservas afetadas e confirmar seu cancelamento auditado;
 - publicar e desativar avisos internos;
 - configurar parâmetros de relatórios;
 - analisar uso por período, turno, curso/setor e computador;
