@@ -115,7 +115,7 @@ Operação transacional:
 3. validar o intervalo inteiro em uma única janela operacional;
 4. bloquear referência de usuário e computador;
 5. verificar reservas e sessões planejadas do computador e do usuário;
-6. criar `Reservation` com deadlines de três minutos e estado `CONFIRMED`.
+6. vincular a versão de `BookingPolicy` vigente e criar `Reservation` com deadlines de três minutos e estado `CONFIRMED`.
 
 ## Troca de computador
 
@@ -139,7 +139,7 @@ Operação transacional:
 3. encerrar alocação atual e sessão com o horário real;
 4. produzir evento de auditoria se a saída for administrativa.
 
-Quando `now >= exit_deadline_at`, a reconciliação encerra logicamente sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `NO_SHOW`. O comando `reconcile_operational_deadlines` executa ambas as rotinas, deve ser agendado externamente a cada minuto e as entradas/trocas reconciliam oportunisticamente os computadores envolvidos. Na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
+Quando `now >= exit_deadline_at`, a reconciliação encerra logicamente sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `CANCELLED` com autor sistêmico e motivo explícito. O comando `reconcile_operational_deadlines` executa ambas as rotinas, deve ser agendado externamente a cada minuto e as entradas/trocas reconciliam oportunisticamente os computadores envolvidos.
 
 ## Planejado, atual e histórico
 
@@ -156,14 +156,25 @@ Antes de salvar uma redução de horário, o preview consulta reservas confirmad
 2. salvar a configuração nova ou sua versão substituta;
 3. recalcular o calendário efetivo, preservando exceções e precedência;
 4. rejeitar com `SCHEDULE_CHANGE_AFFECTS_RESERVATIONS` se faltou confirmação;
-5. marcar conflitos como `INVALIDATED`, com perfil, horário e motivo;
+5. cancelar administrativamente os conflitos, com perfil, horário e motivo;
 6. registrar auditoria do calendário e de cada reserva;
 7. criar aviso vinculado, quando solicitado;
 8. confirmar a transação.
 
+## Indisponibilidade operacional do computador
+
+Ao mudar um computador de `AVAILABLE` para `MAINTENANCE` ou `INACTIVE`, `operations/services/computer_state.py` reconcilia prazos, bloqueia computadores, sessão, alocação e reservas em ordem determinística e então:
+
+1. transfere a sessão ativa para um destino livre em `[now, planned_ends_at)` ou a encerra com `COMPUTER_UNAVAILABLE`;
+2. realoca cada reserva confirmada para um computador livre durante seu intervalo ou a cancela administrativamente;
+3. altera o estado do computador e registra histórico e auditoria;
+4. confirma tudo em uma única transação.
+
+Transições que não saem de `AVAILABLE`, como `MAINTENANCE -> INACTIVE` ou `MAINTENANCE -> AVAILABLE`, apenas alteram o estado.
+
 ## Concorrência
 
-Usar `transaction.atomic()`, advisory lock por referência de usuário e bloqueios pessimistas com `select_for_update()` nas operações que disputam computadores. Reserva, entrada imediata e troca são serializadas pelos mesmos alvos. Constraints de banco funcionam como última barreira contra duplicidade.
+Usar `transaction.atomic()`, advisory lock por referência de usuário e bloqueios pessimistas com `select_for_update()` nas operações que disputam computadores. A indisponibilização bloqueia os computadores por chave primária para que duas operações não escolham o mesmo destino. Constraints de banco funcionam como última barreira contra duplicidade.
 
 ## Erros de domínio sugeridos
 

@@ -4,25 +4,7 @@ Repositório de documentação, diagramas, protótipo navegável e implementaç�
 
 ## Estado atual
 
-As etapas documentais e de inicialização do backend foram concluídas. O backend já possui:
-
-- Django 5.2 e Django REST Framework;
-- PostgreSQL via Docker Compose;
-- apps separados por domínio;
-- seleção de perfil de demonstração em sessão;
-- referência, vínculo e unidade fictícios para Usuário da Sala;
-- modelos e migrations iniciais;
-- CRUD inicial de computadores, turnos e exceções de calendário;
-- substituição versionada de turnos com auditoria;
-- identidade lógica compartilhada entre versões do mesmo turno;
-- alteração auditável do estado operacional dos computadores;
-- política de duração dos slots;
-- criação e cancelamento transacionais de reservas;
-- entrada, sessão ativa, troca de computador e saída transacionais;
-- geração de slots para hoje e amanhã;
-- cálculo de `AVAILABLE`, `MAINTENANCE`, `INACTIVE`, `OCCUPIED` e `RESERVED`;
-- OpenAPI, testes, Ruff e CI;
-- relatório mensal JSON derivado dos registros operacionais.
+O backend já implementa reservas, sessões de uso, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. Consulte [docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md) para o detalhamento.
 
 ## Regras centrais
 
@@ -31,7 +13,7 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - reservas para horários futuros de hoje ou para amanhã;
 - fila de espera fora do escopo;
 - ator operacional denominado Monitor da Sala;
-- autenticação real fora do MVP;
+- autorização real fora do MVP;
 - computadores persistem apenas `AVAILABLE`, `MAINTENANCE` e `INACTIVE`;
 - `OCCUPIED` e `RESERVED` são calculados;
 - troca de computador preserva a sessão e cria nova alocação;
@@ -53,6 +35,7 @@ make run
 
 A aplicação fica em `http://localhost:8000/`.
 
+- [Guia rápido](docs/guia-rapido.md)
 - [Índice da documentação](docs/README.md)
 - [Visão geral do produto](docs/product/00-visao-geral.md)
 - [Escopo do MVP](docs/product/01-escopo-mvp.md)
@@ -72,51 +55,7 @@ http://localhost:8000/api/docs/
 http://localhost:8000/api/redoc/
 ```
 
-## Endpoints disponíveis
-
-```text
-GET  /api/health/
-GET  /api/demo/context/
-POST /api/demo/select-profile/
-
-GET  /api/computers/
-POST /api/computers/
-GET  /api/computers/{id}/
-PATCH /api/computers/{id}/
-PATCH /api/computers/{id}/operational-state/
-GET  /api/computers/availability/?date=YYYY-MM-DD
-GET  /api/computers/{id}/slots/?date=YYYY-MM-DD
-
-GET  /api/shifts/
-POST /api/shifts/
-PATCH /api/shifts/{id}/
-POST /api/shifts/{id}/replace/
-GET  /api/calendar-exceptions/
-POST /api/calendar-exceptions/
-PATCH /api/calendar-exceptions/{id}/
-GET  /api/booking-policy/
-PATCH /api/booking-policy/
-
-GET  /api/reservations/
-GET  /api/reservations/mine/
-POST /api/reservations/
-POST /api/reservations/{id}/cancel/
-
-GET  /api/usage-sessions/current/
-GET  /api/usage-sessions/active/
-GET  /api/usage-sessions/history/
-POST /api/usage-sessions/start/
-POST /api/usage-sessions/{id}/switch-computer/
-POST /api/usage-sessions/{id}/finish/
-POST /api/usage-sessions/{id}/correct/
-
-GET   /api/occurrences/
-POST  /api/occurrences/
-GET   /api/occurrences/{id}/
-PATCH /api/occurrences/{id}/
-
-GET /api/reports/monthly/?year=YYYY&month=M
-```
+A lista completa de endpoints está em [docs/architecture/04-api.md](docs/architecture/04-api.md).
 
 ## Estrutura
 

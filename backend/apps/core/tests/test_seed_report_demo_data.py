@@ -5,7 +5,12 @@ from django.core.management.base import CommandError
 from django.test import TestCase
 
 from apps.computers.models import Computer, ComputerOperationalStateChange
-from apps.configuration.models import CalendarException, OperatingSchedule, Shift
+from apps.configuration.models import (
+    BookingPolicy,
+    CalendarException,
+    OperatingSchedule,
+    Shift,
+)
 from apps.core.enums import AffiliationType
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
@@ -151,3 +156,18 @@ class SeedReportDemoDataTest(TestCase):
     def test_requires_at_least_three_days(self):
         with self.assertRaises(CommandError):
             self.run_seed(days=2)
+
+    def test_seed_extends_booking_policy_to_cover_historical_range(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        earliest = timezone.localdate() - timedelta(days=10)
+        BookingPolicy.objects.create(valid_from=timezone.localdate())
+
+        self.run_seed(days=10, seed=12345)
+
+        policy = BookingPolicy.objects.order_by("valid_from").first()
+        self.assertIsNotNone(policy)
+        self.assertLessEqual(policy.valid_from, earliest)
+        self.assertTrue(Reservation.objects.filter(booking_policy=policy).exists())

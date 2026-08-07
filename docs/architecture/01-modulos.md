@@ -73,8 +73,9 @@ Núcleo transacional do sistema:
 - alocações;
 - troca de computador;
 - saída;
-- correções operacionais.
-- invalidação de reservas decorrente de mudança de calendário.
+- correções operacionais;
+- orquestração atômica da indisponibilidade de computadores;
+- realocação e cancelamento operacional de reservas.
 
 Entidades:
 
@@ -105,7 +106,7 @@ Responsável por consultas analíticas e exportações:
 - ocupação;
 - uso por computador;
 - uso por curso, setor e vínculo;
-- reservas, cancelamentos e não comparecimentos.
+- reservas e cancelamentos.
 
 Deve possuir principalmente selectors, projections e exporters. Não deve criar lançamentos manuais de totais.
 O relatório semanal permanece como evolução futura, fora da Etapa 4.
@@ -119,7 +120,7 @@ Responsável por eventos administrativos sensíveis:
 - mudança de parâmetros;
 - criação, substituição ou edição de calendário e exceção;
 - publicação ou desativação de aviso;
-- invalidação de reserva por mudança de funcionamento;
+- realocação ou cancelamento de reserva por mudança operacional;
 - ações futuras de contas e permissões.
 
 Entidade futura ou inicial:

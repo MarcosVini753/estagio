@@ -17,7 +17,7 @@ confirmadas afetadas;
 
 |Supervisor da Biblioteca|
 if (Existem reservas afetadas?) then (Sim)
-  if (Confirma invalidação?) then (Sim)
+  if (Confirma cancelamento?) then (Sim)
     :Escolhe se deseja publicar aviso;
   else (Nao)
     :Cancela alteração;
@@ -29,7 +29,7 @@ endif
 
 |Sistema|
 :Salva calendário ou exceção;
-:Invalida reservas conflitantes;
+:Cancela reservas conflitantes;
 :Registra auditoria de cada alteração;
 if (Publicar aviso?) then (Sim)
   :Cria aviso interno vinculado;

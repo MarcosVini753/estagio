@@ -61,6 +61,38 @@ class ComputerOperationalStateSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True)
 
 
+class ActiveSessionStateImpactSerializer(serializers.Serializer):
+    session_id = serializers.IntegerField()
+    action = serializers.ChoiceField(choices=["REALLOCATED", "FINISHED"])
+    from_computer_id = serializers.IntegerField()
+    to_computer_id = serializers.IntegerField(allow_null=True)
+
+
+class ReallocatedReservationImpactSerializer(serializers.Serializer):
+    reservation_id = serializers.IntegerField()
+    from_computer_id = serializers.IntegerField()
+    to_computer_id = serializers.IntegerField()
+
+
+class CancelledReservationImpactSerializer(serializers.Serializer):
+    reservation_id = serializers.IntegerField()
+
+
+class ReservationStateImpactSerializer(serializers.Serializer):
+    reallocated = ReallocatedReservationImpactSerializer(many=True)
+    cancelled = CancelledReservationImpactSerializer(many=True)
+
+
+class ComputerStateImpactSerializer(serializers.Serializer):
+    active_session = ActiveSessionStateImpactSerializer(allow_null=True)
+    reservations = ReservationStateImpactSerializer()
+
+
+class ComputerOperationalStateResponseSerializer(serializers.Serializer):
+    computer = ComputerSerializer()
+    impact = ComputerStateImpactSerializer()
+
+
 class AvailabilityDateQuerySerializer(serializers.Serializer):
     date = serializers.DateField()
 

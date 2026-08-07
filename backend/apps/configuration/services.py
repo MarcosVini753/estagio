@@ -44,39 +44,43 @@ BOOKING_POLICY_FIELDS = (
 
 
 @transaction.atomic
-def update_active_booking_policy(*, values: dict) -> BookingPolicy:
+def update_current_booking_policy(*, values: dict) -> BookingPolicy:
     today = timezone.localdate()
-    current = (
-        BookingPolicy.objects.select_for_update()
-        .filter(is_active=True)
-        .order_by("-valid_from", "-created_at")
-        .first()
+    policies = list(
+        BookingPolicy.objects.select_for_update().order_by(
+            "valid_from", "created_at", "pk"
+        )
     )
+    base = policies[-1] if policies else None
 
-    if current and current.valid_from == today:
+    if base and base.valid_from >= today and not base.reservations.exists():
         for field, value in values.items():
-            setattr(current, field, value)
-        current.save(update_fields=[*values.keys(), "updated_at"])
-        return current
+            setattr(base, field, value)
+        base.save(update_fields=[*values.keys(), "updated_at"])
+        return base
 
     merged = {
         field: values.get(
             field,
-            getattr(current, field)
-            if current
+            getattr(base, field)
+            if base
             else BookingPolicy._meta.get_field(field).default,
         )
         for field in BOOKING_POLICY_FIELDS
     }
+    valid_from = (
+        max(today, base.valid_from + timedelta(days=1))
+        if base and base.valid_from >= today
+        else today
+    )
 
-    if current:
-        current.is_active = False
-        current.save(update_fields=["is_active", "updated_at"])
+    if base and (base.valid_until is None or base.valid_until >= valid_from):
+        base.valid_until = valid_from - timedelta(days=1)
+        base.save(update_fields=["valid_until", "updated_at"])
 
     return BookingPolicy.objects.create(
         **merged,
-        valid_from=today,
-        is_active=True,
+        valid_from=valid_from,
     )
 
 
@@ -469,18 +473,18 @@ def preview_operating_schedule_impact(
     }
 
 
-def _invalidate_conflicts(
+def _cancel_conflicting_reservations(
     *,
     conflicts,
     actor_profile: str,
     reason: str,
 ) -> None:
     from apps.operations.services.reservations import (
-        invalidate_reservation_due_to_calendar_change,
+        cancel_reservation_due_to_operational_change,
     )
 
     for reservation in conflicts:
-        invalidate_reservation_due_to_calendar_change(
+        cancel_reservation_due_to_operational_change(
             reservation_id=reservation.pk,
             actor_profile=actor_profile,
             reason=reason,
@@ -527,7 +531,7 @@ def create_operating_schedule(
     reason: str,
     days: list[dict],
     actor_profile: str,
-    confirm_invalidation: bool = False,
+    confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
 ) -> OperatingSchedule:
@@ -564,15 +568,15 @@ def create_operating_schedule(
         raise OperatingScheduleOverlap() from error
 
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_invalidation:
+    if conflicts and not confirm_cancellation:
         raise ScheduleChangeAffectsReservations(
             reservation.pk for reservation in conflicts
         )
-    invalidation_reason = reason.strip() or f"Alteração do calendário: {name}."
-    _invalidate_conflicts(
+    cancellation_reason = reason.strip() or f"Alteração do calendário: {name}."
+    _cancel_conflicting_reservations(
         conflicts=conflicts,
         actor_profile=actor_profile,
-        reason=invalidation_reason,
+        reason=cancellation_reason,
     )
     AuditEvent.objects.create(
         actor_profile=actor_profile,
@@ -607,7 +611,7 @@ def replace_operating_schedule(
     name: str | None = None,
     reason: str | None = None,
     days: list[dict] | None = None,
-    confirm_invalidation: bool = False,
+    confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
 ) -> OperatingSchedule:
@@ -657,17 +661,17 @@ def replace_operating_schedule(
     )
     _create_schedule_days(replacement, replacement_days)
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_invalidation:
+    if conflicts and not confirm_cancellation:
         raise ScheduleChangeAffectsReservations(
             reservation.pk for reservation in conflicts
         )
-    invalidation_reason = replacement.reason or (
+    cancellation_reason = replacement.reason or (
         f"Substituição do calendário: {replacement.name}."
     )
-    _invalidate_conflicts(
+    _cancel_conflicting_reservations(
         conflicts=conflicts,
         actor_profile=actor_profile,
-        reason=invalidation_reason,
+        reason=cancellation_reason,
     )
     AuditEvent.objects.create(
         actor_profile=actor_profile,
@@ -704,7 +708,7 @@ def update_future_operating_schedule(
     schedule_id: int,
     values: dict,
     actor_profile: str,
-    confirm_invalidation: bool = False,
+    confirm_cancellation: bool = False,
 ) -> OperatingSchedule:
     values = dict(values)
     schedule_preview = OperatingSchedule.objects.get(pk=schedule_id)
@@ -757,11 +761,11 @@ def update_future_operating_schedule(
     schedule.save(update_fields=[*values.keys(), "updated_at"])
     _replace_schedule_days(schedule, days)
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_invalidation:
+    if conflicts and not confirm_cancellation:
         raise ScheduleChangeAffectsReservations(
             reservation.pk for reservation in conflicts
         )
-    _invalidate_conflicts(
+    _cancel_conflicting_reservations(
         conflicts=conflicts,
         actor_profile=actor_profile,
         reason=schedule.reason or f"Alteração do calendário: {schedule.name}.",
@@ -871,7 +875,7 @@ def apply_calendar_exception(
     values: dict,
     actor_profile: str,
     exception_id: int | None = None,
-    confirm_invalidation: bool = False,
+    confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
 ) -> CalendarException:
@@ -912,11 +916,11 @@ def apply_calendar_exception(
     exception.full_clean()
     exception.save()
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_invalidation:
+    if conflicts and not confirm_cancellation:
         raise ScheduleChangeAffectsReservations(
             reservation.pk for reservation in conflicts
         )
-    _invalidate_conflicts(
+    _cancel_conflicting_reservations(
         conflicts=conflicts,
         actor_profile=actor_profile,
         reason=exception.description or "Alteração excepcional do funcionamento.",

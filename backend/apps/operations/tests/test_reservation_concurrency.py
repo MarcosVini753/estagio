@@ -34,7 +34,6 @@ class ReservationConcurrencyTest(TransactionTestCase):
         BookingPolicy.objects.create(
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
-            is_active=True,
         )
 
     def test_concurrent_attempts_do_not_confirm_two_conflicting_reservations(self):

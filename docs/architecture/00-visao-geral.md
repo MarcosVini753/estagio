@@ -63,4 +63,4 @@ PostgreSQL
 
 ## Estado atual
 
-O scaffold, apps, modelos, migrations, Compose, CI, health check e contexto de demonstração estão implementados. Os serviços operacionais e endpoints de domínio permanecem pendentes.
+O scaffold, apps, modelos, migrations, Compose, CI, health check e contexto de demonstração estão implementados. Os serviços operacionais e endpoints de domínio também já existem: reservas, sessões, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. Consulte `08-estado-implementacao.md` para o detalhamento.

@@ -2,8 +2,8 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.operations.services.deadlines import (
+    cancel_overdue_reservations,
     expire_overdue_sessions,
-    mark_overdue_reservations_as_no_show,
 )
 
 
@@ -13,10 +13,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         now = timezone.now()
         expired_sessions = expire_overdue_sessions(now)
-        no_shows = mark_overdue_reservations_as_no_show(now)
+        cancelled_reservations = cancel_overdue_reservations(now)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Reconciliação concluída: {expired_sessions} sessão(ões) "
-                f"expirada(s) e {no_shows} reserva(s) sem comparecimento."
+                "expirada(s) e "
+                f"{cancelled_reservations} reserva(s) cancelada(s) por prazo."
             )
         )

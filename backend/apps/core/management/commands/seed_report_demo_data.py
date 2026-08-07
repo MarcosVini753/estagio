@@ -15,6 +15,7 @@ from apps.configuration.models import (
     ReportConfiguration,
     Shift,
 )
+from apps.configuration.selectors import get_booking_policy_for_date
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
@@ -76,11 +77,11 @@ class Command(BaseCommand):
                 "Já existem dados de outra semente. Execute novamente com --reset."
             )
 
-        computers, shifts = self._ensure_canonical_data()
         dates = [
             timezone.localdate() - timedelta(days=days - offset)
             for offset in range(days)
         ]
+        computers, shifts = self._ensure_canonical_data(earliest_date=dates[0])
         closed_date = dates[len(dates) // 3]
         special_date = dates[(2 * len(dates)) // 3]
         self._create_calendar(closed_date, special_date)
@@ -135,7 +136,7 @@ class Command(BaseCommand):
         ).delete()
         CalendarException.objects.filter(description__startswith=DEMO_PREFIX).delete()
 
-    def _ensure_canonical_data(self):
+    def _ensure_canonical_data(self, *, earliest_date):
         if not OperatingSchedule.objects.filter(
             schedule_type=OperatingSchedule.ScheduleType.REGULAR,
             is_active=True,
@@ -168,14 +169,26 @@ class Command(BaseCommand):
                 )
             shifts.append(shift)
 
-        if not BookingPolicy.objects.filter(is_active=True).exists():
-            BookingPolicy.objects.create(
-                max_future_reservations_per_user=1,
-                valid_from=BASE_VALID_FROM,
-            )
+        self._ensure_booking_policy_covers(earliest_date)
         if not ReportConfiguration.objects.filter(is_active=True).exists():
             ReportConfiguration.objects.create()
         return computers, shifts
+
+    def _ensure_booking_policy_covers(self, earliest_date):
+        policies = list(
+            BookingPolicy.objects.order_by("valid_from", "created_at", "pk")
+        )
+        if not policies:
+            BookingPolicy.objects.create(
+                max_future_reservations_per_user=1,
+                valid_from=earliest_date,
+            )
+            return
+        first = policies[0]
+        if first.valid_from <= earliest_date:
+            return
+        first.valid_from = earliest_date
+        first.save(update_fields=["valid_from", "updated_at"])
 
     def _create_calendar(self, closed_date, special_date):
         CalendarException.objects.get_or_create(
@@ -291,8 +304,6 @@ class Command(BaseCommand):
             Reservation.Status.CONFIRMED,
             Reservation.Status.USED,
             Reservation.Status.CANCELLED,
-            Reservation.Status.NO_SHOW,
-            Reservation.Status.INVALIDATED,
         ]
         reservation_status = statuses[target_date.toordinal() % len(statuses)]
         if reservation_status == Reservation.Status.USED and sessions:
@@ -319,6 +330,7 @@ class Command(BaseCommand):
                 else started_at + timedelta(hours=1)
             ),
             "status": reservation_status,
+            "booking_policy": get_booking_policy_for_date(target_date),
             "created_by_profile": DemoProfile.ROOM_USER,
         }
         defaults["check_in_deadline_at"] = started_at + timedelta(
@@ -327,8 +339,6 @@ class Command(BaseCommand):
         defaults["exit_deadline_at"] = defaults["ends_at"] + timedelta(
             minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES
         )
-        if reservation_status == Reservation.Status.NO_SHOW:
-            defaults["no_show_at"] = defaults["check_in_deadline_at"]
         if reservation_status == Reservation.Status.CANCELLED:
             defaults.update(
                 cancelled_by_profile=DemoProfile.ROOM_USER,
@@ -362,7 +372,7 @@ class Command(BaseCommand):
                 "status": (
                     Occurrence.Status.RESOLVED if resolved else Occurrence.Status.OPEN
                 ),
-                "resolved_by_profile": DemoProfile.INTERN if resolved else "",
+                "resolved_by_profile": DemoProfile.ROOM_MONITOR if resolved else "",
                 "resolution_notes": (
                     f"{DEMO_PREFIX}resolução fictícia" if resolved else ""
                 ),
@@ -400,7 +410,7 @@ class Command(BaseCommand):
                 previous_state=previous_state,
                 new_state=new_state,
                 reason=reason,
-                defaults={"actor_profile": DemoProfile.INTERN},
+                defaults={"actor_profile": DemoProfile.ROOM_MONITOR},
             )
             if created:
                 ComputerOperationalStateChange.objects.filter(pk=change.pk).update(

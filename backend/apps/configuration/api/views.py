@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -8,13 +9,15 @@ from apps.access.permissions import HasDemoProfile
 from apps.access.services import get_demo_profile
 from apps.configuration.calendar import room_status_payload
 from apps.configuration.models import (
-    BookingPolicy,
     CalendarException,
     OperatingSchedule,
     RoomNotice,
     Shift,
 )
-from apps.configuration.selectors import get_active_room_notices
+from apps.configuration.selectors import (
+    get_active_room_notices,
+    get_booking_policy_for_date,
+)
 from apps.configuration.services import (
     apply_calendar_exception,
     create_operating_schedule,
@@ -22,7 +25,7 @@ from apps.configuration.services import (
     preview_operating_schedule_impact,
     replace_operating_schedule,
     replace_shift,
-    update_active_booking_policy,
+    update_current_booking_policy,
     update_future_operating_schedule,
     update_room_notice,
 )
@@ -128,13 +131,13 @@ class CalendarExceptionListCreateAPIView(APIView):
         serializer = CalendarExceptionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         values = dict(serializer.validated_data)
-        confirm_invalidation = values.pop("confirm_invalidation", False)
+        confirm_cancellation = values.pop("confirm_cancellation", False)
         notify_users = values.pop("notify_users", False)
         notice = values.pop("notice", None)
         exception = apply_calendar_exception(
             values=values,
             actor_profile=get_demo_profile(request),
-            confirm_invalidation=confirm_invalidation,
+            confirm_cancellation=confirm_cancellation,
             notify_users=notify_users,
             notice=notice,
         )
@@ -175,14 +178,14 @@ class CalendarExceptionDetailAPIView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         values = dict(serializer.validated_data)
-        confirm_invalidation = values.pop("confirm_invalidation", False)
+        confirm_cancellation = values.pop("confirm_cancellation", False)
         notify_users = values.pop("notify_users", False)
         notice = values.pop("notice", None)
         exception = apply_calendar_exception(
             exception_id=pk,
             values=values,
             actor_profile=get_demo_profile(request),
-            confirm_invalidation=confirm_invalidation,
+            confirm_cancellation=confirm_cancellation,
             notify_users=notify_users,
             notice=notice,
         )
@@ -254,12 +257,12 @@ class OperatingScheduleDetailAPIView(APIView):
         serializer = OperatingScheduleUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         values = dict(serializer.validated_data)
-        confirm_invalidation = values.pop("confirm_invalidation", False)
+        confirm_cancellation = values.pop("confirm_cancellation", False)
         schedule = update_future_operating_schedule(
             schedule_id=pk,
             values=values,
             actor_profile=get_demo_profile(request),
-            confirm_invalidation=confirm_invalidation,
+            confirm_cancellation=confirm_cancellation,
         )
         return Response(OperatingScheduleSerializer(schedule).data)
 
@@ -400,11 +403,7 @@ class BookingPolicyAPIView(APIView):
 
     @extend_schema(responses={200: BookingPolicySerializer}, tags=["configuration"])
     def get(self, request):
-        policy = (
-            BookingPolicy.objects.filter(is_active=True)
-            .order_by("-valid_from", "-created_at")
-            .first()
-        )
+        policy = get_booking_policy_for_date(timezone.localdate())
         if not policy:
             raise ConfigurationRequired("Nenhuma política de reservas está ativa.")
         return Response(BookingPolicySerializer(policy).data)
@@ -417,5 +416,5 @@ class BookingPolicyAPIView(APIView):
     def patch(self, request):
         serializer = BookingPolicyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        policy = update_active_booking_policy(values=serializer.validated_data)
+        policy = update_current_booking_policy(values=serializer.validated_data)
         return Response(BookingPolicySerializer(policy).data)

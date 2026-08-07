@@ -29,10 +29,29 @@ start
 
 |Sistema|
 if (Alteracao permitida?) then (Sim)
+  if (Sai de AVAILABLE?) then (Sim)
+    :Reconcilia prazos e bloqueia recursos;
+    if (Sessao ativa?) then (Sim)
+      :Busca computador para o tempo restante;
+      if (Encontrou substituto?) then (Sim)
+        :Transfere a mesma sessao;
+      else (Nao)
+        :Encerra sessao com\nCOMPUTER_UNAVAILABLE;
+      endif
+    endif
+    while (Existe reserva confirmada?) is (Sim)
+      :Busca computador para todo o intervalo;
+      if (Encontrou substituto?) then (Sim)
+        :Realoca reserva e audita;
+      else (Nao)
+        :Cancela reserva com motivo;
+      endif
+    endwhile (Nao)
+  endif
   :Atualiza status do computador;
-  :Registra historico da alteracao;
+  :Registra historico e auditoria;
   :Atualiza painel da sala;
-  :Exibe confirmacao;
+  :Exibe confirmacao e resumo do impacto;
   stop
 else (Nao)
   :Informa motivo da rejeicao;

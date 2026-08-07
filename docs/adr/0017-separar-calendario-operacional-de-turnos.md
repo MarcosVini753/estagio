@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita.
+Aceita. A semântica de `INVALIDATED` foi substituída pela ADR 0021; o restante da decisão permanece vigente.
 
 ## Contexto
 

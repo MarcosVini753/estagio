@@ -42,6 +42,38 @@ PATCH /api/computers/{id}/operational-state/
 
 Leitura é permitida para qualquer perfil selecionado. Cadastro e edição são permitidos ao Supervisor e Administrador. A alteração de estado operacional também é permitida ao Monitor da Sala e sempre registra histórico.
 
+Ao receber `MAINTENANCE` ou `INACTIVE` para um computador `AVAILABLE`, o endpoint transfere ou encerra a sessão ativa, realoca ou cancela reservas confirmadas e altera o estado na mesma transação. A resposta explicita o impacto:
+
+```json
+{
+  "computer": {
+    "id": 3,
+    "code": "PC-03",
+    "operational_state": "MAINTENANCE"
+  },
+  "impact": {
+    "active_session": {
+      "session_id": 41,
+      "action": "REALLOCATED",
+      "from_computer_id": 3,
+      "to_computer_id": 7
+    },
+    "reservations": {
+      "reallocated": [
+        {
+          "reservation_id": 81,
+          "from_computer_id": 3,
+          "to_computer_id": 5
+        }
+      ],
+      "cancelled": [{"reservation_id": 92}]
+    }
+  }
+}
+```
+
+Sem impacto, `active_session` é `null` e as duas listas ficam vazias. Uma sessão encerrada por falta de destino retorna `action=FINISHED` e `to_computer_id=null`.
+
 O PATCH genérico não altera `operational_state`; a action específica deve ser usada para preservar auditoria e validações.
 
 ### Disponibilidade
@@ -166,7 +198,7 @@ GET   /api/booking-policy/
 PATCH /api/booking-policy/
 ```
 
-Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política cria uma nova versão quando a versão vigente começou em data anterior ao dia atual. A política expõe somente limite de cancelamento e máximo de reservas futuras; duração de 15 minutos e tolerâncias de três minutos são regras fixas.
+Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política encerra a versão anterior e cria outra; uma versão iniciada hoje e já ligada a reservas é preservada, e a nova começa amanhã. Versões de hoje ou futuras ainda sem reservas podem ser ajustadas. A política expõe somente limite de cancelamento e máximo de reservas futuras; duração de 15 minutos e tolerâncias de três minutos são regras fixas.
 
 Calendários recebem exatamente sete dias. A API aceita `weekday` pelos nomes `MONDAY` a `SUNDAY`. Exemplo de criação temporária:
 
@@ -191,7 +223,7 @@ Calendários recebem exatamente sete dias. A API aceita `weekday` pelos nomes `M
       "windows": []
     }
   ],
-  "confirm_invalidation": false,
+  "confirm_cancellation": false,
   "notify_users": false
 }
 ```
@@ -220,7 +252,7 @@ O preview recebe os dados do calendário proposto e devolve:
 }
 ```
 
-Sem `confirm_invalidation=true`, a aplicação responde `SCHEDULE_CHANGE_AFFECTS_RESERVATIONS` e reverte a mudança. Com confirmação, as reservas conflitantes ficam `INVALIDATED` e calendário, auditorias e aviso opcional são confirmados juntos.
+Sem `confirm_cancellation=true`, a aplicação responde `SCHEDULE_CHANGE_AFFECTS_RESERVATIONS` e reverte a mudança. Com confirmação, as reservas conflitantes ficam `CANCELLED` com metadados administrativos, e calendário, auditorias e aviso opcional são confirmados juntos.
 
 ### Status da sala e avisos
 
@@ -269,10 +301,10 @@ POST /api/reservations/{id}/cancel/
 }
 ```
 
-O início deve estar alinhado à grade da janela operacional. O backend calcula `ends_at=10:00`, `check_in_deadline_at=09:03` e `exit_deadline_at=10:03`, validando todo o intervalo consecutivo. A resposta inclui esses campos, `no_show_at` e o `slot_count` derivado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o intervalo.
+O início deve estar alinhado à grade da janela operacional. O backend calcula `ends_at=10:00`, `check_in_deadline_at=09:03` e `exit_deadline_at=10:03`, validando todo o intervalo consecutivo. A resposta inclui esses campos, `booking_policy_id` e o `slot_count` derivado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o intervalo.
 Cancelamento de terceiro exige justificativa e gera evento de auditoria.
 
-Reservas invalidadas expõem `invalidated_at`, `invalidated_by_profile` e `invalidation_reason`. Elas permanecem em `mine/`, deixam de bloquear slots e não podem iniciar sessão. Entrada é aceita somente entre `starts_at` e `check_in_deadline_at`, inclusive; depois disso a reconciliação registra `NO_SHOW` e `no_show_at`.
+O ciclo de vida possui somente `CONFIRMED`, `CANCELLED` e `USED`. Entrada é aceita somente entre `starts_at` e `check_in_deadline_at`, inclusive; depois disso a reconciliação cancela a reserva com `cancelled_by_profile=SYSTEM_ADMIN` e motivo “Prazo de check-in expirado.” Alterações operacionais usam os mesmos campos de cancelamento.
 
 ### Sessões e alocações
 
@@ -306,7 +338,7 @@ O comando periódico é:
 python manage.py reconcile_operational_deadlines
 ```
 
-Ele deve ser agendado externamente a cada minuto, encerra sessões com `now >= exit_deadline_at` e marca reservas como `NO_SHOW` quando `now > check_in_deadline_at`. Entrada e troca também reconciliam os computadores envolvidos antes de prosseguir; na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
+Ele deve ser agendado externamente a cada minuto, encerra sessões com `now >= exit_deadline_at` e cancela reservas vencidas quando `now > check_in_deadline_at`. Entrada e troca também reconciliam os computadores envolvidos antes de prosseguir; na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
 
 ```text
 POST /api/usage-sessions/{id}/correct/

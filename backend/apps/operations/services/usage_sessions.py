@@ -33,7 +33,7 @@ from apps.operations.services.reservations import lock_user_reference
 from apps.operations.slotting import calculate_interval
 
 OPERATIONAL_PROFILES = {
-    DemoProfile.INTERN,
+    DemoProfile.ROOM_MONITOR,
     DemoProfile.LIBRARY_SUPERVISOR,
     DemoProfile.SYSTEM_ADMIN,
 }
@@ -350,6 +350,23 @@ def _switch_computer(
 ) -> UseSession:
     session_preview = UseSession.objects.only("user_reference").get(pk=session_id)
     lock_user_reference(session_preview.user_reference)
+    source_computer_id = (
+        ComputerAllocation.objects.filter(
+            session_id=session_id,
+            ended_at__isnull=True,
+        )
+        .values_list("computer_id", flat=True)
+        .first()
+    )
+    computer_ids = {computer_id}
+    if source_computer_id is not None:
+        computer_ids.add(source_computer_id)
+    computers = {
+        computer.pk: computer
+        for computer in Computer.objects.select_for_update()
+        .filter(pk__in=sorted(computer_ids))
+        .order_by("pk")
+    }
     session = _get_active_session(
         session_id=session_id,
         actor_profile=actor_profile,
@@ -362,12 +379,6 @@ def _switch_computer(
         raise UsageSessionConflict(
             "A troca exige tempo planejado restante e não ocorre na tolerância."
         )
-    computers = {
-        computer.pk: computer
-        for computer in Computer.objects.select_for_update()
-        .filter(pk__in=sorted({allocation.computer_id, computer_id}))
-        .order_by("pk")
-    }
     destination = computers[computer_id]
     if (
         destination.pk == allocation.computer_id

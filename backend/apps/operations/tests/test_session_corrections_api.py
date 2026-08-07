@@ -30,7 +30,7 @@ class SessionCorrectionAPITest(APITestCase):
         )
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 

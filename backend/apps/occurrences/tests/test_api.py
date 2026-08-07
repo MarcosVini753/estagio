@@ -39,7 +39,7 @@ class OccurrenceAPITest(APITestCase):
     def select_operational_profile(self):
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
@@ -156,7 +156,7 @@ class OccurrenceAPITest(APITestCase):
         self.assertEqual(resolved_response.status_code, 200)
         occurrence.refresh_from_db()
         self.assertEqual(occurrence.status, Occurrence.Status.RESOLVED)
-        self.assertEqual(occurrence.resolved_by_profile, "INTERN")
+        self.assertEqual(occurrence.resolved_by_profile, "ROOM_MONITOR")
         self.assertEqual(occurrence.resolution_notes, "Cabo reconectado.")
         self.assertLessEqual(occurrence.resolved_at, timezone.now())
 

@@ -38,7 +38,6 @@ class AvailabilityAPITest(APITestCase):
         )
         BookingPolicy.objects.create(
             valid_from=self.today - timedelta(days=1),
-            is_active=True,
         )
         self.client.post(
             "/api/demo/select-profile/",
@@ -122,7 +121,7 @@ class AvailabilityAPITest(APITestCase):
             started_at=fixed_now - timedelta(minutes=30),
             planned_ends_at=fixed_now + timedelta(minutes=30),
             exit_deadline_at=fixed_now + timedelta(minutes=33),
-            entry_recorded_by_profile="INTERN",
+            entry_recorded_by_profile="ROOM_MONITOR",
         )
         ComputerAllocation.objects.create(
             session=session,
@@ -152,7 +151,7 @@ class AvailabilityAPITest(APITestCase):
             started_at=self.aware(self.today, time(8)),
             planned_ends_at=self.aware(self.today, time(8, 30)),
             exit_deadline_at=self.aware(self.today, time(8, 33)),
-            entry_recorded_by_profile="INTERN",
+            entry_recorded_by_profile="ROOM_MONITOR",
         )
         ComputerAllocation.objects.create(
             session=session,
@@ -338,7 +337,7 @@ class AvailabilityAPITest(APITestCase):
             started_at=self.aware(self.today, time(8)),
             planned_ends_at=self.aware(self.today, time(9)),
             exit_deadline_at=self.aware(self.today, time(9, 3)),
-            entry_recorded_by_profile="INTERN",
+            entry_recorded_by_profile="ROOM_MONITOR",
         )
         ComputerAllocation.objects.create(
             session=session,

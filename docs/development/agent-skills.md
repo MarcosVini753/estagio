@@ -18,7 +18,7 @@ Este documento explica como usar as regras e skills versionadas no repositório 
 └── test-first-change/
 ```
 
-Também foi adicionada ao `AGENTS.md` uma versão resumida da escada de decisão Ponytail, permitindo que agentes que leem esse padrão, como Codex e Cline, recebam as mesmas diretrizes básicas.
+O `AGENTS.md` contém uma versão resumida da escada de decisão Ponytail, permitindo que agentes que leem esse padrão recebam as mesmas diretrizes básicas.
 
 ## Ponytail neste projeto
 
@@ -56,85 +56,21 @@ As skills podem ser acionadas automaticamente pela descrição ou explicitamente
 /documentation-sync
 ```
 
-Exemplo:
-
-```text
-Use /django-feature-development para implementar a consulta de disponibilidade.
-Antes de editar, leia AGENTS.md e apresente o plano.
-```
-
 ## Ativação no Codex do VS Code
 
 O Codex lê `AGENTS.md` na raiz do projeto. Portanto, ao abrir este repositório, as regras funcionais, arquiteturais e a versão adaptada do princípio Ponytail já ficam disponíveis.
 
 As skills em `.cline/skills/` pertencem ao Cline e não devem ser presumidas como comandos do Codex. No Codex, peça o workflow diretamente e cite a seção relevante do `AGENTS.md`.
 
-Exemplo:
-
-```text
-Siga AGENTS.md. Trabalhe como no workflow django-model-and-migration:
-primeiro apresente o plano, depois crie model, migration, constraints e testes.
-```
-
-## Plugin Ponytail completo no Codex CLI
-
-A instalação do plugin completo é feita no terminal da máquina, não por commit no repositório:
-
-```bash
-codex plugin marketplace add DietrichGebert/ponytail
-codex plugin add ponytail@ponytail
-```
-
-Depois:
-
-1. execute `codex`;
-2. abra `/hooks`;
-3. revise os dois hooks apresentados antes de confiar neles;
-4. inicie uma nova conversa.
-
-O plugin usa pequenos hooks em Node.js. Verifique:
-
-```bash
-node --version
-```
-
-No Codex com suporte a skills, os comandos Ponytail são invocados com `@`, por exemplo:
-
-```text
-@ponytail-review
-```
-
-A instalação do plugin é opcional neste projeto, porque o `AGENTS.md` já contém a diretriz principal. O plugin adiciona níveis e comandos próprios.
-
 ## Quando usar cada skill
 
-### `django-feature-development`
-
-Use para uma fatia completa: regra, serviço, endpoint, template, JavaScript e testes.
-
-### `django-model-and-migration`
-
-Use ao criar ou alterar models, enums, constraints, índices e migrations.
-
-### `api-endpoint`
-
-Use ao criar ou alterar endpoints em `/api/`, serializers, erros e OpenAPI.
-
-### `test-first-change`
-
-Use principalmente para bugs e regras críticas. O primeiro artefato deve ser um teste que reproduza o comportamento.
-
-### `code-review`
-
-Use antes de mergear. Verifica correção, domínio, integridade, segurança, migrations, desempenho, testes e documentação.
-
-### `ponytail-review`
-
-Use depois da revisão normal. Procura somente código que pode ser removido, reutilizado ou simplificado. Não substitui revisão de correção.
-
-### `documentation-sync`
-
-Use quando código, regra, endpoint, modelo ou arquitetura mudar. Compara a alteração com `docs/product/`, `docs/architecture/`, ADRs e OpenAPI.
+- **`django-feature-development`**: fatia completa (regra, serviço, endpoint, template, JavaScript e testes).
+- **`django-model-and-migration`**: criar ou alterar models, enums, constraints, índices e migrations.
+- **`api-endpoint`**: criar ou alterar endpoints em `/api/`, serializers, erros e OpenAPI.
+- **`test-first-change`**: bugs e regras críticas; o primeiro artefato deve ser um teste que reproduza o comportamento.
+- **`code-review`**: antes de mergear; verifica correção, domínio, integridade, segurança, migrations, desempenho, testes e documentação.
+- **`ponytail-review`**: depois da revisão normal; procura código que pode ser removido, reutilizado ou simplificado.
+- **`documentation-sync`**: quando código, regra, endpoint, modelo ou arquitetura mudar; compara com `docs/product/`, `docs/architecture/`, ADRs e OpenAPI.
 
 ## Fluxo recomendado por funcionalidade
 
@@ -160,14 +96,6 @@ Primeiro apresente um plano curto com arquivos, regras, testes e documentação 
 Não implemente até eu aprovar o plano.
 ```
 
-Depois da aprovação:
-
-```text
-Implemente somente a menor fatia aprovada.
-Execute os testes e verificações disponíveis.
-Mostre os arquivos alterados e qualquer risco restante.
-```
-
 ## Regras de segurança
 
 - Não habilite autoaprovação irrestrita para terminal e escrita de arquivos.
@@ -186,5 +114,3 @@ As skills próprias devem evoluir por pull request, como qualquer código do pro
 3. evite duplicar todo o conteúdo de `AGENTS.md`;
 4. mantenha cada skill focada em um workflow;
 5. teste a ativação automática e por comando `/` no Cline.
-
-Para atualizar a adaptação Ponytail, compare o arquivo upstream `.clinerules/ponytail.md` com `.clinerules/20-ponytail.md` e incorpore apenas mudanças compatíveis com as regras deste projeto.

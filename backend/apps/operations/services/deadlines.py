@@ -4,6 +4,7 @@ from django.db import transaction
 
 from apps.core.enums import DemoProfile
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.services.reservations import cancel_locked_reservation
 
 
 def expire_locked_session(session: UseSession) -> bool:
@@ -42,7 +43,7 @@ def expire_overdue_sessions(now: datetime) -> int:
 
 
 @transaction.atomic
-def mark_overdue_reservations_as_no_show(now: datetime) -> int:
+def cancel_overdue_reservations(now: datetime) -> int:
     reservations = list(
         Reservation.objects.select_for_update()
         .filter(
@@ -52,9 +53,12 @@ def mark_overdue_reservations_as_no_show(now: datetime) -> int:
         .order_by("pk")
     )
     for reservation in reservations:
-        reservation.status = Reservation.Status.NO_SHOW
-        reservation.no_show_at = now
-        reservation.save(update_fields=["status", "no_show_at", "updated_at"])
+        cancel_locked_reservation(
+            reservation=reservation,
+            actor_profile=DemoProfile.SYSTEM_ADMIN,
+            reason="Prazo de check-in expirado.",
+            cancelled_at=now,
+        )
     return len(reservations)
 
 
@@ -85,7 +89,10 @@ def reconcile_computer_deadlines(computer_id: int, now: datetime) -> tuple[int, 
         .order_by("pk")
     )
     for reservation in reservations:
-        reservation.status = Reservation.Status.NO_SHOW
-        reservation.no_show_at = now
-        reservation.save(update_fields=["status", "no_show_at", "updated_at"])
+        cancel_locked_reservation(
+            reservation=reservation,
+            actor_profile=DemoProfile.SYSTEM_ADMIN,
+            reason="Prazo de check-in expirado.",
+            cancelled_at=now,
+        )
     return expired_sessions, len(reservations)

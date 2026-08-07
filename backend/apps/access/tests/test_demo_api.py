@@ -12,13 +12,13 @@ class DemoProfileAPITest(APITestCase):
     def test_select_profile_persists_in_session(self):
         response = self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["profile"], "INTERN")
-        self.assertEqual(self.client.session["demo_profile"], "INTERN")
+        self.assertEqual(response.data["profile"], "ROOM_MONITOR")
+        self.assertEqual(self.client.session["demo_profile"], "ROOM_MONITOR")
 
     def test_room_user_requires_identity(self):
         response = self.client.post(
@@ -62,12 +62,12 @@ class DemoProfileAPITest(APITestCase):
 
         response = self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["user_reference"], "demo-intern")
+        self.assertEqual(response.data["user_reference"], "demo-room-monitor")
         self.assertIsNone(response.data["affiliation_type"])
         self.assertNotIn("demo_institutional_unit", self.client.session)
 

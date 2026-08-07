@@ -16,7 +16,7 @@ Permitir que o MVP demonstre diferentes perfis sem implementar autenticação re
 
 ```text
 ROOM_USER
-INTERN
+ROOM_MONITOR
 LIBRARY_SUPERVISOR
 SYSTEM_ADMIN
 ```
@@ -24,8 +24,8 @@ SYSTEM_ADMIN
 ## Política sugerida
 
 - `ROOM_USER`: operações próprias de consulta, reserva, sessão e ocorrência;
-- `INTERN`: acompanhamento operacional, correções, ocorrências e relatórios operacionais;
-- `LIBRARY_SUPERVISOR`: herda todas as permissões de `INTERN` e inclui configurações e relatórios gerenciais;
+- `ROOM_MONITOR`: acompanhamento operacional, correções e ocorrências, sem acesso a relatórios;
+- `LIBRARY_SUPERVISOR`: herda todas as permissões de `ROOM_MONITOR` e inclui configurações e relatórios gerenciais;
 - `SYSTEM_ADMIN`: reservado para telas administrativas e evolução futura.
 
 ## Implementação sugerida

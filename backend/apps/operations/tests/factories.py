@@ -3,6 +3,8 @@ from datetime import timedelta
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
+from apps.configuration.models import BookingPolicy
+from apps.configuration.selectors import get_booking_policy_for_date
 from apps.operations.models import Reservation, UseSession
 from apps.operations.rules import (
     LATE_CHECK_IN_TOLERANCE_MINUTES,
@@ -28,8 +30,15 @@ def create_reservation(**values):
         "exit_deadline_at",
         ends_at + timedelta(minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES),
     )
-    if values.get("status") == Reservation.Status.NO_SHOW:
-        values.setdefault("no_show_at", values["check_in_deadline_at"])
+    if "booking_policy" not in values:
+        policy = get_booking_policy_for_date(timezone.localdate(starts_at))
+        if policy is None:
+            policy = BookingPolicy.objects.order_by("valid_from", "created_at").first()
+        if policy is None:
+            policy = BookingPolicy.objects.create(
+                valid_from=timezone.localdate(starts_at)
+            )
+        values["booking_policy"] = policy
     return Reservation.objects.create(**values)
 
 

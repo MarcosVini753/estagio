@@ -16,8 +16,8 @@
 - Cada slot possui duração fixa de 15 minutos. Novas reservas e usos imediatos solicitam uma quantidade inteira positiva de slots consecutivos.
 - Alterações em calendário já iniciado são feitas por nova versão futura. Para emergência no próprio dia, deve ser criada uma exceção pontual.
 - Uma alteração não pode sobrescrever retroativamente os horários que explicam sessões e relatórios históricos.
-- Antes de aplicar mudança que reduza funcionamento, o Supervisor visualiza as reservas confirmadas afetadas. A aplicação exige confirmação para invalidá-las na mesma transação.
-- Reserva invalidada deixa de bloquear o computador, não pode ser usada no check-in, permanece em “Minhas reservas” com justificativa e é contabilizada separadamente.
+- Antes de aplicar mudança que reduza funcionamento, o Supervisor visualiza as reservas confirmadas afetadas. A aplicação exige confirmação para cancelá-las administrativamente na mesma transação.
+- Ponto facultativo é representado como exceção `CLOSED`; o motivo fica em `description` e, quando publicado, no aviso da sala.
 - Avisos operacionais ativos são internos e de transmissão geral; não existe confirmação de leitura nem envio externo no MVP.
 - Turnos são faixas analíticas para classificar visitas e não definem quando a sala abre.
 - Um turno já usado por sessão não pode ter seus horários ou vigência alterados retroativamente.
@@ -32,6 +32,9 @@
 - Computador em manutenção ou inativo não pode receber reserva, entrada ou troca.
 - Um computador pode possuir no máximo uma alocação ativa.
 - Mudança de estado operacional deve registrar responsável, horário e justificativa quando aplicável.
+- Ao sair de `AVAILABLE` para `MAINTENANCE` ou `INACTIVE`, uma alocação ativa é transferida para computador capaz de atender todo o intervalo restante; sem alternativa, a sessão é encerrada com `COMPUTER_UNAVAILABLE`.
+- Reservas confirmadas ainda utilizáveis são realocadas por intervalo quando houver destino válido e canceladas administrativamente quando não houver.
+- Sessão, reservas, estado do computador, histórico e auditoria são reconciliados na mesma transação.
 
 ## Disponibilidade efetiva
 
@@ -49,18 +52,20 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 
 - Toda reserva pertence a um usuário e computador.
 - Toda reserva possui início, fim e estado.
+- Os únicos estados de reserva são `CONFIRMED`, `CANCELLED` e `USED`.
 - Reservas válidas de um mesmo computador não podem se sobrepor.
 - O usuário não pode possuir reservas conflitantes.
 - Reserva cancelada não bloqueia disponibilidade.
-- Reserva invalidada por alteração de calendário não bloqueia disponibilidade.
 - A criação recebe computador, início alinhado à grade de 15 minutos e `slot_count`; o sistema calcula o fim.
 - Todo o intervalo `[starts_at, ends_at)` deve caber em uma única janela de funcionamento e não pode sobrepor reserva confirmada nem sessão planejada do computador ou do usuário.
 - Intervalos adjacentes são permitidos: uma reserva que termina às 09h não conflita com outra que começa às 09h.
 - `check_in_deadline_at` é três minutos após o início e `exit_deadline_at` é três minutos após o fim.
 - Entrada antecipada não é permitida. A entrada é aceita do início até o `check_in_deadline_at`, inclusive, e não desloca o fim planejado.
-- Uma reserva confirmada torna-se `NO_SHOW` somente depois de ultrapassado o prazo de check-in.
+- Depois de ultrapassado o prazo de check-in, uma reserva confirmada passa a `CANCELLED`, com perfil `SYSTEM_ADMIN` e motivo “Prazo de check-in expirado.”
 - Somente o proprietário ou perfil operacional pode cancelar antes do início e do limite da política.
 - Cancelamento realizado por perfil operacional em nome de terceiro exige justificativa e auditoria.
+- Cada reserva referencia a versão de `BookingPolicy` aplicada em sua criação; mudanças posteriores não alteram retroativamente seu limite de cancelamento.
+- Políticas de reserva são versionadas por `valid_from` e `valid_until` e permanecem recuperáveis historicamente.
 - Ao registrar entrada dentro de uma reserva válida, a sessão copia integralmente seu intervalo planejado e prazos.
 
 ## Sessões

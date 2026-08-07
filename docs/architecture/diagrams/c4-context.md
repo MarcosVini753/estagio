@@ -9,7 +9,7 @@ flowchart LR
     system[Sistema de Controle de Uso da Sala de Informática]
 
     roomUser -->|Consulta, reserva, entrada, troca, saída e ocorrência| system
-    intern -->|Acompanha operação, corrige registros e gera relatórios| system
+    intern -->|Acompanha operação, corrige registros e trata ocorrências| system
     supervisor -->|Configura, analisa indicadores e gera consolidados| system
     admin -->|Futuramente administra contas, permissões, parâmetros e logs| system
 ```

@@ -54,7 +54,6 @@ class CalendarException(TimeStampedModel):
     class ExceptionType(models.TextChoices):
         CLOSED = "CLOSED", "Fechado"
         SPECIAL_HOURS = "SPECIAL_HOURS", "Horário especial"
-        OPTIONAL_HOLIDAY = "OPTIONAL_HOLIDAY", "Ponto facultativo"
 
     date = models.DateField(unique=True)
     exception_type = models.CharField(max_length=32, choices=ExceptionType.choices)
@@ -303,17 +302,38 @@ class BookingPolicy(TimeStampedModel):
         default=1,
         validators=[MinValueValidator(1)],
     )
-    is_active = models.BooleanField(default=True)
     valid_from = models.DateField(default=date.today)
+    valid_until = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ["-valid_from"]
-        constraints = [
-            models.UniqueConstraint(
-                condition=Q(is_active=True),
-                fields=["is_active"],
-                name="one_active_booking_policy",
+        indexes = [
+            models.Index(
+                fields=["valid_from", "valid_until"],
+                name="booking_policy_validity_idx",
             )
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(valid_until__isnull=True)
+                | Q(valid_until__gte=F("valid_from")),
+                name="booking_policy_valid_period",
+            ),
+            ExclusionConstraint(
+                name="booking_policy_no_overlap",
+                expressions=[
+                    (
+                        Func(
+                            F("valid_from"),
+                            F("valid_until"),
+                            Value("[]"),
+                            function="DATERANGE",
+                            output_field=DateRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+            ),
         ]
 
     def __str__(self) -> str:

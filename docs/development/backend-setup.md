@@ -44,12 +44,14 @@ make test
 
 - seleção de perfil de demonstração;
 - health check;
-- computadores e estado operacional;
-- histórico das alterações de estado;
-- turnos;
-- exceções de calendário;
-- política de duração dos slots;
-- disponibilidade para hoje e amanhã;
-- slots derivados de configuração, reservas e alocações.
+- computadores e estado operacional com histórico;
+- turnos e calendário operacional (regular, temporário e exceções);
+- política de reservas versionada;
+- disponibilidade para hoje e amanhã com slots de 15 minutos;
+- reservas com cancelamento e deadlines;
+- sessões de uso: entrada, troca de computador, saída e correção;
+- ocorrências;
+- indisponibilidade de computador com transferência/realocação atômica;
+- relatório mensal JSON.
 
-Ainda não estão disponíveis criação e cancelamento de reservas, entrada, troca, saída, tratamento de ocorrências via API e relatórios.
+Consulte [../architecture/08-estado-implementacao.md](../architecture/08-estado-implementacao.md) para o detalhamento do que já foi entregue.

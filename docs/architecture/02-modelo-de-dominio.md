@@ -45,7 +45,7 @@ Abertura antecede fechamento. Serviços validam que dia aberto tenha ao menos um
 
 `date`, `exception_type`, `opens_at`, `closes_at`, `description`.
 
-Tipos: `CLOSED`, `SPECIAL_HOURS`, `OPTIONAL_HOLIDAY`.
+Tipos: `CLOSED` e `SPECIAL_HOURS`. Ponto facultativo é um motivo de fechamento, não um terceiro comportamento do calendário.
 
 A exceção de uma data prevalece sobre calendários temporário e regular.
 
@@ -57,7 +57,9 @@ Tipos: `CLOSURE`, `SCHEDULE_CHANGE`, `SPECIAL_HOURS`. Períodos efetivo e visív
 
 ### `BookingPolicy`
 
-`cancellation_limit_minutes`, `max_future_reservations_per_user`, `is_active`, `valid_from`.
+`cancellation_limit_minutes`, `max_future_reservations_per_user`, `valid_from`, `valid_until`.
+
+Uma exclusion constraint impede vigências sobrepostas. O selector resolve a versão cuja vigência contém a data consultada; versões anteriores não são desativadas nem apagadas. Uma versão ligada a reservas não é alterada, preservando as regras aplicadas a cada compromisso.
 
 A duração de 15 minutos e as tolerâncias de três minutos são regras fixas em `operations/rules.py`, não políticas administrativas.
 
@@ -81,13 +83,13 @@ Estado persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`. Não criar campos de 
 
 ### `Reservation`
 
-`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `computer`, `starts_at`, `ends_at`, `check_in_deadline_at`, `exit_deadline_at`, `no_show_at`, `status`, perfis de criação/cancelamento, dados de cancelamento e `invalidated_at`, `invalidated_by_profile`, `invalidation_reason`.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `computer`, `booking_policy`, `starts_at`, `ends_at`, `check_in_deadline_at`, `exit_deadline_at`, `status`, perfis de criação/cancelamento e dados de cancelamento.
 
-Estados: `CONFIRMED`, `CANCELLED`, `USED`, `NO_SHOW`, `INVALIDATED`.
+Estados: `CONFIRMED`, `CANCELLED`, `USED`.
 
 `slot_count` é derivado de `(ends_at - starts_at) / 15 minutos`. Constraints PostgreSQL exigem início anterior ao fim, deadlines não anteriores aos respectivos horários e impedem sobreposição de reservas confirmadas por computador e por usuário com intervalos `[)`. O serviço bloqueia referência de usuário e computador para validar o intervalo completo, limite e disponibilidade antes da criação.
 
-`INVALIDATED` preserva a reserva incompatível com uma mudança de calendário, mas não participa das constraints condicionais de bloqueio e não permite check-in.
+`booking_policy` protege a regra histórica aplicada na criação. Expiração de check-in, mudança de calendário e indisponibilidade sem alternativa usam `CANCELLED` com autor, instante e motivo preservados.
 
 ### `UseSession`
 
@@ -103,7 +105,7 @@ Constraints exigem uma sessão ativa por referência de usuário, início planej
 
 ### `ComputerAllocation`
 
-`session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`. `TIME_LIMIT_REACHED` identifica o encerramento lógico automático no prazo da sessão.
+`session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`. `TIME_LIMIT_REACHED` identifica o encerramento lógico automático no prazo; `COMPUTER_UNAVAILABLE` distingue o encerramento da alocação causado por indisponibilidade, com ou sem transferência da sessão. `SWITCH` permanece reservado à troca normal.
 
 Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início; intervalos históricos do mesmo computador sem sobreposição.
 

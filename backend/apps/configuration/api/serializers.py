@@ -135,7 +135,7 @@ class ShiftReplaceSerializer(serializers.Serializer):
 
 
 class CalendarExceptionSerializer(serializers.ModelSerializer):
-    confirm_invalidation = serializers.BooleanField(
+    confirm_cancellation = serializers.BooleanField(
         write_only=True,
         required=False,
         default=False,
@@ -156,7 +156,7 @@ class CalendarExceptionSerializer(serializers.ModelSerializer):
             "opens_at",
             "closes_at",
             "description",
-            "confirm_invalidation",
+            "confirm_cancellation",
             "notify_users",
             "notice",
             "created_at",
@@ -204,15 +204,15 @@ class BookingPolicySerializer(serializers.ModelSerializer):
             "id",
             "cancellation_limit_minutes",
             "max_future_reservations_per_user",
-            "is_active",
             "valid_from",
+            "valid_until",
             "created_at",
             "updated_at",
         ]
         read_only_fields = [
             "id",
-            "is_active",
             "valid_from",
+            "valid_until",
             "created_at",
             "updated_at",
         ]
@@ -297,7 +297,7 @@ class OperatingScheduleCreateSerializer(serializers.Serializer):
     )
     reason = serializers.CharField(required=False, allow_blank=True, default="")
     days = OperatingScheduleDayWriteSerializer(many=True)
-    confirm_invalidation = serializers.BooleanField(required=False, default=False)
+    confirm_cancellation = serializers.BooleanField(required=False, default=False)
     notify_users = serializers.BooleanField(required=False, default=False)
     notice = RoomNoticeInlineSerializer(required=False)
 
@@ -316,10 +316,10 @@ class OperatingScheduleUpdateSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True)
     is_active = serializers.BooleanField(required=False)
     days = OperatingScheduleDayWriteSerializer(many=True, required=False)
-    confirm_invalidation = serializers.BooleanField(required=False, default=False)
+    confirm_cancellation = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
-        if not set(attrs) - {"confirm_invalidation"}:
+        if not set(attrs) - {"confirm_cancellation"}:
             raise serializers.ValidationError(
                 "Informe ao menos um campo para atualização."
             )
@@ -331,7 +331,7 @@ class OperatingScheduleReplaceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=120, required=False)
     reason = serializers.CharField(required=False, allow_blank=True)
     days = OperatingScheduleDayWriteSerializer(many=True, required=False)
-    confirm_invalidation = serializers.BooleanField(required=False, default=False)
+    confirm_cancellation = serializers.BooleanField(required=False, default=False)
     notify_users = serializers.BooleanField(required=False, default=False)
     notice = RoomNoticeInlineSerializer(required=False)
 

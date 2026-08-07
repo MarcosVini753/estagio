@@ -38,15 +38,15 @@ Casos de uso principais:
 - alterar estado operacional;
 - registrar e consultar ocorrências;
 - consultar histórico;
-- corrigir registro de uso;
-- gerar e exportar relatório operacional.
+- corrigir registro de uso.
 
 Fluxos críticos:
 
 1. acompanhamento da sala;
 2. alteração de estado operacional;
-3. correção auditada de sessão;
-4. geração de relatório operacional.
+3. correção auditada de sessão.
+
+Na indisponibilização de um computador, o sistema transfere ou encerra a sessão ativa, realoca ou cancela cada reserva confirmada e somente então altera o estado, tudo atomicamente.
 
 ## Supervisor da Biblioteca
 

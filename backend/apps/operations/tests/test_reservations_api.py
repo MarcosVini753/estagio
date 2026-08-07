@@ -9,7 +9,7 @@ from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, OperatingSchedule, Shift, Weekday
 from apps.configuration.tests.factories import create_operating_schedule
 from apps.operations.models import ComputerAllocation, Reservation
-from apps.operations.services import invalidate_reservation_due_to_calendar_change
+from apps.operations.services import cancel_reservation_due_to_operational_change
 
 from .factories import create_reservation, create_use_session
 
@@ -36,7 +36,6 @@ class ReservationAPITest(APITestCase):
         BookingPolicy.objects.create(
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
-            is_active=True,
         )
         self.select_room_user("aluno-si-001")
 
@@ -92,11 +91,12 @@ class ReservationAPITest(APITestCase):
         self.assertEqual(reservation.user_reference, "aluno-si-001")
         self.assertEqual(reservation.affiliation_type, "STUDENT")
         self.assertEqual(reservation.institutional_unit, "Sistemas de Informação")
+        self.assertEqual(reservation.booking_policy_id, BookingPolicy.objects.get().pk)
 
     def test_operational_profile_cannot_create_reservation(self):
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
@@ -408,7 +408,7 @@ class ReservationAPITest(APITestCase):
         )
         self.assertEqual(replacement_response.status_code, 201)
 
-    def test_calendar_invalidation_releases_slot_and_keeps_reason_in_mine(self):
+    def test_calendar_cancellation_releases_slot_and_keeps_reason_in_mine(self):
         reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
@@ -416,7 +416,7 @@ class ReservationAPITest(APITestCase):
             ends_at=self.aware(self.tomorrow, time(9)),
             created_by_profile="ROOM_USER",
         )
-        invalidate_reservation_due_to_calendar_change(
+        cancel_reservation_due_to_operational_change(
             reservation_id=reservation.pk,
             actor_profile="LIBRARY_SUPERVISOR",
             reason="Horário reduzido durante o recesso.",
@@ -434,11 +434,41 @@ class ReservationAPITest(APITestCase):
             if item["starts_at"] == self.aware(self.tomorrow, time(8)).isoformat()
         )
         self.assertTrue(slot["selectable"])
-        self.assertEqual(mine_response.data[0]["status"], "INVALIDATED")
+        self.assertEqual(mine_response.data[0]["status"], "CANCELLED")
         self.assertEqual(
-            mine_response.data[0]["invalidation_reason"],
+            mine_response.data[0]["cancellation_reason"],
             "Horário reduzido durante o recesso.",
         )
+
+    def test_cancellation_uses_policy_linked_when_reservation_was_created(self):
+        original_policy = BookingPolicy.objects.get()
+        original_policy.cancellation_limit_minutes = 0
+        original_policy.save(update_fields=["cancellation_limit_minutes", "updated_at"])
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(8)),
+            ends_at=self.aware(self.tomorrow, time(9)),
+            booking_policy=original_policy,
+            created_by_profile="ROOM_USER",
+        )
+        original_policy.valid_until = self.today
+        original_policy.save(update_fields=["valid_until", "updated_at"])
+        BookingPolicy.objects.create(
+            cancellation_limit_minutes=120,
+            valid_from=self.tomorrow,
+        )
+
+        with patch(
+            "apps.operations.services.reservations.timezone.now",
+            return_value=self.aware(self.tomorrow, time(7)),
+        ):
+            response = self.client.post(
+                f"/api/reservations/{reservation.pk}/cancel/",
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
 
     def test_other_room_user_cannot_cancel_reservation(self):
         reservation = create_reservation(
@@ -467,7 +497,7 @@ class ReservationAPITest(APITestCase):
         )
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
@@ -478,7 +508,7 @@ class ReservationAPITest(APITestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["cancelled_by_profile"], "INTERN")
+        self.assertEqual(response.data["cancelled_by_profile"], "ROOM_MONITOR")
         audit_event = AuditEvent.objects.get(action="RESERVATION_CANCELLED")
         self.assertEqual(audit_event.entity_id, str(reservation.pk))
         self.assertEqual(audit_event.reason, "Solicitação da supervisão.")
@@ -493,7 +523,7 @@ class ReservationAPITest(APITestCase):
         )
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 

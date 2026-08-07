@@ -42,7 +42,6 @@ class UsageSessionAPITest(APITestCase):
         BookingPolicy.objects.create(
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
-            is_active=True,
         )
         self.select_room_user()
 
@@ -215,7 +214,7 @@ class UsageSessionAPITest(APITestCase):
             response.data["planned_ends_at"], self.aware(time(10)).isoformat()
         )
 
-    def test_reserved_entry_after_deadline_is_rejected_and_marked_no_show(self):
+    def test_reserved_entry_after_deadline_is_rejected_and_cancelled(self):
         reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
@@ -235,8 +234,9 @@ class UsageSessionAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 409)
         reservation.refresh_from_db()
-        self.assertEqual(reservation.status, Reservation.Status.NO_SHOW)
-        self.assertEqual(reservation.no_show_at, current)
+        self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
+        self.assertEqual(reservation.cancelled_at, current)
+        self.assertEqual(reservation.cancelled_by_profile, "SYSTEM_ADMIN")
 
     def test_reserved_entry_rejects_outside_tolerance(self):
         reservation = create_reservation(
@@ -258,16 +258,16 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data["code"], "RESERVATION_CHECK_IN_UNAVAILABLE")
 
-    def test_invalidated_reservation_cannot_be_used_for_check_in(self):
+    def test_cancelled_reservation_cannot_be_used_for_check_in(self):
         reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
             starts_at=self.aware(time(8)),
             ends_at=self.aware(time(9)),
-            status=Reservation.Status.INVALIDATED,
-            invalidated_by_profile="LIBRARY_SUPERVISOR",
-            invalidated_at=self.current - timedelta(hours=1),
-            invalidation_reason="Fechamento excepcional.",
+            status=Reservation.Status.CANCELLED,
+            cancelled_by_profile="LIBRARY_SUPERVISOR",
+            cancelled_at=self.current - timedelta(hours=1),
+            cancellation_reason="Fechamento excepcional.",
             created_by_profile="ROOM_USER",
         )
 
@@ -344,8 +344,8 @@ class UsageSessionAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         reservation.refresh_from_db()
-        self.assertEqual(reservation.status, Reservation.Status.NO_SHOW)
-        self.assertEqual(reservation.no_show_at, self.current)
+        self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
+        self.assertEqual(reservation.cancelled_at, self.current)
 
     def test_immediate_entry_can_end_when_next_reservation_starts(self):
         reservation = create_reservation(
@@ -475,7 +475,7 @@ class UsageSessionAPITest(APITestCase):
     def test_operational_entry_requires_and_uses_identity_from_body(self):
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
         missing_response = self.start({"computer_id": self.computer.pk})
@@ -661,7 +661,7 @@ class UsageSessionAPITest(APITestCase):
         session = UseSession.objects.get()
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
@@ -703,7 +703,7 @@ class UsageSessionAPITest(APITestCase):
         room_history = self.client.get("/api/usage-sessions/history/")
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
         operational_active = self.client.get("/api/usage-sessions/active/")

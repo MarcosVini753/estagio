@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita.
+Aceita. A semântica de `NO_SHOW` foi substituída pela ADR 0021; intervalos planejados e deadlines permanecem vigentes.
 
 ## Contexto
 
@@ -14,7 +14,7 @@ O domínio precisa distinguir o compromisso de uso assumido antes da entrada do 
 
 Adotar o Modelo C, no qual cada reserva ou uso imediato possui uma duração solicitada como quantidade inteira de slots consecutivos. O slot é uma regra fixa de 15 minutos e não uma política alterável pelo Supervisor.
 
-`Reservation` mantém `starts_at` e `ends_at`, recebe `slot_count` na criação e persiste `check_in_deadline_at`, `exit_deadline_at` e `no_show_at`. `UseSession` persiste `planned_starts_at`, `planned_ends_at` e `exit_deadline_at`, além dos horários reais. `slot_count` é derivado do intervalo planejado e não gera registros artificiais por slot.
+`Reservation` mantém `starts_at` e `ends_at`, recebe `slot_count` na criação e persiste `check_in_deadline_at` e `exit_deadline_at`. `UseSession` persiste `planned_starts_at`, `planned_ends_at` e `exit_deadline_at`, além dos horários reais. `slot_count` é derivado do intervalo planejado e não gera registros artificiais por slot.
 
 Os intervalos planejados usam a convenção semiaberta `[início, fim)`. Eles não podem sobrepor reserva confirmada, outra sessão planejada nem ultrapassar uma única janela do calendário operacional. Intervalos adjacentes são válidos.
 
@@ -22,7 +22,7 @@ Check-in antecipado não é permitido. Uma reserva aceita entrada desde `starts_
 
 Não existe extensão de sessão nesta etapa. Trocas de computador verificam todo o intervalo planejado restante e são proibidas depois de `planned_ends_at`.
 
-Sessões são encerradas logicamente em `exit_deadline_at`, com a alocação marcada como `TIME_LIMIT_REACHED`. Reservas confirmadas tornam-se `NO_SHOW` apenas quando o instante corrente ultrapassa `check_in_deadline_at`. A reconciliação ocorre antes de entradas e trocas no computador e por comando periódico executável a cada minuto.
+Sessões são encerradas logicamente em `exit_deadline_at`, com a alocação marcada como `TIME_LIMIT_REACHED`. Reservas confirmadas são canceladas administrativamente quando o instante corrente ultrapassa `check_in_deadline_at` (ver ADR 0021). A reconciliação ocorre antes de entradas e trocas no computador e por comando periódico executável a cada minuto.
 
 ## Alternativas consideradas
 

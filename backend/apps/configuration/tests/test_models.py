@@ -5,6 +5,7 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from apps.configuration.models import (
+    BookingPolicy,
     CalendarException,
     OperatingSchedule,
     OperatingScheduleDay,
@@ -13,9 +14,26 @@ from apps.configuration.models import (
     Shift,
     Weekday,
 )
+from apps.configuration.selectors import get_booking_policy_for_date
 
 
 class ConfigurationModelTest(TestCase):
+    def test_booking_policy_versions_are_resolved_by_validity(self):
+        old = BookingPolicy.objects.create(
+            valid_from=date(2026, 1, 1),
+            valid_until=date(2026, 6, 30),
+        )
+        current = BookingPolicy.objects.create(valid_from=date(2026, 7, 1))
+
+        self.assertEqual(get_booking_policy_for_date(date(2026, 3, 1)), old)
+        self.assertEqual(get_booking_policy_for_date(date(2026, 8, 1)), current)
+
+    def test_optional_holiday_is_not_a_calendar_exception_type(self):
+        self.assertEqual(
+            set(CalendarException.ExceptionType.values),
+            {"CLOSED", "SPECIAL_HOURS"},
+        )
+
     def test_shift_rejects_invalid_period_on_full_clean(self):
         shift = Shift(name="Inválido", start_time=time(13, 0), end_time=time(12, 0))
 
