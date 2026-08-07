@@ -18,6 +18,7 @@ from apps.operations.services import (
 )
 from apps.operations.services import (
     start_usage_session,
+    switch_computer,
 )
 from apps.operations.services.computer_state import change_computer_operational_state
 
@@ -462,3 +463,69 @@ class ComputerOperationalStateConcurrencyTest(TransactionTestCase):
             [first.status, second.status],
             [Reservation.Status.CONFIRMED, Reservation.Status.CANCELLED],
         )
+
+    def test_maintenance_and_switch_do_not_deadlock(self):
+        source = Computer.objects.create(code="PC-01")
+        destination = Computer.objects.create(code="PC-02")
+        session = create_use_session(
+            user_reference="aluno-trocando",
+            started_at=self.current,
+            planned_starts_at=self.current,
+            planned_ends_at=self.current + timedelta(hours=1),
+            exit_deadline_at=self.current + timedelta(hours=1, minutes=3),
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        ComputerAllocation.objects.create(
+            session=session,
+            computer=source,
+            sequence=1,
+            started_at=self.current,
+        )
+        barrier = Barrier(2)
+        results = []
+
+        def maintain():
+            close_old_connections()
+            try:
+                barrier.wait()
+                change_computer_operational_state(
+                    computer_id=source.pk,
+                    new_state=Computer.OperationalState.MAINTENANCE,
+                    actor_profile="ROOM_MONITOR",
+                    reason="Teste concorrente.",
+                    now=self.current,
+                )
+                results.append("maintenance")
+            finally:
+                connections.close_all()
+
+        def switch():
+            close_old_connections()
+            try:
+                barrier.wait()
+                switch_computer(
+                    session_id=session.pk,
+                    computer_id=destination.pk,
+                    actor_profile="ROOM_USER",
+                    actor_reference="aluno-trocando",
+                    now=self.current + timedelta(minutes=15),
+                )
+                results.append("switch")
+            except UsageSessionConflict:
+                results.append("conflict")
+            finally:
+                connections.close_all()
+
+        maintenance_thread = Thread(target=maintain)
+        switch_thread = Thread(target=switch)
+        maintenance_thread.start()
+        switch_thread.start()
+        maintenance_thread.join(timeout=10)
+        switch_thread.join(timeout=10)
+
+        self.assertFalse(maintenance_thread.is_alive())
+        self.assertFalse(switch_thread.is_alive())
+        self.assertEqual(len(results), 2)
+        session.refresh_from_db()
+        self.assertEqual(session.status, UseSession.Status.ACTIVE)
+        self.assertEqual(session.allocations.filter(ended_at__isnull=True).count(), 1)
