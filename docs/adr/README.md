@@ -14,7 +14,7 @@ ADRs registram decisões arquiteturais, alternativas e consequências.
 - [0001 — Usar Django e Django REST Framework](0001-usar-django-e-drf.md)
 - [0002 — Adotar monólito modular](0002-adotar-monolito-modular.md)
 - [0003 — Usar PostgreSQL como banco-alvo](0003-usar-postgresql.md)
-- [0004 — Usar Django Templates e JavaScript puro](0004-usar-templates-e-js.md)
+- [0004 — Usar Django Templates e JavaScript puro — substituída pela ADR 0023](0004-usar-templates-e-js.md)
 - [0005 — Adotar autorização simulada no MVP](0005-autorizacao-simulada.md)
 - [0006 — Versionar API em /api/v1 — substituída pela ADR 0018](0006-versionar-api-v1.md)
 - [0007 — Separar estado operacional e estado efetivo](0007-estados-do-computador.md)
@@ -33,3 +33,4 @@ ADRs registram decisões arquiteturais, alternativas e consequências.
 - [0020 — Tratar indisponibilidade operacional de computador atomicamente](0020-tratar-indisponibilidade-de-computador-atomicamente.md)
 - [0021 — Simplificar o ciclo de vida de reservas](0021-simplificar-ciclo-de-vida-de-reservas.md)
 - [0022 — Versionar políticas de reserva e vinculá-las às reservas](0022-versionar-politicas-de-reserva.md)
+- [0023 — Adotar frontend progressivo com Django Templates, HTMX, Alpine.js e Tailwind CSS](0023-frontend-progressivo-com-htmx.md)

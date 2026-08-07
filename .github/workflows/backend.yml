@@ -1,25 +1,24 @@
-name: Backend checks
+name: Continuous Integration
 
 on:
-  pull_request:
-    paths:
-      - "backend/**"
-      - "requirements/**"
-      - "compose.yaml"
-      - "Makefile"
-      - ".github/workflows/backend.yml"
   push:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - "requirements/**"
-      - "compose.yaml"
-      - "Makefile"
-      - ".github/workflows/backend.yml"
+    branches:
+      - "**"
+  pull_request: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  checks:
+  quality-checks:
+    name: Quality checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:17-alpine
@@ -45,23 +44,112 @@ jobs:
       POSTGRES_PORT: 5432
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.14"
           cache: pip
           cache-dependency-path: requirements/dev.txt
+
       - name: Install dependencies
         run: python -m pip install -r requirements/dev.txt
+
       - name: Django checks
         run: cd backend && python manage.py check
+
       - name: Migration drift
         run: cd backend && python manage.py makemigrations --check --dry-run
+
       - name: Apply migrations
         run: cd backend && python manage.py migrate --noinput
+
       - name: Tests
         run: cd backend && python manage.py test
+
+      - name: OpenAPI validation
+        run: cd backend && python manage.py spectacular --file /tmp/schema.yml --validate
+
       - name: Ruff
         run: ruff check backend
+
       - name: Format check
         run: ruff format --check backend
+
+  container-build:
+    name: Container build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build --file backend/Dockerfile --tag estagio-ci:${GITHUB_SHA} .
+
+  frontend-e2e:
+    name: Frontend end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start prototype server
+        run: |
+          python3 -m http.server 4173 --directory prototipos > /tmp/prototipo-http.log 2>&1 &
+          echo $! > /tmp/prototipo-http.pid
+          curl --retry 10 --retry-delay 1 --retry-connrefused --fail http://127.0.0.1:4173/ > /dev/null
+
+      - name: Run browser smoke flow
+        run: |
+          node <<'EOF'
+          const assert = require('node:assert/strict');
+          const { chromium } = require('playwright');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+            const pageErrors = [];
+            page.on('pageerror', (error) => pageErrors.push(error.message));
+
+            const response = await page.goto('http://127.0.0.1:4173/', {
+              waitUntil: 'networkidle',
+            });
+
+            assert.ok(response && response.ok(), 'O protótipo não respondeu com sucesso.');
+            assert.equal(
+              (await page.locator('#screenTitle').textContent()).trim(),
+              'Sala de Informática',
+            );
+
+            await page.locator('[data-day="tomorrow"]').click();
+            await page.waitForSelector('[data-day="tomorrow"].active');
+            assert.match(
+              (await page.locator('.section-title').textContent()).trim(),
+              /Próximo dia/,
+            );
+            assert.deepEqual(pageErrors, [], `Erros JavaScript no navegador: ${pageErrors.join('; ')}`);
+
+            await browser.close();
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          EOF
+
+      - name: Stop prototype server
+        if: always()
+        run: kill "$(cat /tmp/prototipo-http.pid)" 2>/dev/null || true

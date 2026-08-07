@@ -35,7 +35,8 @@ Evite scaffolding para funcionalidades futuras. Não crie nova camada se a arqui
 - Use `transaction.atomic()` e bloqueios quando houver risco de concorrência.
 - Use constraints do banco para invariantes persistentes.
 - Preserve a API em `/api/`, sem segmento de versão no caminho.
-- Mantenha o frontend em Django Templates e JavaScript puro, salvo ADR contrário.
+- Mantenha o frontend no monólito Django conforme a ADR 0023: Django Templates como base, HTMX para interações com o servidor, Alpine.js para estado visual local e Tailwind CSS para estilos.
+- Não replique regras de domínio no navegador e não introduza SPA separada sem novo ADR.
 
 ## 4. Testar
 
