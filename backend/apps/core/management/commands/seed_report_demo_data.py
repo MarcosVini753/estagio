@@ -77,11 +77,11 @@ class Command(BaseCommand):
                 "Já existem dados de outra semente. Execute novamente com --reset."
             )
 
-        computers, shifts = self._ensure_canonical_data()
         dates = [
             timezone.localdate() - timedelta(days=days - offset)
             for offset in range(days)
         ]
+        computers, shifts = self._ensure_canonical_data(earliest_date=dates[0])
         closed_date = dates[len(dates) // 3]
         special_date = dates[(2 * len(dates)) // 3]
         self._create_calendar(closed_date, special_date)
@@ -136,7 +136,7 @@ class Command(BaseCommand):
         ).delete()
         CalendarException.objects.filter(description__startswith=DEMO_PREFIX).delete()
 
-    def _ensure_canonical_data(self):
+    def _ensure_canonical_data(self, *, earliest_date):
         if not OperatingSchedule.objects.filter(
             schedule_type=OperatingSchedule.ScheduleType.REGULAR,
             is_active=True,
@@ -169,14 +169,26 @@ class Command(BaseCommand):
                 )
             shifts.append(shift)
 
-        if not BookingPolicy.objects.exists():
-            BookingPolicy.objects.create(
-                max_future_reservations_per_user=1,
-                valid_from=BASE_VALID_FROM,
-            )
+        self._ensure_booking_policy_covers(earliest_date)
         if not ReportConfiguration.objects.filter(is_active=True).exists():
             ReportConfiguration.objects.create()
         return computers, shifts
+
+    def _ensure_booking_policy_covers(self, earliest_date):
+        policies = list(
+            BookingPolicy.objects.order_by("valid_from", "created_at", "pk")
+        )
+        if not policies:
+            BookingPolicy.objects.create(
+                max_future_reservations_per_user=1,
+                valid_from=earliest_date,
+            )
+            return
+        first = policies[0]
+        if first.valid_from <= earliest_date:
+            return
+        first.valid_from = earliest_date
+        first.save(update_fields=["valid_from", "updated_at"])
 
     def _create_calendar(self, closed_date, special_date):
         CalendarException.objects.get_or_create(
