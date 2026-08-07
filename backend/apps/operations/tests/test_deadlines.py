@@ -9,8 +9,8 @@ from django.utils import timezone
 from apps.computers.models import Computer
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 from apps.operations.services.deadlines import (
+    cancel_overdue_reservations,
     expire_overdue_sessions,
-    mark_overdue_reservations_as_no_show,
 )
 
 from .factories import create_reservation, create_use_session
@@ -43,7 +43,7 @@ class OperationalDeadlineTest(TestCase):
         )
         return session, allocation
 
-    def test_reservation_becomes_no_show_only_after_check_in_deadline(self):
+    def test_reservation_is_cancelled_only_after_check_in_deadline(self):
         reservation = create_reservation(
             user_reference="reserved-user",
             computer=self.computer,
@@ -52,14 +52,19 @@ class OperationalDeadlineTest(TestCase):
             created_by_profile="ROOM_USER",
         )
 
-        at_deadline = mark_overdue_reservations_as_no_show(self.aware(time(9, 3)))
-        after_deadline = mark_overdue_reservations_as_no_show(self.aware(time(9, 3, 1)))
+        at_deadline = cancel_overdue_reservations(self.aware(time(9, 3)))
+        after_deadline = cancel_overdue_reservations(self.aware(time(9, 3, 1)))
 
         self.assertEqual(at_deadline, 0)
         self.assertEqual(after_deadline, 1)
         reservation.refresh_from_db()
-        self.assertEqual(reservation.status, Reservation.Status.NO_SHOW)
-        self.assertEqual(reservation.no_show_at, self.aware(time(9, 3, 1)))
+        self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
+        self.assertEqual(reservation.cancelled_by_profile, "SYSTEM_ADMIN")
+        self.assertEqual(reservation.cancelled_at, self.aware(time(9, 3, 1)))
+        self.assertEqual(
+            reservation.cancellation_reason,
+            "Prazo de check-in expirado.",
+        )
 
     def test_expired_session_is_closed_at_deadline(self):
         session, allocation = self.create_active_session()
@@ -78,7 +83,7 @@ class OperationalDeadlineTest(TestCase):
             ComputerAllocation.EndReason.TIME_LIMIT_REACHED,
         )
 
-    def test_management_command_reconciles_sessions_and_no_shows(self):
+    def test_management_command_reconciles_sessions_and_expired_reservations(self):
         session, allocation = self.create_active_session()
         reservation = create_reservation(
             user_reference="reserved-user",
@@ -105,6 +110,6 @@ class OperationalDeadlineTest(TestCase):
             allocation.end_reason,
             ComputerAllocation.EndReason.TIME_LIMIT_REACHED,
         )
-        self.assertEqual(reservation.status, Reservation.Status.NO_SHOW)
+        self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
         self.assertIn("1 sessão(ões) expirada(s)", output.getvalue())
-        self.assertIn("1 reserva(s) sem comparecimento", output.getvalue())
+        self.assertIn("1 reserva(s) cancelada(s) por prazo", output.getvalue())

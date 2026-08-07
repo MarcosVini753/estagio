@@ -93,12 +93,11 @@ class Command(BaseCommand):
 
         ensure_regular_operating_schedule()
 
-        if not BookingPolicy.objects.filter(is_active=True).exists():
+        if not BookingPolicy.objects.exists():
             BookingPolicy.objects.create(
                 cancellation_limit_minutes=0,
                 max_future_reservations_per_user=1,
                 valid_from=BASE_VALID_FROM,
-                is_active=True,
             )
 
         if not ReportConfiguration.objects.filter(is_active=True).exists():

@@ -6,6 +6,7 @@ from apps.operations.models import ComputerAllocation, Reservation, UseSession
 
 class ReservationSerializer(serializers.ModelSerializer):
     computer_id = serializers.IntegerField(read_only=True)
+    booking_policy_id = serializers.IntegerField(read_only=True)
     slot_count = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -13,6 +14,7 @@ class ReservationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "computer_id",
+            "booking_policy_id",
             "user_reference",
             "affiliation_type",
             "institutional_unit",
@@ -21,15 +23,11 @@ class ReservationSerializer(serializers.ModelSerializer):
             "slot_count",
             "check_in_deadline_at",
             "exit_deadline_at",
-            "no_show_at",
             "status",
             "created_by_profile",
             "cancelled_by_profile",
             "cancelled_at",
             "cancellation_reason",
-            "invalidated_by_profile",
-            "invalidated_at",
-            "invalidation_reason",
             "created_at",
             "updated_at",
         ]

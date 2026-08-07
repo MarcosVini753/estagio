@@ -5,11 +5,12 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.audit.models import AuditEvent
+from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, Shift
 from apps.configuration.selectors import get_shifts_for_date
 from apps.configuration.services import replace_shift
 from apps.operations.models import UseSession
-from apps.operations.tests.factories import create_use_session
+from apps.operations.tests.factories import create_reservation, create_use_session
 
 
 class ConfigurationAPITest(APITestCase):
@@ -94,7 +95,6 @@ class ConfigurationAPITest(APITestCase):
         previous_date = timezone.localdate() - timedelta(days=1)
         old_policy = BookingPolicy.objects.create(
             valid_from=previous_date,
-            is_active=True,
         )
         self.select_profile("LIBRARY_SUPERVISOR")
 
@@ -107,11 +107,49 @@ class ConfigurationAPITest(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["cancellation_limit_minutes"], 30)
         old_policy.refresh_from_db()
-        self.assertFalse(old_policy.is_active)
-        self.assertEqual(BookingPolicy.objects.filter(is_active=True).count(), 1)
+        self.assertEqual(
+            old_policy.valid_until, timezone.localdate() - timedelta(days=1)
+        )
+        self.assertEqual(
+            BookingPolicy.objects.filter(valid_until__isnull=True).count(), 1
+        )
+
+    def test_booking_policy_referenced_today_is_not_changed_retroactively(self):
+        today = timezone.localdate()
+        original = BookingPolicy.objects.create(
+            cancellation_limit_minutes=15,
+            valid_from=today,
+        )
+        starts_at = timezone.now() + timedelta(days=1)
+        reservation = create_reservation(
+            user_reference="aluno-politica-historica",
+            computer=Computer.objects.create(code="PC-POLICY-HISTORY"),
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=15),
+            booking_policy=original,
+            created_by_profile="ROOM_USER",
+        )
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.patch(
+            "/api/booking-policy/",
+            {"cancellation_limit_minutes": 30},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        original.refresh_from_db()
+        reservation.refresh_from_db()
+        self.assertEqual(original.cancellation_limit_minutes, 15)
+        self.assertEqual(original.valid_until, today)
+        self.assertEqual(reservation.booking_policy, original)
+        self.assertEqual(
+            response.data["valid_from"], (today + timedelta(days=1)).isoformat()
+        )
+        self.assertEqual(response.data["cancellation_limit_minutes"], 30)
 
     def test_booking_policy_does_not_expose_fixed_slot_or_tolerance_rules(self):
-        BookingPolicy.objects.create(is_active=True)
+        BookingPolicy.objects.create()
         self.select_profile("LIBRARY_SUPERVISOR")
 
         read_response = self.client.get("/api/booking-policy/")

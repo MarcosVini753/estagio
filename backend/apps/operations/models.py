@@ -5,7 +5,7 @@ from django.db.models import Deferrable, F, Func, Q, Value
 from django.utils import timezone
 
 from apps.computers.models import Computer
-from apps.configuration.models import Shift
+from apps.configuration.models import BookingPolicy, Shift
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.core.models import TimeStampedModel
 
@@ -17,8 +17,6 @@ class Reservation(TimeStampedModel):
         CONFIRMED = "CONFIRMED", "Confirmada"
         CANCELLED = "CANCELLED", "Cancelada"
         USED = "USED", "Utilizada"
-        NO_SHOW = "NO_SHOW", "Não compareceu"
-        INVALIDATED = "INVALIDATED", "Invalidada"
 
     user_reference = models.CharField(max_length=100, db_index=True)
     affiliation_type = models.CharField(
@@ -30,11 +28,15 @@ class Reservation(TimeStampedModel):
     computer = models.ForeignKey(
         Computer, on_delete=models.PROTECT, related_name="reservations"
     )
+    booking_policy = models.ForeignKey(
+        BookingPolicy,
+        on_delete=models.PROTECT,
+        related_name="reservations",
+    )
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
     check_in_deadline_at = models.DateTimeField()
     exit_deadline_at = models.DateTimeField()
-    no_show_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.CONFIRMED
     )
@@ -44,13 +46,6 @@ class Reservation(TimeStampedModel):
     )
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True)
-    invalidated_at = models.DateTimeField(null=True, blank=True)
-    invalidated_by_profile = models.CharField(
-        max_length=32,
-        choices=DemoProfile.choices,
-        blank=True,
-    )
-    invalidation_reason = models.TextField(blank=True)
 
     class Meta:
         ordering = ["starts_at"]
@@ -210,6 +205,10 @@ class UseSession(TimeStampedModel):
 class ComputerAllocation(TimeStampedModel):
     class EndReason(models.TextChoices):
         SWITCH = "SWITCH", "Troca de computador"
+        COMPUTER_UNAVAILABLE = (
+            "COMPUTER_UNAVAILABLE",
+            "Computador indisponível",
+        )
         SESSION_FINISHED = "SESSION_FINISHED", "Sessão encerrada"
         TIME_LIMIT_REACHED = "TIME_LIMIT_REACHED", "Limite de tempo atingido"
         ADMIN_CORRECTION = "ADMIN_CORRECTION", "Correção administrativa"

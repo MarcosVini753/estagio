@@ -31,7 +31,6 @@ class CalendarChangeConcurrencyTest(TransactionTestCase):
         BookingPolicy.objects.create(
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
-            is_active=True,
         )
 
     def test_reservation_waits_for_calendar_change_and_uses_new_windows(self):

@@ -46,7 +46,6 @@ class UsageSessionConcurrencyTest(TransactionTestCase):
         )
         BookingPolicy.objects.create(
             valid_from=self.today - timedelta(days=1),
-            is_active=True,
         )
 
     def test_concurrent_entries_do_not_allocate_same_computer_twice(self):

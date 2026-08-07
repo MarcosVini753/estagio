@@ -89,9 +89,9 @@ def get_active_room_notices(
 def get_booking_policy_for_date(target_date: date):
     return (
         BookingPolicy.objects.filter(
-            is_active=True,
             valid_from__lte=target_date,
         )
+        .filter(Q(valid_until__isnull=True) | Q(valid_until__gte=target_date))
         .order_by("-valid_from", "-created_at")
         .first()
     )
