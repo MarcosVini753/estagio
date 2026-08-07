@@ -7,9 +7,9 @@ from django.utils import timezone
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.calendar import lock_operating_date, resolve_operating_day
+from apps.configuration.models import BookingPolicy
 from apps.configuration.selectors import get_booking_policy_for_date
 from apps.core.api.errors import (
-    ConfigurationRequired,
     ReservationCancellationNotAllowed,
     ReservationCancellationReasonRequired,
     ReservationCancellationUnavailable,
@@ -113,6 +113,7 @@ def create_reservation(
     policy = get_booking_policy_for_date(target_date)
     if policy is None:
         raise ReservationSlotInvalid()
+    policy = BookingPolicy.objects.select_for_update().get(pk=policy.pk)
     if (
         Reservation.objects.filter(
             user_reference=user_reference,
@@ -136,6 +137,7 @@ def create_reservation(
                 affiliation_type=affiliation_type,
                 institutional_unit=institutional_unit,
                 computer=computer,
+                booking_policy=policy,
                 starts_at=starts_at,
                 ends_at=ends_at,
                 check_in_deadline_at=check_in_deadline_at,
@@ -157,7 +159,7 @@ def cancel_reservation(
 ) -> Reservation:
     reservation = Reservation.objects.select_for_update().get(pk=reservation_id)
     operational_profiles = {
-        DemoProfile.INTERN,
+        DemoProfile.ROOM_MONITOR,
         DemoProfile.LIBRARY_SUPERVISOR,
         DemoProfile.SYSTEM_ADMIN,
     }
@@ -169,12 +171,7 @@ def cancel_reservation(
         raise ReservationCancellationReasonRequired()
 
     current = now or timezone.now()
-    target_date = timezone.localdate(reservation.starts_at)
-    policy = get_booking_policy_for_date(target_date)
-    if policy is None:
-        raise ConfigurationRequired(
-            "Nenhuma política de reservas está ativa para a data da reserva."
-        )
+    policy = reservation.booking_policy
     cancellation_deadline = reservation.starts_at - timedelta(
         minutes=policy.cancellation_limit_minutes
     )
@@ -185,9 +182,30 @@ def cancel_reservation(
     ):
         raise ReservationCancellationUnavailable()
 
+    return cancel_locked_reservation(
+        reservation=reservation,
+        actor_profile=actor_profile,
+        reason=cancellation_reason,
+        cancelled_at=current,
+        create_audit_event=not is_owner,
+    )
+
+
+def cancel_locked_reservation(
+    *,
+    reservation: Reservation,
+    actor_profile: str,
+    reason: str,
+    cancelled_at: datetime,
+    create_audit_event: bool = True,
+) -> Reservation:
+    if reservation.status != Reservation.Status.CONFIRMED:
+        return reservation
+
+    cancellation_reason = reason.strip()
     reservation.status = Reservation.Status.CANCELLED
     reservation.cancelled_by_profile = actor_profile
-    reservation.cancelled_at = current
+    reservation.cancelled_at = cancelled_at
     reservation.cancellation_reason = cancellation_reason
     reservation.save(
         update_fields=[
@@ -198,7 +216,7 @@ def cancel_reservation(
             "updated_at",
         ]
     )
-    if not is_owner:
+    if create_audit_event:
         AuditEvent.objects.create(
             actor_profile=actor_profile,
             action="RESERVATION_CANCELLED",
@@ -207,7 +225,7 @@ def cancel_reservation(
             old_values={"status": Reservation.Status.CONFIRMED},
             new_values={
                 "status": Reservation.Status.CANCELLED,
-                "cancelled_at": current.isoformat(),
+                "cancelled_at": cancelled_at.isoformat(),
             },
             reason=cancellation_reason,
         )
@@ -215,7 +233,7 @@ def cancel_reservation(
 
 
 @transaction.atomic
-def invalidate_reservation_due_to_calendar_change(
+def cancel_reservation_due_to_operational_change(
     *,
     reservation_id: int,
     actor_profile: str,
@@ -226,30 +244,9 @@ def invalidate_reservation_due_to_calendar_change(
     if reservation.status != Reservation.Status.CONFIRMED:
         return reservation
 
-    current = now or timezone.now()
-    reservation.status = Reservation.Status.INVALIDATED
-    reservation.invalidated_by_profile = actor_profile
-    reservation.invalidated_at = current
-    reservation.invalidation_reason = reason.strip()
-    reservation.save(
-        update_fields=[
-            "status",
-            "invalidated_by_profile",
-            "invalidated_at",
-            "invalidation_reason",
-            "updated_at",
-        ]
-    )
-    AuditEvent.objects.create(
+    return cancel_locked_reservation(
+        reservation=reservation,
         actor_profile=actor_profile,
-        action="RESERVATION_INVALIDATED",
-        entity_type="Reservation",
-        entity_id=str(reservation.pk),
-        old_values={"status": Reservation.Status.CONFIRMED},
-        new_values={
-            "status": Reservation.Status.INVALIDATED,
-            "invalidated_at": current.isoformat(),
-        },
-        reason=reservation.invalidation_reason,
+        reason=reason,
+        cancelled_at=now or timezone.now(),
     )
-    return reservation

@@ -33,7 +33,7 @@ from apps.operations.services.reservations import lock_user_reference
 from apps.operations.slotting import calculate_interval
 
 OPERATIONAL_PROFILES = {
-    DemoProfile.INTERN,
+    DemoProfile.ROOM_MONITOR,
     DemoProfile.LIBRARY_SUPERVISOR,
     DemoProfile.SYSTEM_ADMIN,
 }

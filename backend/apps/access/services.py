@@ -6,7 +6,7 @@ DEMO_AFFILIATION_TYPE_SESSION_KEY = "demo_affiliation_type"
 DEMO_INSTITUTIONAL_UNIT_SESSION_KEY = "demo_institutional_unit"
 DEMO_USER_REFERENCES = {
     DemoProfile.ROOM_USER: "demo-room-user",
-    DemoProfile.INTERN: "demo-intern",
+    DemoProfile.ROOM_MONITOR: "demo-room-monitor",
     DemoProfile.LIBRARY_SUPERVISOR: "demo-library-supervisor",
     DemoProfile.SYSTEM_ADMIN: "demo-system-admin",
 }

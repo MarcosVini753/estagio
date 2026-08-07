@@ -219,7 +219,7 @@ class MonthlyReportAPITest(APITestCase):
         self.assertEqual(response.data["summary"]["distinct_users"], 3)
         self.assertEqual(response.data["summary"]["reservations"], 1)
         self.assertEqual(
-            response.data["summary"]["reservations_by_status"]["INVALIDATED"],
+            response.data["summary"]["reservations_by_status"]["CANCELLED"],
             0,
         )
         self.assertEqual(response.data["summary"]["occurrences"], 1)
@@ -303,7 +303,7 @@ class MonthlyReportAPITest(APITestCase):
         self.assertEqual(response.data["summary"]["allocated_minutes"], 30)
 
     def test_permissions_query_validation_and_interval_helper(self):
-        self.select_profile("INTERN")
+        self.select_profile("ROOM_MONITOR")
         forbidden = self.client.get("/api/reports/monthly/?year=2026&month=2")
         self.select_profile()
         invalid = self.client.get("/api/reports/monthly/?year=2026&month=13")

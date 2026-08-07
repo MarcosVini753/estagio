@@ -148,7 +148,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["code"], "OPERATING_SCHEDULE_START_INVALID")
 
-    def test_preview_then_confirm_invalidates_conflicting_reservation(self):
+    def test_preview_then_confirm_cancels_conflicting_reservation(self):
         computer = Computer.objects.create(code="PC-CAL-01")
         starts_at = timezone.make_aware(
             datetime(2026, 12, 22, 18),
@@ -175,7 +175,7 @@ class OperatingScheduleAPITest(APITestCase):
         )
         confirmed = self.client.post(
             "/api/operating-schedules/",
-            self.temporary_payload(confirm_invalidation=True),
+            self.temporary_payload(confirm_cancellation=True),
             format="json",
         )
 
@@ -191,14 +191,14 @@ class OperatingScheduleAPITest(APITestCase):
         )
         self.assertEqual(confirmed.status_code, 201)
         reservation.refresh_from_db()
-        self.assertEqual(reservation.status, Reservation.Status.INVALIDATED)
+        self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
         self.assertEqual(
-            reservation.invalidated_by_profile,
+            reservation.cancelled_by_profile,
             "LIBRARY_SUPERVISOR",
         )
         self.assertTrue(
             AuditEvent.objects.filter(
-                action="RESERVATION_INVALIDATED",
+                action="RESERVATION_CANCELLED",
                 entity_id=str(reservation.pk),
             ).exists()
         )
@@ -353,7 +353,7 @@ class RoomNoticeAPITest(APITestCase):
     def test_monitor_cannot_publish_notice(self):
         self.client.post(
             "/api/demo/select-profile/",
-            {"profile": "INTERN"},
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 

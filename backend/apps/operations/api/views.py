@@ -35,7 +35,7 @@ from .serializers import (
 )
 
 OPERATIONAL_PROFILES = [
-    DemoProfile.INTERN,
+    DemoProfile.ROOM_MONITOR,
     DemoProfile.LIBRARY_SUPERVISOR,
     DemoProfile.SYSTEM_ADMIN,
 ]
