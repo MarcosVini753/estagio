@@ -24,17 +24,8 @@ O Administrador do Sistema existe arquiteturalmente, mas seus casos de uso detal
 - [11 — Supervisor gera relatório consolidado](atividades/11-supervisor-gerar-relatorio-consolidado.puml)
 - [12 — Supervisor configura calendário operacional](atividades/12-supervisor-configurar-calendario.puml)
 
-## Decisões posteriores aos diagramas
+## Regras de manutenção
 
-- fila de espera foi removida do escopo;
-- reserva antecipada pode ser criada para horários futuros de hoje ou amanhã;
-- hoje permite uso imediato em horários ainda não passados;
-- `OCCUPIED` e `RESERVED` são estados calculados;
-- autenticação real foi substituída, no MVP, por seleção de perfil de teste.
-- turnos são dimensões analíticas; calendário regular, temporário e exceções definem abertura.
-- reservas e sessões usam quantidades de slots consecutivos de 15 minutos;
-- o intervalo planejado bloqueia conflitos; a tolerância de três minutos afeta somente entrada e saída reais.
-- o Monitor não acessa relatórios; relatórios e exportações pertencem ao Supervisor e Administrador.
-- indisponibilizar computador transfere ou encerra sessão e realoca ou cancela reservas na mesma transação.
-
-Ao encontrar divergência, consulte `docs/product/`, `docs/architecture/` e os ADRs.
+- Os diagramas devem refletir as regras atuais de `docs/product/` e `docs/architecture/`.
+- Ao encontrar divergência, atualize o diagrama ou registre a decisão em um ADR.
+- O Monitor da Sala não acessa relatórios; relatórios e exportações pertencem ao Supervisor e Administrador.
