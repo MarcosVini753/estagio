@@ -1,0 +1,80 @@
+{% if summary %}
+  <section class="room-status room-status-{{ summary.room.status|lower }}">
+    <div>
+      <p class="section-kicker">Funcionamento da sala</p>
+      <h2>{% if summary.room.status == "OPEN" %}Sala aberta{% else %}Sala fechada{% endif %}</h2>
+      {% if summary.room.reason %}<p>{{ summary.room.reason }}</p>{% endif %}
+    </div>
+    <div class="room-windows">
+      {% for window in summary.room.operating_windows %}
+        <span>{{ window.opens_at|time:"H:i" }}–{{ window.closes_at|time:"H:i" }}</span>
+      {% empty %}
+        <span>Sem funcionamento nesta data</span>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if active_session %}
+    <section class="active-session-callout">
+      <div>
+        <strong>Você possui uma sessão ativa</strong>
+        <span>Troque de computador pela lista ou consulte os detalhes da sessão.</span>
+      </div>
+      <a href="{% url 'web:session' %}" hx-get="{% url 'web:session' %}" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Ver sessão</a>
+    </section>
+  {% endif %}
+
+  <nav class="day-tabs" aria-label="Alternar data consultada">
+    <a
+      class="day-tab {% if day == 'today' %}day-tab-active{% endif %}"
+      data-day="today"
+      href="{% url 'web:computers' %}?{{ today_query }}"
+      {% if day == 'today' %}aria-current="page"{% endif %}
+      hx-get="{% url 'web:computers' %}?{{ today_query }}"
+      hx-target="#screen-content"
+      hx-swap="outerHTML"
+      hx-push-url="true">Hoje</a>
+    <a
+      class="day-tab {% if day == 'tomorrow' %}day-tab-active{% endif %}"
+      data-day="tomorrow"
+      href="{% url 'web:computers' %}?{{ tomorrow_query }}"
+      {% if day == 'tomorrow' %}aria-current="page"{% endif %}
+      hx-get="{% url 'web:computers' %}?{{ tomorrow_query }}"
+      hx-target="#screen-content"
+      hx-swap="outerHTML"
+      hx-push-url="true">Amanhã</a>
+  </nav>
+
+  <p class="section-title">{% if day == "today" %}Dia atual{% else %}Próximo dia{% endif %} — computadores</p>
+  <section
+    class="computer-list"
+    aria-label="Computadores de {{ target_date|date:'d/m/Y' }}"
+    x-data="swipeNavigator"
+    {% if day == "today" %}data-swipe-next-selector='[data-day="tomorrow"]'{% else %}data-swipe-prev-selector='[data-day="today"]'{% endif %}
+    x-on:pointerdown="start($event)"
+    x-on:pointerup="finish($event)"
+    x-on:pointercancel="cancel()"
+    x-on:click.capture="blockAccidentalClick($event)">
+    {% for item in computers %}
+      <a
+        class="computer-row"
+        href="{% url 'web:computer-detail' item.id %}?day={{ day }}"
+        hx-get="{% url 'web:computer-detail' item.id %}?day={{ day }}"
+        hx-target="#app-dialog-content"
+        hx-swap="innerHTML">
+        <span class="computer-avatar avatar-{{ item.status_tone }}">{{ item.code_label }}</span>
+        <span class="computer-main">
+          <strong>{{ item.computer.description|default:item.computer.code }}</strong>
+          <small>{{ item.availability_note }}{% if item.computer.notes %} · {{ item.computer.notes }}{% endif %}</small>
+        </span>
+        <span class="computer-side">
+          <small>{% if day == "today" %}Hoje{% else %}Amanhã{% endif %}</small>
+          <span class="badge badge-{{ item.status_tone }}">{{ item.status_label }}</span>
+        </span>
+      </a>
+    {% empty %}
+      <div class="empty-state"><strong>Nenhum computador encontrado</strong><p>Ajuste a busca e tente novamente.</p></div>
+    {% endfor %}
+  </section>
+  <p class="gesture-hint">Deslize a lista para a esquerda ou direita para alternar entre hoje e amanhã.</p>
+{% endif %}

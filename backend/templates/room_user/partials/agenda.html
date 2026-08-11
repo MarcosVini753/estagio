@@ -1,0 +1,44 @@
+<section class="summary-card">
+  <div class="summary-row">
+    <div>
+      <h2>Meus agendamentos</h2>
+      <p>Reserve horários futuros de hoje ou de amanhã.</p>
+    </div>
+    <span class="count-badge">{{ confirmed_count }}</span>
+  </div>
+  <a class="button button-primary button-full" href="{% url 'web:computers' %}?day=tomorrow" hx-get="{% url 'web:computers' %}?day=tomorrow" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Agendar computador</a>
+</section>
+
+<p class="section-title">Reservas</p>
+<section class="reservation-list">
+  {% for reservation in reservations %}
+    <article class="reservation-card">
+      <span class="computer-avatar {% if reservation.status == 'CONFIRMED' %}avatar-warning{% elif reservation.status == 'USED' %}avatar-success{% else %}avatar-neutral{% endif %}">{{ reservation.computer.code|cut:"-" }}</span>
+      <div class="reservation-main">
+        <div class="reservation-heading">
+          <strong>{{ reservation.computer.description|default:reservation.computer.code }}</strong>
+          <span class="badge {% if reservation.status == 'CONFIRMED' %}badge-warning{% elif reservation.status == 'USED' %}badge-success{% else %}badge-neutral{% endif %}">{{ reservation.status_label }}</span>
+        </div>
+        <p>{{ reservation.starts_at|date:"d/m/Y" }} · {{ reservation.starts_at|time:"H:i" }}–{{ reservation.ends_at|time:"H:i" }}</p>
+        <small>Entrada até {{ reservation.check_in_deadline_at|time:"H:i" }} · saída até {{ reservation.exit_deadline_at|time:"H:i" }}</small>
+        {% if reservation.cancellation_reason %}<small class="cancellation-reason">Motivo: {{ reservation.cancellation_reason }}</small>{% endif %}
+        {% if reservation.can_check_in_ui or reservation.can_cancel_ui %}
+          <div class="card-actions">
+            {% if reservation.can_check_in_ui %}
+              <form method="post" action="{% url 'web:booking-check-in' reservation.pk %}" hx-post="{% url 'web:booking-check-in' reservation.pk %}" hx-target="#room-user-app" hx-swap="outerHTML">
+                {% csrf_token %}<button class="button button-primary button-small" type="submit">Registrar entrada</button>
+              </form>
+            {% endif %}
+            {% if reservation.can_cancel_ui %}
+              <form method="post" action="{% url 'web:booking-cancel' reservation.pk %}" hx-post="{% url 'web:booking-cancel' reservation.pk %}" hx-target="#room-user-app" hx-swap="outerHTML" x-data="{ confirmCancel: false }" x-on:submit="if (!confirmCancel) { $event.preventDefault(); confirmCancel = window.confirm('Cancelar esta reserva?'); if (confirmCancel) $el.requestSubmit(); }">
+                {% csrf_token %}<button class="button button-ghost button-small" type="submit">Cancelar</button>
+              </form>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty-state"><strong>Nenhuma reserva encontrada</strong><p>Escolha hoje ou amanhã para consultar horários disponíveis.</p></div>
+  {% endfor %}
+</section>

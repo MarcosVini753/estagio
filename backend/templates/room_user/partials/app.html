@@ -1,0 +1,84 @@
+<div id="room-user-app" class="app-shell">
+  <aside class="desktop-sidebar" aria-label="Navegação principal">
+    <p class="sidebar-brand">Biblioteca UFAC</p>
+    {% for item in nav_items %}
+      <a
+        class="nav-link {% if item.key == screen %}nav-link-active{% endif %}"
+        href="{{ item.url }}"
+        data-nav-key="{{ item.key }}"
+        {% if item.key == screen %}aria-current="page"{% endif %}
+        hx-get="{{ item.url }}"
+        hx-target="#room-user-app"
+        hx-swap="outerHTML"
+        hx-push-url="true">
+        <span class="nav-icon">{% include "components/icon.html" with name=item.key %}</span>
+        <span>{{ item.label }}</span>
+      </a>
+    {% endfor %}
+  </aside>
+
+  <header class="app-header">
+    <div class="header-topline">
+      <div>
+        <p class="eyebrow">Biblioteca UFAC</p>
+        <h1>{{ screen_title }}</h1>
+      </div>
+      <a class="icon-button" href="{% url 'web:home' %}" title="Trocar perfil" aria-label="Trocar perfil">
+        {% include "components/icon.html" with name="switch" %}
+      </a>
+    </div>
+
+    <div class="profile-strip">
+      <strong>{{ current_profile_label }}</strong>
+      <span>{{ current_user_reference }}</span>
+    </div>
+
+    {% if search_placeholder %}
+      <form
+        class="search-box"
+        action="{% if screen == 'computers' %}{% url 'web:computers' %}{% elif screen == 'agenda' %}{% url 'web:agenda' %}{% else %}{% url 'web:problems' %}{% endif %}"
+        method="get"
+        hx-get="{% if screen == 'computers' %}{% url 'web:computers' %}{% elif screen == 'agenda' %}{% url 'web:agenda' %}{% else %}{% url 'web:problems' %}{% endif %}"
+        hx-target="#screen-content"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-trigger="submit, input changed delay:350ms from:input[type='search']">
+        <span class="search-icon">{% include "components/icon.html" with name="search" %}</span>
+        <input type="search" name="q" value="{{ query }}" placeholder="{{ search_placeholder }}" aria-label="{{ search_placeholder }}">
+        {% if screen == "computers" %}<input type="hidden" name="day" value="{{ day }}">{% endif %}
+      </form>
+    {% endif %}
+  </header>
+
+  {% include "room_user/partials/screen.html" %}
+
+  <nav
+    class="mobile-navigation"
+    aria-label="Navegação principal"
+    x-data="swipeNavigator"
+    {% if nav_previous_key %}data-swipe-prev-selector='[data-nav-key="{{ nav_previous_key }}"]'{% endif %}
+    {% if nav_next_key %}data-swipe-next-selector='[data-nav-key="{{ nav_next_key }}"]'{% endif %}
+    x-on:pointerdown="start($event)"
+    x-on:pointerup="finish($event)"
+    x-on:pointercancel="cancel()"
+    x-on:click.capture="blockAccidentalClick($event)">
+    {% for item in nav_items %}
+      <a
+        class="mobile-nav-link {% if item.key == screen %}mobile-nav-link-active{% endif %}"
+        href="{{ item.url }}"
+        data-nav-key="{{ item.key }}"
+        {% if item.key == screen %}aria-current="page"{% endif %}
+        hx-get="{{ item.url }}"
+        hx-target="#room-user-app"
+        hx-swap="outerHTML"
+        hx-push-url="true">
+        <span class="nav-icon">{% include "components/icon.html" with name=item.key %}</span>
+        <span>{{ item.label }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+
+  <dialog id="app-dialog" class="app-dialog" aria-labelledby="dialog-title">
+    <div id="app-dialog-content"></div>
+  </dialog>
+</div>

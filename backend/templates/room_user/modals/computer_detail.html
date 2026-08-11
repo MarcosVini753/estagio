@@ -1,0 +1,85 @@
+<section class="dialog-card">
+  <header class="dialog-header">
+    <div>
+      <p class="section-kicker">{{ computer.code }}</p>
+      <h2 id="dialog-title">{{ computer.description|default:"Computador" }}</h2>
+    </div>
+    <button class="icon-button icon-button-dark" type="button" data-dialog-close aria-label="Fechar detalhes">{% include "components/icon.html" with name="close" %}</button>
+  </header>
+
+  {% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+
+  {% if computer_row %}
+    <div class="dialog-body">
+      <section class="detail-status">
+        <div><strong>{{ computer_row.status_label }}</strong><p>{{ computer_row.availability_note }}</p></div>
+        <span class="badge badge-{{ computer_row.status_tone }}">{% if day == "today" %}Hoje{% else %}Amanhã{% endif %}</span>
+      </section>
+
+      {% if day == "today" and immediate_options and not active_session %}
+        <section class="dialog-section">
+          <h3>Usar agora</h3>
+          <p>Escolha a duração antes de registrar a entrada.</p>
+          <form method="post" action="{% url 'web:session-start' %}" hx-post="{% url 'web:session-start' %}" hx-target="#app-dialog-content" hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="computer_id" value="{{ computer.pk }}">
+            <label class="field"><span>Duração solicitada</span>
+              <select name="slot_count" required>
+                {% for option in immediate_options %}<option value="{{ option.slot_count }}">{{ option.minutes }} min · uso até {{ option.planned_ends_label }} · saída até {{ option.exit_deadline_label }}</option>{% endfor %}
+              </select>
+            </label>
+            <button class="button button-primary button-full" type="submit">Confirmar entrada</button>
+          </form>
+        </section>
+      {% endif %}
+
+      {% if active_session and active_allocation.computer_id != computer.pk and day == "today" %}
+        <section class="dialog-section">
+          <h3>Trocar para este computador</h3>
+          <p>O backend verificará a disponibilidade até o fim planejado da sua sessão.</p>
+          <form method="post" action="{% url 'web:session-switch' active_session.pk %}" hx-post="{% url 'web:session-switch' active_session.pk %}" hx-target="#app-dialog-content" hx-swap="innerHTML">
+            {% csrf_token %}<input type="hidden" name="computer_id" value="{{ computer.pk }}"><button class="button button-primary button-full" type="submit">Confirmar troca</button>
+          </form>
+        </section>
+      {% elif active_session and active_allocation.computer_id == computer.pk %}
+        <section class="dialog-section"><h3>Computador em uso por você</h3><a class="button button-primary button-full" href="{% url 'web:session' %}" hx-get="{% url 'web:session' %}" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Abrir sessão</a></section>
+      {% endif %}
+
+      <section class="dialog-section">
+        <h3>Reservar horário</h3>
+        <p>Selecione um início disponível em {{ target_date|date:"d/m/Y" }}.</p>
+        <div class="slot-grid" aria-label="Horários da sala">
+          {% for slot in slots %}
+            {% if slot.selectable %}
+              <a
+                class="slot-button {% if slot.selected %}slot-button-selected{% endif %}"
+                href="{% url 'web:computer-detail' computer.pk %}?day={{ day }}&starts_at={{ slot.value|urlencode }}"
+                hx-get="{% url 'web:computer-detail' computer.pk %}?day={{ day }}&starts_at={{ slot.value|urlencode }}"
+                hx-target="#app-dialog-content"
+                hx-swap="innerHTML">{{ slot.time_label }}</a>
+            {% else %}
+              <span class="slot-button slot-button-disabled" title="{{ slot.status_label }}">{{ slot.time_label }}</span>
+            {% endif %}
+          {% empty %}<p class="helper-text">Não há horários nesta data.</p>{% endfor %}
+        </div>
+
+        {% if reservation_options %}
+          <form method="post" action="{% url 'web:booking-create' %}" hx-post="{% url 'web:booking-create' %}" hx-target="#app-dialog-content" hx-swap="innerHTML" class="reservation-form">
+            {% csrf_token %}
+            <input type="hidden" name="computer_id" value="{{ computer.pk }}">
+            <input type="hidden" name="day" value="{{ day }}">
+            <input type="hidden" name="starts_at" value="{{ selected_starts_at }}">
+            <label class="field"><span>Duração consecutiva</span>
+              <select name="slot_count" required>
+                {% for option in reservation_options %}<option value="{{ option.slot_count }}">{{ option.minutes }} min · {{ option.starts_label }}–{{ option.ends_label }} · saída até {{ option.exit_deadline_label }}</option>{% endfor %}
+              </select>
+            </label>
+            <button class="button button-primary button-full" type="submit">Confirmar reserva</button>
+          </form>
+        {% endif %}
+      </section>
+
+      <a class="button button-warning button-full" href="{% url 'web:problems' %}?computer_id={{ computer.pk }}" hx-get="{% url 'web:problems' %}?computer_id={{ computer.pk }}" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Informar problema neste computador</a>
+    </div>
+  {% endif %}
+</section>

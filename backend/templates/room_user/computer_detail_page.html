@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}{{ computer.code }} — Sala de Informática{% endblock %}
+{% block body %}
+<main class="standalone-page standalone-detail">
+  <a class="back-link" href="{% url 'web:computers' %}?day={{ day }}">← Voltar aos computadores</a>
+  {% include "room_user/modals/computer_detail.html" %}
+</main>
+{% endblock %}

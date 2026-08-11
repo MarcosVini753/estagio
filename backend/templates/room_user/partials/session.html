@@ -1,0 +1,44 @@
+{% if active_session %}
+  <section class="session-card">
+    <div class="summary-row">
+      <div>
+        <p class="section-kicker">Sessão em andamento</p>
+        <h2>{{ active_allocation.computer.description|default:active_allocation.computer.code }}</h2>
+      </div>
+      <span class="badge badge-info">Ativa</span>
+    </div>
+    <dl class="session-metrics">
+      <div><dt>Entrada</dt><dd>{{ active_session.started_at|time:"H:i" }}</dd></div>
+      <div><dt>Uso planejado até</dt><dd>{{ active_session.planned_ends_at|time:"H:i" }}</dd></div>
+      <div><dt>Saída até</dt><dd>{{ active_session.exit_deadline_at|time:"H:i" }}</dd></div>
+    </dl>
+    <div class="card-actions">
+      <form method="post" action="{% url 'web:session-finish' active_session.pk %}" hx-post="{% url 'web:session-finish' active_session.pk %}" hx-target="#room-user-app" hx-swap="outerHTML" x-data="{ confirmExit: false }" x-on:submit="if (!confirmExit) { $event.preventDefault(); confirmExit = window.confirm('Registrar sua saída agora?'); if (confirmExit) $el.requestSubmit(); }">
+        {% csrf_token %}<button class="button button-primary" type="submit">Registrar saída</button>
+      </form>
+      <a class="button button-ghost" href="{% url 'web:computers' %}?day=today" hx-get="{% url 'web:computers' %}?day=today" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Trocar computador</a>
+      <a class="button button-warning" href="{% url 'web:problems' %}?computer_id={{ active_allocation.computer_id }}" hx-get="{% url 'web:problems' %}?computer_id={{ active_allocation.computer_id }}" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Informar problema</a>
+    </div>
+  </section>
+
+  <p class="section-title">Histórico de computadores</p>
+  <section class="timeline">
+    {% for allocation in active_session.allocations.all %}
+      <article class="timeline-item">
+        <span class="timeline-sequence">{{ allocation.sequence }}</span>
+        <div>
+          <strong>{{ allocation.computer.code }}</strong>
+          <p>{{ allocation.started_at|date:"d/m/Y H:i" }}{% if allocation.ended_at %} até {{ allocation.ended_at|date:"H:i" }}{% else %} · em uso agora{% endif %}</p>
+          {% if allocation.switch_reason %}<small>{{ allocation.switch_reason }}</small>{% endif %}
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+{% else %}
+  <section class="empty-state empty-state-large">
+    <span class="empty-icon">{% include "components/icon.html" with name="session" %}</span>
+    <h2>Nenhuma sessão ativa</h2>
+    <p>Escolha um computador disponível de hoje e informe a duração para iniciar o uso.</p>
+    <a class="button button-primary" href="{% url 'web:computers' %}?day=today" hx-get="{% url 'web:computers' %}?day=today" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Ver computadores de hoje</a>
+  </section>
+{% endif %}
