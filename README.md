@@ -4,7 +4,7 @@ Repositório de documentação, diagramas, protótipo navegável e implementaç�
 
 ## Estado atual
 
-O backend já implementa reservas, sessões de uso, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. Consulte [docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md) para o detalhamento.
+O sistema já implementa reservas, sessões de uso, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. O Usuário da Sala possui uma interface funcional mobile-first; Monitor, Supervisor e Administrador continuam selecionáveis no ambiente de demonstração, mas suas interfaces ainda não foram migradas. Consulte [docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md) para o detalhamento.
 
 ## Regras centrais
 
@@ -19,13 +19,15 @@ O backend já implementa reservas, sessões de uso, troca de computador, saída,
 - troca de computador preserva a sessão e cria nova alocação;
 - relatórios são projeções dos registros operacionais.
 
-## Execução do backend
+## Execução local
 
 ```bash
 cp .env.example .env
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements/dev.txt
+npm ci
+npm run build
 docker compose up -d db
 make migrate
 make seed
@@ -60,11 +62,14 @@ A lista completa de endpoints está em [docs/architecture/04-api.md](docs/archit
 ## Estrutura
 
 - `backend/`: aplicação Django;
+- `backend/apps/web/`: apresentação HTML e partials HTMX;
+- `backend/static/`: fontes e assets compilados do frontend;
 - `docs/product/`: regras funcionais;
 - `docs/architecture/`: arquitetura corrente e API;
 - `docs/adr/`: decisões arquiteturais;
 - `docs/diagrams/`: UML em PlantUML;
 - `prototipos/`: referência visual em HTML, CSS e JavaScript;
+- `package.json`: build local de Tailwind CSS, HTMX, Alpine.js e E2E;
 - `AGENTS.md`: instruções para agentes de código.
 
 ## Qualidade

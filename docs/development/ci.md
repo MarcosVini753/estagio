@@ -18,16 +18,16 @@ A execução usa `concurrency` por referência e cancela uma execução anterior
 
 ### Quality checks
 
-Valida o backend com PostgreSQL 17 e Python 3.14:
+Valida a aplicação com PostgreSQL 17, Python 3.14 e Node.js 22:
 
-1. instala `requirements/dev.txt`, com cache de `pip`;
-2. executa `python manage.py check`;
-3. verifica drift de migrations com `makemigrations --check --dry-run`;
-4. aplica migrations em um banco PostgreSQL limpo;
-5. executa a suíte de testes Django;
-6. gera e valida o OpenAPI com `drf-spectacular`;
-7. executa `ruff check`;
-8. executa `ruff format --check`.
+1. instala `requirements/dev.txt` e as dependências bloqueadas pelo `package-lock.json`;
+2. recompila Tailwind CSS, HTMX e Alpine.js e falha se os assets versionados gerarem diff;
+3. executa `python manage.py check`;
+4. verifica drift de migrations com `makemigrations --check --dry-run`;
+5. aplica migrations em um banco PostgreSQL limpo;
+6. executa a suíte de testes Django;
+7. gera e valida o OpenAPI com warnings fatais;
+8. executa `ruff check` e `ruff format --check`.
 
 ### Container build
 
@@ -37,17 +37,15 @@ A imagem é construída apenas para validação. A CI não publica imagens e nã
 
 ### Frontend end-to-end
 
-Enquanto o frontend definitivo ainda não foi migrado para Django Templates, a CI valida o protótipo navegável:
+Valida a interface Django real em um ambiente efêmero:
 
-1. instala Playwright e Chromium em ambiente efêmero;
-2. inicia um servidor HTTP local para `prototipos/`;
-3. abre a interface em um navegador headless;
-4. confirma que a página inicial carrega sem erro;
-5. confirma que o JavaScript inicializa a tela;
-6. executa uma interação real de troca de `Hoje` para `Amanhã`;
+1. provisiona PostgreSQL, Python, Node.js, Playwright e Chromium;
+2. compila os assets, aplica migrations e executa `seed_demo_data`;
+3. inicia o servidor Django real;
+4. seleciona o Usuário da Sala com identidade fictícia;
+5. valida layout e navegação em viewport mobile com toque e em desktop;
+6. testa swipe entre hoje e amanhã, swipe da navegação inferior e distinção de rolagem vertical;
 7. falha caso existam erros JavaScript não tratados no navegador.
-
-Quando a interface Django for implementada, esse job deve passar a inicializar a aplicação real e testar os fluxos prioritários do usuário, em vez do protótipo estático.
 
 ## Deploy não é CI
 
@@ -73,10 +71,9 @@ A proteção é configuração do repositório no GitHub, não parte do arquivo 
 
 ## Evolução esperada
 
-Com a implementação do frontend da ADR 0023, a CI deve evoluir sem criar pipelines paralelos desnecessários:
+Com o frontend da ADR 0023 implementado para o Usuário da Sala, a CI deve evoluir sem criar pipelines paralelos desnecessários:
 
-- adicionar build de Tailwind quando a dependência entrar no projeto;
 - adicionar type-check somente se TypeScript for adotado;
-- migrar o E2E do protótipo para a aplicação Django real;
 - manter testes de backend e frontend independentes o suficiente para identificar a origem de falhas;
+- ampliar o E2E quando as interfaces dos demais perfis forem migradas;
 - adicionar verificações de segurança e imagem de produção apenas quando o deploy real estiver sendo preparado.

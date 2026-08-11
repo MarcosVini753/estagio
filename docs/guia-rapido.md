@@ -38,6 +38,7 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 | Entender decisões arquiteturais | `docs/adr/README.md` |
 | Ver diagramas de fluxo | `docs/diagrams/README.md` |
 | Rodar o backend | `docs/development/backend-setup.md` |
+| Usar a interface do Usuário da Sala | `/` e selecione `Usuário da Sala` |
 | Ver o protótipo visual | `prototipos/` |
 
 ## Como rodar o backend em 5 comandos
@@ -45,7 +46,7 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 ```bash
 cp .env.example .env
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements/dev.txt
+make install
 docker compose up -d db
 make migrate && make seed && make run
 ```

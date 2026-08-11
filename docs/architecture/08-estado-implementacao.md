@@ -98,10 +98,25 @@
 - resposta do endpoint de estado descreve o impacto e as corridas usam locks determinísticos;
 - Monitor continua sem acesso ao relatório mensal.
 
+## Concluído na entrega do frontend do Usuário da Sala
+
+- app de apresentação `web`, sem models, com páginas completas e partials HTMX;
+- seletor visual dos quatro perfis e identidade fictícia obrigatória para o Usuário da Sala;
+- proteção de todas as rotas `/sala/` pelo perfil armazenado na sessão;
+- interface mobile-first de computadores, agenda, sessão e problemas;
+- disponibilidade real de hoje e amanhã, busca server-side e avisos operacionais;
+- reservas futuras para hoje e amanhã com opções consecutivas calculadas no servidor;
+- entrada imediata, check-in, troca de computador, saída e histórico de alocações;
+- ocorrências próprias com vínculo automático à alocação ativa correspondente;
+- dialogs responsivos, mensagens acessíveis e reapresentação de estado após conflitos;
+- navegação por clique, teclado e swipe, com limites, predominância horizontal e movimento reduzido;
+- build local versionado com Tailwind CSS 4, HTMX e Alpine.js;
+- E2E sobre Django e PostgreSQL reais em viewports mobile com toque e desktop.
+
 ## Não implementado
 
 - demais projeções e exportadores de relatórios;
-- migração das demais telas do protótipo para Django Templates;
+- interfaces funcionais do Monitor da Sala, Supervisor e Administrador;
 - autenticação real.
 
 ## Próxima fatia recomendada
