@@ -107,11 +107,18 @@ class Command(BaseCommand):
                 computers=computers,
                 sessions=sessions_by_date[target_date],
             )
-            if target_date.toordinal() % 4 == 0:
-                self._create_occurrence(
-                    target_date=target_date,
-                    sessions=sessions_by_date[target_date],
-                )
+
+        operating_dates = [
+            target_date
+            for target_date, sessions in sessions_by_date.items()
+            if sessions
+        ]
+        for occurrence_index, target_date in enumerate(operating_dates[::4]):
+            self._create_occurrence(
+                target_date=target_date,
+                sessions=sessions_by_date[target_date],
+                resolved=occurrence_index % 2 == 0,
+            )
 
         self._create_maintenance_history(
             computer=computers[0],
@@ -355,13 +362,12 @@ class Command(BaseCommand):
             session.reservation = reservation
             session.save(update_fields=["reservation", "updated_at"])
 
-    def _create_occurrence(self, *, target_date, sessions):
+    def _create_occurrence(self, *, target_date, sessions, resolved):
         if not sessions:
             return
         session = sessions[target_date.toordinal() % len(sessions)]
         allocation = session.allocations.order_by("sequence").first()
         description = f"{DEMO_PREFIX}ocorrência-{target_date.isoformat()}"
-        resolved = target_date.toordinal() % 8 == 0
         occurrence, created = Occurrence.objects.get_or_create(
             reported_by_reference=session.user_reference,
             description=description,
