@@ -113,10 +113,26 @@
 - build local versionado com Tailwind CSS 4, HTMX e Alpine.js;
 - E2E sobre Django e PostgreSQL reais em viewports mobile com toque e desktop.
 
+## Concluído na entrega dos frontends operacionais e gerenciais
+
+- área responsiva do Monitor da Sala em `/monitor/`, protegida para perfis operacionais;
+- painel de sessões ativas, funcionamento vigente e resumo da operação;
+- consulta de computadores e alteração de estado operacional com resultado explícito de realocações, encerramentos e cancelamentos;
+- registro, pesquisa e transição de ocorrências conforme o ciclo de vida do domínio;
+- histórico de sessões e correção restrita de horários com justificativa auditada;
+- área responsiva do Supervisor da Biblioteca em `/supervisor/`, protegida para perfis gerenciais;
+- cadastro e edição do inventário de computadores e acesso herdado ao painel operacional;
+- criação, edição e substituição versionada de turnos analíticos sem alterar o calendário operacional;
+- gestão de calendários regulares e temporários com prévia vinculada à proposta e confirmação explícita de cancelamentos;
+- gestão de exceções pontuais com prévia de impacto, avisos internos e políticas de reserva;
+- configuração auditada da apresentação de relatórios e visualização do relatório mensal disponível;
+- busca server-side, páginas completas sem HTMX e shell compartilhado mobile-first com sidebar no desktop;
+- testes Django dos fluxos críticos e E2E real ampliado para Monitor e Supervisor.
+
 ## Não implementado
 
 - demais projeções e exportadores de relatórios;
-- interfaces funcionais do Monitor da Sala, Supervisor e Administrador;
+- interface funcional própria do Administrador;
 - autenticação real.
 
 ## Próxima fatia recomendada

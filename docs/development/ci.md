@@ -42,10 +42,11 @@ Valida a interface Django real em um ambiente efêmero:
 1. provisiona PostgreSQL, Python, Node.js, Playwright e Chromium;
 2. compila os assets, aplica migrations e executa `seed_demo_data`;
 3. inicia o servidor Django real;
-4. seleciona o Usuário da Sala com identidade fictícia;
-5. valida layout e navegação em viewport mobile com toque e em desktop;
-6. testa swipe entre hoje e amanhã, swipe da navegação inferior e distinção de rolagem vertical;
-7. falha caso existam erros JavaScript não tratados no navegador.
+4. seleciona o Usuário da Sala com identidade fictícia e valida layout, navegação e gestos em mobile e desktop;
+5. seleciona o Monitor da Sala em viewport mobile, acessa ocorrências e registra um problema real;
+6. seleciona o Supervisor da Biblioteca em desktop e percorre inventário, configurações e relatório mensal;
+7. testa swipe entre hoje e amanhã, swipe da navegação inferior e distinção de rolagem vertical;
+8. falha caso existam erros JavaScript não tratados no navegador.
 
 ## Deploy não é CI
 
@@ -71,9 +72,9 @@ A proteção é configuração do repositório no GitHub, não parte do arquivo 
 
 ## Evolução esperada
 
-Com o frontend da ADR 0023 implementado para o Usuário da Sala, a CI deve evoluir sem criar pipelines paralelos desnecessários:
+Com o frontend da ADR 0023 implementado para Usuário da Sala, Monitor e Supervisor, a CI deve evoluir sem criar pipelines paralelos desnecessários:
 
 - adicionar type-check somente se TypeScript for adotado;
 - manter testes de backend e frontend independentes o suficiente para identificar a origem de falhas;
-- ampliar o E2E quando as interfaces dos demais perfis forem migradas;
+- ampliar o E2E quando a interface própria do Administrador for migrada;
 - adicionar verificações de segurança e imagem de produção apenas quando o deploy real estiver sendo preparado.

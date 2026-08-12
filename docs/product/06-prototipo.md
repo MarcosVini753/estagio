@@ -30,7 +30,7 @@ A ADR 0023 substitui a estratégia anterior de Django Templates com JavaScript p
 - a API `/api/` continua disponível como contrato do backend;
 - regras de domínio não devem ser duplicadas no navegador.
 
-A migração é incremental. Os fluxos do Usuário da Sala já foram reproduzidos no frontend Django; o protótipo permanece como referência para as interfaces ainda não migradas do Monitor, Supervisor e Administrador.
+A migração é incremental. Os fluxos do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca já foram reproduzidos no frontend Django; o protótipo permanece como referência histórica e para a interface ainda não migrada do Administrador.
 
 ## Ajustes durante a integração
 
@@ -50,6 +50,6 @@ A migração é incremental. Os fluxos do Usuário da Sala já foram reproduzido
 
 ## Estado atual
 
-O seletor dos quatro perfis e a área completa do Usuário da Sala estão implementados no app Django `web`. Computadores, agenda, sessão e problemas usam dados reais do backend e preservam navegação convencional como alternativa a HTMX, Alpine.js e gestos de toque.
+O seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca estão implementados no app Django `web`. Os fluxos usam dados e serviços reais do backend, preservam navegação convencional como alternativa a HTMX e Alpine.js e mantêm o perfil de demonstração visível.
 
-Os outros três perfis exibem uma página coerente de indisponibilidade enquanto suas interfaces funcionais permanecem no protótipo apenas como referência. A CI já compila os assets versionados e executa o E2E contra a aplicação Django real, com PostgreSQL, migrations e seed.
+O Administrador continua exibindo uma página coerente de indisponibilidade. A CI compila os assets versionados e executa o E2E contra a aplicação Django real, com PostgreSQL, migrations e seed, cobrindo os três perfis migrados em mobile e desktop.

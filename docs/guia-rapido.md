@@ -39,6 +39,8 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 | Ver diagramas de fluxo | `docs/diagrams/README.md` |
 | Rodar o backend | `docs/development/backend-setup.md` |
 | Usar a interface do Usuário da Sala | `/` e selecione `Usuário da Sala` |
+| Usar o painel operacional | `/` e selecione `Monitor da Sala` |
+| Usar configurações e relatórios | `/` e selecione `Supervisor da Biblioteca` |
 | Ver o protótipo visual | `prototipos/` |
 
 ## Como rodar o backend em 5 comandos

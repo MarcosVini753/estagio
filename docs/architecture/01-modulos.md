@@ -7,8 +7,10 @@ O backend será dividido em apps Django por domínio. A separação não implica
 Camada de apresentação HTML, sem models próprios, responsável por:
 
 - seletor dos quatro perfis de demonstração;
-- proteção das rotas do Usuário da Sala pelo contexto salvo na sessão;
-- páginas e partials HTMX de computadores, agenda, sessão e problemas;
+- proteção das rotas do Usuário da Sala, Monitor e Supervisor pelo contexto salvo na sessão;
+- páginas e partials HTMX para os fluxos próprios, operacionais e gerenciais;
+- painel do Monitor com sessões ativas, estados dos computadores, ocorrências e correções de histórico;
+- gestão do Supervisor para inventário, turnos, calendários, exceções, avisos, parâmetros e relatório mensal;
 - presenters e adaptação de erros de serviço para formulários e mensagens;
 - progressive enhancement e respostas completas quando HTMX ou JavaScript não estiverem disponíveis.
 

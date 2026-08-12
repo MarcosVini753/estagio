@@ -89,7 +89,10 @@ Cobrir os fluxos principais do protótipo:
 5. reservar amanhã;
 6. selecionar vários slots consecutivos e conferir fim planejado e prazo;
 7. registrar ocorrência;
-8. acessar painel operacional e relatórios.
+8. acessar e operar o painel do Monitor;
+9. gerenciar inventário, funcionamento e avisos pelo Supervisor;
+10. pré-visualizar o impacto de calendário antes da confirmação;
+11. acessar o relatório mensal com parâmetros gerenciais.
 
 ## Invariantes que devem falhar no banco ou serviço
 
