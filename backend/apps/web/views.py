@@ -554,10 +554,13 @@ def _agenda_context(request, *, screen_error=""):
 
 @_room_user_required
 def agenda(request):
+    context = _agenda_context(request)
+    if request.headers.get("HX-Target") == "agenda-content":
+        return render(request, "room_user/partials/agenda.html", context)
     return _render_screen(
         request,
         content_template="room_user/partials/agenda.html",
-        context=_agenda_context(request),
+        context=context,
     )
 
 

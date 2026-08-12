@@ -66,7 +66,9 @@ jobs:
           npm ci
 
       - name: Frontend build
-        run: npm run check:frontend
+        run: |
+          npm run check:frontend
+          git diff --exit-code -- backend/static/dist backend/static/vendor
 
       - name: Django checks
         run: cd backend && python manage.py check

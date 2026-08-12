@@ -136,6 +136,8 @@ class RoomUserWebTest(TestCase):
 
         self.assertContains(today_response, "Computador 01")
         self.assertContains(today_response, "Hoje")
+        self.assertContains(today_response, "Perfil de teste")
+        self.assertNotContains(today_response, "Ambiente demonstrativo")
         self.assertNotContains(tomorrow_response, "Computador 01")
         self.assertContains(tomorrow_response, "Computador 02")
         self.assertContains(tomorrow_response, "horários disponíveis")
@@ -243,6 +245,40 @@ class RoomUserWebTest(TestCase):
         self.assertRedirects(cancel, "/sala/agenda/")
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
+
+    def test_agenda_refreshes_entry_action_when_check_in_window_opens(self):
+        self.select_room_user()
+        create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.today, time(9)),
+            ends_at=self.aware(self.today, time(10)),
+            created_by_profile="ROOM_USER",
+        )
+
+        with patch(
+            "apps.web.views.timezone.now",
+            return_value=self.aware(self.today, time(8, 59)),
+        ):
+            before_window = self.client.get("/sala/agenda/")
+
+        self.assertNotContains(before_window, "Registrar entrada")
+        self.assertContains(before_window, 'hx-trigger="every 15s"')
+        self.assertContains(before_window, 'hx-target="#agenda-content"')
+
+        with patch(
+            "apps.web.views.timezone.now",
+            return_value=self.aware(self.today, time(9, 1)),
+        ):
+            refreshed = self.client.get(
+                "/sala/agenda/",
+                HTTP_HX_REQUEST="true",
+                HTTP_HX_TARGET="agenda-content",
+            )
+
+        self.assertContains(refreshed, 'id="agenda-content"', count=1)
+        self.assertNotContains(refreshed, "<!doctype html>")
+        self.assertContains(refreshed, "Registrar entrada")
 
     def test_immediate_session_switch_and_finish_flow(self):
         self.select_room_user()

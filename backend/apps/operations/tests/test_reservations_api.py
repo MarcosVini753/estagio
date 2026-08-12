@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 from unittest.mock import patch
 
 from django.utils import timezone
@@ -44,6 +44,11 @@ class ReservationAPITest(APITestCase):
             datetime.combine(target_date, target_time),
             timezone.get_current_timezone(),
         )
+
+    def next_weekend(self):
+        days_until_friday = (Weekday.FRIDAY - self.today.weekday()) % 7 or 7
+        friday = self.today + timedelta(days=days_until_friday)
+        return friday, friday + timedelta(days=1), friday + timedelta(days=2)
 
     def select_room_user(self, reference):
         self.client.post(
@@ -341,12 +346,12 @@ class ReservationAPITest(APITestCase):
     def test_weekend_reservations_respect_regular_schedule(self):
         OperatingSchedule.objects.all().delete()
         create_operating_schedule()
-        friday = self.aware(date(2026, 8, 7), time(12))
-        saturday = date(2026, 8, 8)
+        friday, saturday, _ = self.next_weekend()
+        friday_at_noon = self.aware(friday, time(12))
 
         with patch(
             "apps.operations.services.reservations.timezone.now",
-            return_value=friday,
+            return_value=friday_at_noon,
         ):
             before_close = self.client.post(
                 "/api/reservations/",
@@ -365,12 +370,12 @@ class ReservationAPITest(APITestCase):
     def test_sunday_reservation_is_rejected(self):
         OperatingSchedule.objects.all().delete()
         create_operating_schedule()
-        saturday = self.aware(date(2026, 8, 8), time(12))
-        sunday = date(2026, 8, 9)
+        _, saturday, sunday = self.next_weekend()
+        saturday_at_noon = self.aware(saturday, time(12))
 
         with patch(
             "apps.operations.services.reservations.timezone.now",
-            return_value=saturday,
+            return_value=saturday_at_noon,
         ):
             response = self.client.post(
                 "/api/reservations/",

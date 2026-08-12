@@ -8,7 +8,7 @@
     "build": "npm run build:vendor && npm run build:css",
     "build:css": "tailwindcss -i backend/static/css/app.css -o backend/static/dist/app.css --minify",
     "build:vendor": "node scripts/copy-frontend-vendor.mjs",
-    "check:frontend": "npm run build && git diff --exit-code -- backend/static/dist backend/static/vendor",
+    "check:frontend": "npm run build",
     "test:e2e": "node scripts/frontend-e2e.mjs"
   },
   "dependencies": {
