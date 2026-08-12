@@ -10,6 +10,8 @@
   <a href="{% url 'web:supervisor-configuration' %}?section=policies" class="subnav-link {% if configuration_section == 'policies' %}subnav-link-active{% endif %}" {% if configuration_section == 'policies' %}aria-current="page"{% endif %}>Parâmetros</a>
 </nav>
 
+{% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+
 {% if configuration_section == "schedules" %}{% include "supervisor/partials/schedules.html" %}
 {% elif configuration_section == "shifts" %}{% include "supervisor/partials/shifts.html" %}
 {% elif configuration_section == "exceptions" %}{% include "supervisor/partials/exceptions.html" %}

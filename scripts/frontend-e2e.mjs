@@ -229,6 +229,16 @@ try {
     await noScriptPage.getByRole("link", { name: "Agenda" }).last().isVisible(),
     true,
   );
+  await selectProfile(noScriptPage, "Monitor da Sala", "**/monitor/");
+  await noScriptPage
+    .getByRole("link", { name: "Computadores", exact: true })
+    .last()
+    .click();
+  await noScriptPage.waitForURL("**/monitor/computadores/");
+  assert.equal(
+    await noScriptPage.getByText("Alterar estado", { exact: true }).first().isVisible(),
+    true,
+  );
   await noScript.close();
 
   assert.deepEqual(pageErrors, [], `Erros JavaScript: ${pageErrors.join("; ")}`);

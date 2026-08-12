@@ -24,25 +24,23 @@
 
 <section class="staff-list" aria-label="Computadores da sala">
   {% for item in computers %}
-    <article class="staff-list-row staff-list-row-form" x-data="{ editing: false }">
+    <article class="staff-list-row staff-list-row-form">
       <span class="computer-avatar avatar-{{ item.status_tone }}">{{ item.code_label }}</span>
       <div class="staff-list-main">
         <div class="inline-heading"><strong>{{ item.computer.description|default:item.computer.code }}</strong><span class="badge badge-{{ item.status_tone }}">{{ item.status_label }}</span></div>
         <span>{{ item.availability_note }}{% if item.computer.asset_number %} · Patrimônio {{ item.computer.asset_number }}{% endif %}</span>
         {% if item.computer.notes %}<small>{{ item.computer.notes }}</small>{% endif %}
       </div>
-      <button class="button button-ghost button-small" type="button" x-on:click="editing = !editing" :aria-expanded="editing.toString()">Alterar estado</button>
-      <form
-        class="inline-action-form"
-        x-show="editing"
-        x-cloak
-        method="post"
-        action="{% url 'web:monitor-computer-state' item.id %}">
-        {% csrf_token %}
-        <label class="field"><span>Novo estado</span><select name="operational_state" required>{% for value, label in state_choices %}<option value="{{ value }}" {% if value == item.computer.operational_state %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-        <label class="field field-grow"><span>Motivo da alteração</span><input name="reason" maxlength="1000" placeholder="Obrigatório ao indisponibilizar"></label>
-        <button class="button button-primary" type="submit">Confirmar alteração</button>
-      </form>
+      <details class="row-disclosure">
+        <summary class="button button-ghost button-small">Alterar estado</summary>
+        <form class="inline-action-form always-visible" method="post" action="{% url 'web:monitor-computer-state' item.id %}">
+          {% csrf_token %}
+          <label class="field"><span>Novo estado</span><select name="operational_state" required>{% for value, label in state_choices %}<option value="{{ value }}" {% if value == item.computer.operational_state %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+          <label class="field field-grow"><span>Motivo da alteração</span><input name="reason" maxlength="1000" placeholder="Obrigatório ao indisponibilizar"></label>
+          <div class="pre-impact-note field-wide" role="note"><strong>Impacto antes da confirmação</strong><span>{% if item.active_session_before_change %}1 sessão ativa (sessão #{{ item.active_session_before_change.pk }}){% else %}Nenhuma sessão ativa{% endif %} · {{ item.reservation_count_before_change }} reserva(s) confirmada(s) ainda válida(s). Ao indisponibilizar, o serviço tentará realocar e informará o resultado.</span></div>
+          <button class="button button-primary" type="submit">Confirmar alteração</button>
+        </form>
+      </details>
     </article>
   {% empty %}<div class="empty-state"><strong>Nenhum computador encontrado</strong><p>Ajuste a busca e tente novamente.</p></div>{% endfor %}
 </section>

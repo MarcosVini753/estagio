@@ -17,7 +17,7 @@ from apps.configuration.models import (
 from apps.configuration.tests.factories import create_operating_schedule
 from apps.occurrences.models import Occurrence
 from apps.operations.models import Reservation
-from apps.operations.tests.factories import create_reservation
+from apps.operations.tests.factories import create_reservation, create_use_session
 
 
 class LibrarySupervisorWebTest(TestCase):
@@ -205,6 +205,78 @@ class LibrarySupervisorWebTest(TestCase):
         self.assertFalse(
             OperatingSchedule.objects.filter(name="Horário temporário").exists()
         )
+
+    def test_new_conflict_after_preview_requires_a_fresh_confirmation(self):
+        self.select_supervisor()
+        payload = {
+            "name": "Horário reduzido",
+            "schedule_type": OperatingSchedule.ScheduleType.TEMPORARY,
+            "valid_from": self.tomorrow.isoformat(),
+            "valid_until": self.tomorrow.isoformat(),
+            "reason": "Atividade interna",
+            **self.weekly_windows("09:00-17:00"),
+        }
+        preview = self.client.post(
+            "/supervisor/calendarios/novo/",
+            {**payload, "intent": "preview"},
+        )
+        self.assertContains(preview, "Nenhuma reserva será cancelada")
+
+        reservation = create_reservation(
+            user_reference="aluno-conflito-novo",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(8)),
+            ends_at=self.aware(self.tomorrow, time(9)),
+            created_by_profile="ROOM_USER",
+        )
+        applied = self.client.post(
+            "/supervisor/calendarios/novo/",
+            {**payload, "intent": "apply"},
+        )
+
+        self.assertEqual(applied.status_code, 409)
+        self.assertContains(applied, "impacto mudou", status_code=409)
+        self.assertContains(applied, f"Reserva #{reservation.pk}", status_code=409)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.CONFIRMED)
+        self.assertFalse(
+            OperatingSchedule.objects.filter(name="Horário reduzido").exists()
+        )
+
+    def test_used_shift_can_be_deactivated_without_editing_history(self):
+        self.select_supervisor()
+        shift = Shift.objects.create(
+            name="Noite",
+            start_time=time(18),
+            end_time=time(22),
+            valid_from=self.today - timedelta(days=5),
+        )
+        create_use_session(
+            user_reference="aluno-turno",
+            start_shift=shift,
+            started_at=self.aware(self.today, time(18)),
+            planned_starts_at=self.aware(self.today, time(18)),
+            planned_ends_at=self.aware(self.today, time(19)),
+            exit_deadline_at=self.aware(self.today, time(19, 3)),
+            ended_at=self.aware(self.today, time(19)),
+            status="FINISHED",
+            entry_recorded_by_profile="ROOM_MONITOR",
+            exit_recorded_by_profile="ROOM_MONITOR",
+        )
+
+        page = self.client.get("/supervisor/funcionamento/?section=shifts")
+        response = self.client.post(
+            f"/supervisor/turnos/{shift.pk}/editar/",
+            {},
+        )
+
+        self.assertContains(page, "Apenas a desativação é permitida")
+        self.assertRedirects(
+            response,
+            "/supervisor/funcionamento/?section=shifts",
+        )
+        shift.refresh_from_db()
+        self.assertFalse(shift.is_active)
 
     def test_exception_preview_and_confirmation_cancel_affected_booking(self):
         self.select_supervisor()

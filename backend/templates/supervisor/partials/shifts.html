@@ -23,10 +23,14 @@
       <details class="row-disclosure">
         <summary class="button button-ghost button-small">Gerenciar</summary>
         <div class="stacked-forms">
-          <form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-shift-update' shift.pk %}">
-            {% csrf_token %}<h3 class="field-wide">Editar versão sem uso</h3>
-            <label class="field"><span>Nome</span><input name="name" value="{{ shift.name }}" required></label><label class="field"><span>Ordem</span><input type="number" min="0" name="display_order" value="{{ shift.display_order }}" required></label><label class="field"><span>Início</span><input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required></label><label class="field"><span>Fim</span><input type="time" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required></label><input type="hidden" name="valid_from" value="{{ shift.valid_from|date:'Y-m-d' }}"><label class="check-field"><input type="checkbox" name="is_active" {% if shift.is_active %}checked{% endif %}><span>Ativo</span></label><button class="button button-ghost" type="submit">Salvar versão</button>
-          </form>
+          {% if shift.has_sessions %}
+            {% if shift.is_active %}<form class="staff-form" method="post" action="{% url 'web:supervisor-shift-update' shift.pk %}">{% csrf_token %}<h3>Versão utilizada</h3><p class="helper-text">Os horários são imutáveis porque já explicam sessões históricas. Apenas a desativação é permitida.</p><button class="button button-warning" type="submit">Desativar esta versão</button></form>{% endif %}
+          {% else %}
+            <form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-shift-update' shift.pk %}">
+              {% csrf_token %}<h3 class="field-wide">Editar versão sem uso</h3>
+              <label class="field"><span>Nome</span><input name="name" value="{{ shift.name }}" required></label><label class="field"><span>Ordem</span><input type="number" min="0" name="display_order" value="{{ shift.display_order }}" required></label><label class="field"><span>Início</span><input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required></label><label class="field"><span>Fim</span><input type="time" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required></label><input type="hidden" name="valid_from" value="{{ shift.valid_from|date:'Y-m-d' }}"><label class="check-field"><input type="checkbox" name="is_active" {% if shift.is_active %}checked{% endif %}><span>Ativo</span></label><button class="button button-ghost" type="submit">Salvar versão</button>
+            </form>
+          {% endif %}
           {% if shift.is_active and not shift.valid_until %}<form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-shift-replace' shift.pk %}">{% csrf_token %}<h3 class="field-wide">Criar versão futura</h3><label class="field"><span>Início da vigência</span><input type="date" name="effective_from" required></label><label class="field"><span>Nome</span><input name="name" value="{{ shift.name }}" required></label><label class="field"><span>Início</span><input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required></label><label class="field"><span>Fim</span><input type="time" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required></label><label class="field"><span>Ordem</span><input type="number" min="0" name="display_order" value="{{ shift.display_order }}" required></label><button class="button button-primary" type="submit">Substituir no futuro</button></form>{% endif %}
         </div>
       </details>

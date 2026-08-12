@@ -1,7 +1,7 @@
 from functools import wraps
 
 from django.contrib import messages
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -211,6 +211,29 @@ def _computers_context(request, *, screen_error=""):
             user_reference=None,
         )
         rows = computer_rows(summary=room, computers=computers, query=query)
+        active_sessions = {
+            allocation.computer_id: allocation.session
+            for allocation in ComputerAllocation.objects.filter(
+                computer_id__in=[computer.pk for computer in computers],
+                ended_at__isnull=True,
+                session__status=UseSession.Status.ACTIVE,
+            ).select_related("session")
+        }
+        reservation_counts = {
+            item["computer_id"]: item["total"]
+            for item in Reservation.objects.filter(
+                computer_id__in=[computer.pk for computer in computers],
+                status=Reservation.Status.CONFIRMED,
+                check_in_deadline_at__gte=room["generated_at"],
+            )
+            .values("computer_id")
+            .annotate(total=Count("pk"))
+        }
+        for row in rows:
+            row["active_session_before_change"] = active_sessions.get(row["id"])
+            row["reservation_count_before_change"] = reservation_counts.get(
+                row["id"], 0
+            )
     except APIException as error:
         screen_error = screen_error or _exception_message(error)
     states = list(Computer.OperationalState.choices)

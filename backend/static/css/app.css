@@ -1643,6 +1643,17 @@ a.staff-list-row:hover {
   font-size: 0.8rem;
 }
 
+.pre-impact-note {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid #f1c877;
+  border-radius: 0.75rem;
+  background: var(--warning-soft);
+  padding: 0.7rem;
+  color: #774500;
+  font-size: 0.76rem;
+}
+
 .disclosure-card {
   display: grid;
   gap: 0.8rem;

@@ -3,7 +3,7 @@ import json
 from functools import wraps
 
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -51,6 +51,7 @@ from apps.configuration.services import (
     update_report_configuration,
     update_room_notice,
 )
+from apps.core.api.errors import ScheduleChangeAffectsReservations
 from apps.core.enums import DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.operations.models import UseSession
@@ -398,6 +399,9 @@ def _remember_preview(request, *, key, values, impact):
         "key": key,
         "fingerprint": _fingerprint(key, values),
         "total": impact["total"],
+        "reservation_ids": [
+            reservation["id"] for reservation in impact["conflicting_reservations"]
+        ],
     }
 
 
@@ -408,6 +412,7 @@ def _matching_preview(request, *, key, values):
         if (
             preview.get("key") == key
             and preview.get("fingerprint") == _fingerprint(key, values)
+            and isinstance(preview.get("reservation_ids"), list)
         )
         else None
     )
@@ -415,8 +420,13 @@ def _matching_preview(request, *, key, values):
 
 def _decorate_schedules(schedules, *, post_data=None, active_schedule_id=None):
     values = list(schedules)
+    today = timezone.localdate()
     for schedule in values:
         schedule.type_label = schedule.get_schedule_type_display()
+        schedule.can_replace = schedule.is_active and (
+            schedule.valid_until is None
+            or schedule.valid_until > max(today, schedule.valid_from)
+        )
         schedule.weekday_fields = _weekday_fields(
             post_data=(
                 post_data
@@ -461,7 +471,11 @@ def _configuration_context(
             "new_weekday_fields": _weekday_fields(
                 post_data=form_data if form_kind == "schedule-create" else None
             ),
-            "shifts": Shift.objects.all(),
+            "shifts": Shift.objects.annotate(
+                has_sessions=Exists(
+                    UseSession.objects.filter(start_shift_id=OuterRef("pk"))
+                )
+            ),
             "exceptions": CalendarException.objects.all(),
             "exception_types": CalendarException.ExceptionType.choices,
             "notices": RoomNotice.objects.all(),
@@ -545,15 +559,18 @@ def shifts(request):
 @require_POST
 def update_shift(request, pk):
     shift = get_object_or_404(Shift, pk=pk)
-    payload = {
-        "name": request.POST.get("name", shift.name),
-        "start_time": request.POST.get("start_time", shift.start_time),
-        "end_time": request.POST.get("end_time", shift.end_time),
-        "display_order": request.POST.get("display_order", shift.display_order),
-        "valid_from": request.POST.get("valid_from", shift.valid_from),
-        "valid_until": request.POST.get("valid_until") or None,
-        "is_active": "is_active" in request.POST,
-    }
+    if shift.use_sessions.exists() and "is_active" not in request.POST:
+        payload = {"is_active": False}
+    else:
+        payload = {
+            "name": request.POST.get("name", shift.name),
+            "start_time": request.POST.get("start_time", shift.start_time),
+            "end_time": request.POST.get("end_time", shift.end_time),
+            "display_order": request.POST.get("display_order", shift.display_order),
+            "valid_from": request.POST.get("valid_from", shift.valid_from),
+            "valid_until": request.POST.get("valid_until") or None,
+            "is_active": "is_active" in request.POST,
+        }
     serializer = ShiftSerializer(shift, data=payload, partial=True)
     if not serializer.is_valid():
         return _configuration_error(
@@ -704,15 +721,34 @@ def create_schedule(request):
     try:
         create_operating_schedule(
             actor_profile=get_demo_profile(request),
+            expected_conflict_ids=preview["reservation_ids"],
             **serializer.validated_data,
         )
     except APIException as error:
+        impact = None
+        error_message = _exception_message(error)
+        if isinstance(error, ScheduleChangeAffectsReservations):
+            preview_values = dict(proposal)
+            preview_values.pop("name")
+            preview_values.pop("reason")
+            impact = preview_operating_schedule_impact(**preview_values)
+            _remember_preview(
+                request,
+                key="create",
+                values=proposal,
+                impact=impact,
+            )
+            error_message = (
+                "O impacto mudou desde a prévia. Revise a lista atualizada e "
+                "confirme novamente."
+            )
         return _configuration_error(
             request,
             section="schedules",
-            error=_exception_message(error),
+            error=error_message,
             status=error.status_code,
             form_kind="schedule-create",
+            preview_result=impact,
         )
     request.session.pop(SCHEDULE_PREVIEW_SESSION_KEY, None)
     messages.success(request, "Calendário criado com impacto confirmado.")
@@ -807,16 +843,35 @@ def replace_schedule(request, pk):
         replace_operating_schedule(
             schedule_id=schedule.pk,
             actor_profile=get_demo_profile(request),
+            expected_conflict_ids=preview["reservation_ids"],
             **data,
         )
     except APIException as error:
+        impact = None
+        error_message = _exception_message(error)
+        if isinstance(error, ScheduleChangeAffectsReservations):
+            preview_values = dict(proposal)
+            preview_values.pop("name")
+            preview_values.pop("reason")
+            impact = preview_operating_schedule_impact(**preview_values)
+            _remember_preview(
+                request,
+                key=key,
+                values=proposal,
+                impact=impact,
+            )
+            error_message = (
+                "O impacto mudou desde a prévia. Revise a lista atualizada e "
+                "confirme novamente."
+            )
         return _configuration_error(
             request,
             section="schedules",
-            error=_exception_message(error),
+            error=error_message,
             status=error.status_code,
             form_kind=f"schedule-replace-{pk}",
             preview_schedule_id=pk,
+            preview_result=impact,
         )
     request.session.pop(SCHEDULE_PREVIEW_SESSION_KEY, None)
     messages.success(request, "Nova versão do calendário criada.")
@@ -867,6 +922,9 @@ def exceptions(request):
             "key": key,
             "fingerprint": fingerprint,
             "total": impact["total"],
+            "reservation_ids": [
+                reservation["id"] for reservation in impact["conflicting_reservations"]
+            ],
         }
         return _render_screen(
             request,
@@ -880,7 +938,11 @@ def exceptions(request):
             ),
         )
     preview = request.session.get(EXCEPTION_PREVIEW_SESSION_KEY, {})
-    if preview.get("key") != key or preview.get("fingerprint") != fingerprint:
+    if (
+        preview.get("key") != key
+        or preview.get("fingerprint") != fingerprint
+        or not isinstance(preview.get("reservation_ids"), list)
+    ):
         return _configuration_error(
             request,
             section="exceptions",
@@ -903,14 +965,33 @@ def exceptions(request):
             values=values,
             actor_profile=get_demo_profile(request),
             confirm_cancellation=confirmed,
+            expected_conflict_ids=preview["reservation_ids"],
         )
     except APIException as error:
+        impact = None
+        error_message = _exception_message(error)
+        if isinstance(error, ScheduleChangeAffectsReservations):
+            impact = preview_calendar_exception_impact(values=values)
+            request.session[EXCEPTION_PREVIEW_SESSION_KEY] = {
+                "key": key,
+                "fingerprint": fingerprint,
+                "total": impact["total"],
+                "reservation_ids": [
+                    reservation["id"]
+                    for reservation in impact["conflicting_reservations"]
+                ],
+            }
+            error_message = (
+                "O impacto mudou desde a prévia. Revise a lista atualizada e "
+                "confirme novamente."
+            )
         return _configuration_error(
             request,
             section="exceptions",
-            error=_exception_message(error),
+            error=error_message,
             status=error.status_code,
             form_kind="exception",
+            preview_result=impact,
         )
     request.session.pop(EXCEPTION_PREVIEW_SESSION_KEY, None)
     messages.success(request, "Exceção de calendário aplicada com impacto confirmado.")

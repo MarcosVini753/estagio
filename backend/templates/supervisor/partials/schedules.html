@@ -22,7 +22,7 @@
     <article class="staff-list-row staff-list-row-form">
       <span class="timeline-sequence">{{ schedule.pk }}</span>
       <div class="staff-list-main"><div class="inline-heading"><strong>{{ schedule.name }}</strong><span class="badge {% if schedule.is_active %}badge-success{% else %}badge-neutral{% endif %}">{{ schedule.type_label }}</span></div><span>{{ schedule.valid_from|date:"d/m/Y" }}–{% if schedule.valid_until %}{{ schedule.valid_until|date:"d/m/Y" }}{% else %}sem término{% endif %}</span><small>{% if schedule.is_active %}Versão ativa{% else %}Versão inativa{% endif %} · série {{ schedule.series_key }}</small></div>
-      {% if schedule.is_active %}
+      {% if schedule.can_replace %}
         <details class="row-disclosure" {% if preview_schedule_id == schedule.pk %}open{% endif %}>
           <summary class="button button-ghost button-small">Substituir versão</summary>
           {% if form_error and preview_schedule_id == schedule.pk %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}

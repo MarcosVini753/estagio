@@ -110,6 +110,15 @@ class RoomMonitorWebTest(TestCase):
         self.select_monitor()
 
         with patch(
+            "apps.operations.availability.timezone.now",
+            return_value=self.aware(time(8, 15)),
+        ):
+            before = self.client.get("/monitor/computadores/")
+
+        self.assertContains(before, "Impacto antes da confirmação")
+        self.assertContains(before, f"1 sessão ativa (sessão #{session.pk})")
+
+        with patch(
             "apps.operations.services.computer_state.timezone.now",
             return_value=self.aware(time(8, 15)),
         ):

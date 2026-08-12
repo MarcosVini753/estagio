@@ -572,6 +572,21 @@ def _cancel_conflicting_reservations(
         )
 
 
+def _validate_confirmed_schedule_impact(
+    *,
+    conflicts,
+    confirm_cancellation: bool,
+    expected_conflict_ids: list[int] | None,
+) -> None:
+    conflict_ids = [reservation.pk for reservation in conflicts]
+    if expected_conflict_ids is not None and set(conflict_ids) != set(
+        expected_conflict_ids
+    ):
+        raise ScheduleChangeAffectsReservations(conflict_ids)
+    if conflicts and not confirm_cancellation:
+        raise ScheduleChangeAffectsReservations(conflict_ids)
+
+
 def _notice_values_for_change(
     *,
     notice: dict,
@@ -615,6 +630,7 @@ def create_operating_schedule(
     confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
+    expected_conflict_ids: list[int] | None = None,
 ) -> OperatingSchedule:
     _validate_schedule_period(
         schedule_type=schedule_type,
@@ -649,10 +665,11 @@ def create_operating_schedule(
         raise OperatingScheduleOverlap() from error
 
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_cancellation:
-        raise ScheduleChangeAffectsReservations(
-            reservation.pk for reservation in conflicts
-        )
+    _validate_confirmed_schedule_impact(
+        conflicts=conflicts,
+        confirm_cancellation=confirm_cancellation,
+        expected_conflict_ids=expected_conflict_ids,
+    )
     cancellation_reason = reason.strip() or f"Alteração do calendário: {name}."
     _cancel_conflicting_reservations(
         conflicts=conflicts,
@@ -695,6 +712,7 @@ def replace_operating_schedule(
     confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
+    expected_conflict_ids: list[int] | None = None,
 ) -> OperatingSchedule:
     _lock_reservable_dates(
         valid_from=effective_from,
@@ -742,10 +760,11 @@ def replace_operating_schedule(
     )
     _create_schedule_days(replacement, replacement_days)
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_cancellation:
-        raise ScheduleChangeAffectsReservations(
-            reservation.pk for reservation in conflicts
-        )
+    _validate_confirmed_schedule_impact(
+        conflicts=conflicts,
+        confirm_cancellation=confirm_cancellation,
+        expected_conflict_ids=expected_conflict_ids,
+    )
     cancellation_reason = replacement.reason or (
         f"Substituição do calendário: {replacement.name}."
     )
@@ -959,6 +978,7 @@ def apply_calendar_exception(
     confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
+    expected_conflict_ids: list[int] | None = None,
 ) -> CalendarException:
     existing = None
     existing_preview = (
@@ -997,10 +1017,11 @@ def apply_calendar_exception(
     exception.full_clean()
     exception.save()
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_cancellation:
-        raise ScheduleChangeAffectsReservations(
-            reservation.pk for reservation in conflicts
-        )
+    _validate_confirmed_schedule_impact(
+        conflicts=conflicts,
+        confirm_cancellation=confirm_cancellation,
+        expected_conflict_ids=expected_conflict_ids,
+    )
     _cancel_conflicting_reservations(
         conflicts=conflicts,
         actor_profile=actor_profile,
