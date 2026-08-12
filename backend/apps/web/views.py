@@ -208,6 +208,10 @@ def home(request):
             selected = select_demo_profile(request, **serializer.validated_data)
             if selected == DemoProfile.ROOM_USER:
                 return redirect("web:computers")
+            if selected == DemoProfile.ROOM_MONITOR:
+                return redirect("web:monitor-dashboard")
+            if selected == DemoProfile.LIBRARY_SUPERVISOR:
+                return redirect("web:supervisor-dashboard")
             return redirect("web:profile-unavailable")
         form_error = flatten_serializer_errors(serializer.errors)
 
@@ -246,6 +250,10 @@ def profile_unavailable(request):
     profile = get_demo_profile(request)
     if profile == DemoProfile.ROOM_USER:
         return redirect("web:computers")
+    if profile == DemoProfile.ROOM_MONITOR:
+        return redirect("web:monitor-dashboard")
+    if profile == DemoProfile.LIBRARY_SUPERVISOR:
+        return redirect("web:supervisor-dashboard")
     return render(
         request,
         "profile_unavailable.html",

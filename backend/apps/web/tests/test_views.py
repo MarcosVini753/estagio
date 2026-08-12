@@ -92,12 +92,17 @@ class RoomUserWebTest(TestCase):
         self.assertContains(home, "Horário especial hoje")
         self.assertContains(computers, "Horário especial hoje")
 
-    def test_non_room_user_reaches_pending_profile_page(self):
+    def test_monitor_reaches_its_functional_area(self):
         response = self.client.post("/", {"profile": "ROOM_MONITOR"})
+
+        self.assertRedirects(response, "/monitor/")
+
+    def test_unmigrated_profile_reaches_pending_profile_page(self):
+        response = self.client.post("/", {"profile": "SYSTEM_ADMIN"})
 
         self.assertRedirects(response, "/perfil-indisponivel/")
         pending = self.client.get("/perfil-indisponivel/")
-        self.assertContains(pending, "Monitor da Sala")
+        self.assertContains(pending, "Administrador do Sistema")
         self.assertContains(pending, "ainda não foi migrada")
 
     def test_room_user_pages_require_compatible_profile(self):

@@ -1,0 +1,10 @@
+<section class="settings-grid">
+  <article class="staff-card">
+    <p class="section-kicker">Reservas</p><h2>Política vigente</h2><p class="helper-text">A atualização cria uma versão temporal quando a política atual já explica reservas.</p>
+    <form class="staff-form" method="post" action="{% url 'web:supervisor-configurations' %}">{% csrf_token %}<input type="hidden" name="kind" value="booking"><label class="field"><span>Limite de cancelamento (minutos)</span><input type="number" min="0" name="cancellation_limit_minutes" value="{{ booking_policy.cancellation_limit_minutes|default:0 }}" required></label><label class="field"><span>Máximo de reservas futuras por usuário</span><input type="number" min="1" name="max_future_reservations_per_user" value="{{ booking_policy.max_future_reservations_per_user|default:1 }}" required></label><button class="button button-primary" type="submit">Versionar política</button></form>
+  </article>
+  <article class="staff-card">
+    <p class="section-kicker">Relatórios</p><h2>Parâmetros de apresentação</h2><p class="helper-text">Esses parâmetros controlam a visão mensal. Exportadores continuam fora desta etapa.</p>
+    <form class="staff-form" method="post" action="{% url 'web:supervisor-configurations' %}">{% csrf_token %}<input type="hidden" name="kind" value="report"><label class="field"><span>Formato preferido</span><select name="default_format" required>{% for value, label in report_formats %}<option value="{{ value }}" {% if report_configuration.default_format == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label class="check-field"><input type="checkbox" name="group_by_shift" {% if report_configuration.group_by_shift or not report_configuration %}checked{% endif %}><span>Exibir detalhamento por turno</span></label><label class="check-field"><input type="checkbox" name="include_occurrences" {% if report_configuration.include_occurrences %}checked{% endif %}><span>Exibir métrica de ocorrências</span></label><button class="button button-primary" type="submit">Salvar parâmetros</button></form>
+  </article>
+</section>

@@ -45,7 +45,7 @@
             <span class="profile-icon" aria-hidden="true">{% if profile.is_room_user %}U{% else %}{{ profile.label|first }}{% endif %}</span>
             <span>
               <strong>{{ profile.label }}</strong>
-              <small>{% if profile.is_room_user %}Disponibilidade, reservas, sessão e problemas{% else %}Interface funcional em uma próxima entrega{% endif %}</small>
+              <small>{% if profile.value == "ROOM_USER" %}Disponibilidade, reservas, sessão e problemas{% elif profile.value == "ROOM_MONITOR" %}Sessões, computadores, ocorrências e histórico{% elif profile.value == "LIBRARY_SUPERVISOR" %}Inventário, funcionamento, parâmetros e relatórios{% else %}Interface funcional em uma próxima entrega{% endif %}</small>
             </span>
           </label>
         {% endfor %}

@@ -22,6 +22,7 @@ from apps.core.api.errors import (
 )
 
 from .calendar import (
+    aware_at,
     interval_is_within_operating_day,
     lock_operating_date,
     resolve_operating_day,
@@ -32,6 +33,7 @@ from .models import (
     OperatingSchedule,
     OperatingScheduleDay,
     OperatingWindow,
+    ReportConfiguration,
     RoomNotice,
     Shift,
     Weekday,
@@ -40,6 +42,12 @@ from .models import (
 BOOKING_POLICY_FIELDS = (
     "cancellation_limit_minutes",
     "max_future_reservations_per_user",
+)
+
+REPORT_CONFIGURATION_FIELDS = (
+    "default_format",
+    "group_by_shift",
+    "include_occurrences",
 )
 
 
@@ -82,6 +90,40 @@ def update_current_booking_policy(*, values: dict) -> BookingPolicy:
         **merged,
         valid_from=valid_from,
     )
+
+
+@transaction.atomic
+def update_report_configuration(
+    *,
+    values: dict,
+    actor_profile: str,
+) -> ReportConfiguration:
+    configuration = (
+        ReportConfiguration.objects.select_for_update().filter(is_active=True).first()
+    )
+    old_values = (
+        {field: getattr(configuration, field) for field in REPORT_CONFIGURATION_FIELDS}
+        if configuration
+        else {}
+    )
+    if configuration is None:
+        configuration = ReportConfiguration.objects.create(**values)
+    else:
+        for field, value in values.items():
+            setattr(configuration, field, value)
+        configuration.save(update_fields=[*values.keys(), "updated_at"])
+    AuditEvent.objects.create(
+        actor_profile=actor_profile,
+        action="REPORT_CONFIGURATION_UPDATED",
+        entity_type="ReportConfiguration",
+        entity_id=str(configuration.pk),
+        old_values=old_values,
+        new_values={
+            field: getattr(configuration, field)
+            for field in REPORT_CONFIGURATION_FIELDS
+        },
+    )
+    return configuration
 
 
 @transaction.atomic
@@ -466,6 +508,45 @@ def preview_operating_schedule_impact(
                 "starts_at": reservation.starts_at,
                 "ends_at": reservation.ends_at,
                 "reason": "OUTSIDE_NEW_OPERATING_HOURS",
+            }
+            for reservation in conflicts
+        ],
+        "total": len(conflicts),
+    }
+
+
+def preview_calendar_exception_impact(*, values: dict) -> dict:
+    target_date = values["date"]
+    reservations = _reservations_for_period(
+        valid_from=target_date,
+        valid_until=target_date,
+        lock=False,
+    )
+    if values["exception_type"] == CalendarException.ExceptionType.CLOSED:
+        conflicts = reservations
+    else:
+        starts_at = aware_at(target_date, values["opens_at"])
+        ends_at = aware_at(target_date, values["closes_at"])
+        conflicts = [
+            reservation
+            for reservation in reservations
+            if not (
+                starts_at <= reservation.starts_at and reservation.ends_at <= ends_at
+            )
+        ]
+    return {
+        "affected_period": {
+            "starts_on": target_date,
+            "ends_on": target_date,
+        },
+        "conflicting_reservations": [
+            {
+                "id": reservation.pk,
+                "user_reference": reservation.user_reference,
+                "computer_id": reservation.computer_id,
+                "starts_at": reservation.starts_at,
+                "ends_at": reservation.ends_at,
+                "reason": "OUTSIDE_EXCEPTION_HOURS",
             }
             for reservation in conflicts
         ],

@@ -1,0 +1,38 @@
+<section class="staff-page-heading">
+  <div><p class="section-kicker">Cadastro administrativo</p><h2>{{ section_title }}</h2></div>
+</section>
+
+<details class="staff-card disclosure-card" {% if form_error and not edit_id %}open{% endif %}>
+  <summary>Adicionar computador</summary>
+  {% if form_error and not edit_id %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+  <form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-computers' %}">
+    {% csrf_token %}
+    <label class="field"><span>Código</span><input name="code" maxlength="32" value="{{ form_data.code }}" required></label>
+    <label class="field"><span>Número de patrimônio</span><input name="asset_number" maxlength="64" value="{{ form_data.asset_number }}"></label>
+    <label class="field field-wide"><span>Descrição</span><input name="description" maxlength="255" value="{{ form_data.description }}"></label>
+    <label class="field"><span>Estado inicial</span><select name="operational_state" required>{% for value, label in operational_states %}<option value="{{ value }}" {% if form_data.operational_state == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="field field-wide"><span>Observações</span><textarea name="notes">{{ form_data.notes }}</textarea></label>
+    <button class="button button-primary field-wide" type="submit">Adicionar ao inventário</button>
+  </form>
+</details>
+
+<section class="staff-list" aria-label="Inventário de computadores">
+  {% for computer in computers %}
+    <article class="staff-list-row staff-list-row-form">
+      <span class="computer-avatar {% if computer.operational_state == 'AVAILABLE' %}avatar-success{% else %}avatar-danger{% endif %}">{{ computer.code }}</span>
+      <div class="staff-list-main"><div class="inline-heading"><strong>{{ computer.description|default:computer.code }}</strong><span class="badge {% if computer.operational_state == 'AVAILABLE' %}badge-success{% else %}badge-danger{% endif %}">{{ computer.get_operational_state_display }}</span></div><span>{% if computer.asset_number %}Patrimônio {{ computer.asset_number }}{% else %}Sem patrimônio informado{% endif %}</span><small>{{ computer.notes }}</small></div>
+      <details class="row-disclosure" {% if edit_id == computer.pk %}open{% endif %}>
+        <summary class="button button-ghost button-small">Editar cadastro</summary>
+        {% if form_error and edit_id == computer.pk %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+        <form class="inline-action-form always-visible" method="post" action="{% url 'web:supervisor-computer-update' computer.pk %}">
+          {% csrf_token %}
+          <label class="field"><span>Código</span><input name="code" maxlength="32" value="{% if edit_id == computer.pk %}{{ form_data.code }}{% else %}{{ computer.code }}{% endif %}" required></label>
+          <label class="field"><span>Patrimônio</span><input name="asset_number" maxlength="64" value="{% if edit_id == computer.pk %}{{ form_data.asset_number }}{% else %}{{ computer.asset_number|default:'' }}{% endif %}"></label>
+          <label class="field"><span>Descrição</span><input name="description" maxlength="255" value="{% if edit_id == computer.pk %}{{ form_data.description }}{% else %}{{ computer.description }}{% endif %}"></label>
+          <label class="field field-grow"><span>Observações</span><input name="notes" value="{% if edit_id == computer.pk %}{{ form_data.notes }}{% else %}{{ computer.notes }}{% endif %}"></label>
+          <button class="button button-primary" type="submit">Salvar cadastro</button>
+        </form>
+      </details>
+    </article>
+  {% empty %}<div class="empty-state"><strong>Nenhum computador encontrado</strong><p>Ajuste a busca ou adicione um item ao inventário.</p></div>{% endfor %}
+</section>
