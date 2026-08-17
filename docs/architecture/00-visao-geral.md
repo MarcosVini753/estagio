@@ -42,11 +42,12 @@ PostgreSQL
 - Ruff;
 - GitHub Actions.
 
-A stack de frontend acima é a arquitetura alvo definida na ADR 0023. O protótipo em `prototipos/` ainda usa HTML, CSS e JavaScript puro e não representa a implementação final.
+A stack de frontend acima está implementada para a área do Usuário da Sala, conforme a ADR 0023. O protótipo em `prototipos/` continua como referência visual para as interfaces dos demais perfis e não representa a implementação final.
 
 ## Apps
 
 - `core`;
+- `web`;
 - `access`;
 - `configuration`;
 - `computers`;
@@ -79,12 +80,12 @@ A stack de frontend acima é a arquitetura alvo definida na ADR 0023. O protóti
 
 HTMX deve ser preferido quando uma interação precisa executar lógica no servidor e atualizar somente parte da página. Alpine.js deve permanecer restrito a comportamento local que não representa estado de domínio.
 
-A API `/api/` continua sendo contrato executável e pode ser consumida diretamente quando isso simplificar uma interação. Não duplicar no navegador cálculos ou validações já disponíveis no backend.
+A API `/api/` continua sendo contrato executável para clientes externos. As views HTML reutilizam serializers de entrada, selectors e serviços de domínio no mesmo processo Django, sem chamadas HTTP internas. Não duplicar no navegador cálculos ou validações já disponíveis no backend.
 
 A interface deve ser mobile-first e preparada para evolução posterior para PWA, sem tornar funcionamento offline um requisito atual.
 
 ## Estado atual
 
-O scaffold, apps, modelos, migrations, Compose, CI, health check e contexto de demonstração estão implementados. Os serviços operacionais e endpoints de domínio também já existem: reservas, sessões, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. Consulte `08-estado-implementacao.md` para o detalhamento.
+O scaffold, apps, modelos, migrations, Compose, CI, health check e contexto de demonstração estão implementados. Os serviços operacionais e endpoints de domínio também já existem: reservas, sessões, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal.
 
-A implementação do frontend definitivo ainda não começou. O próximo passo de interface é migrar progressivamente o protótipo para Django Templates seguindo a ADR 0023.
+O app de apresentação `web` entrega o seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca com Django Templates, HTMX, Alpine.js e Tailwind CSS. Somente a interface própria do Administrador permanece como evolução futura. Consulte `08-estado-implementacao.md` para o detalhamento.

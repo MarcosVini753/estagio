@@ -35,6 +35,7 @@ class AllocationTemporalConstraintTest(TransactionTestCase):
             sequence=1,
             started_at=starts_at,
             ended_at=ends_at,
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
 
     def test_historical_allocations_cannot_overlap_for_same_computer(self):

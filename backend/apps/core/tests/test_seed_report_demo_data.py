@@ -1,8 +1,10 @@
+from datetime import datetime, time, timedelta
 from io import StringIO
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
+from django.utils import timezone
 
 from apps.computers.models import Computer, ComputerOperationalStateChange
 from apps.configuration.models import (
@@ -112,6 +114,7 @@ class SeedReportDemoDataTest(TestCase):
             sequence=1,
             started_at="2026-01-01T08:00:00-05:00",
             ended_at="2026-01-01T09:00:00-05:00",
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         self.run_seed(days=10, seed=12345)
 
@@ -158,10 +161,6 @@ class SeedReportDemoDataTest(TestCase):
             self.run_seed(days=2)
 
     def test_seed_extends_booking_policy_to_cover_historical_range(self):
-        from datetime import timedelta
-
-        from django.utils import timezone
-
         earliest = timezone.localdate() - timedelta(days=10)
         BookingPolicy.objects.create(valid_from=timezone.localdate())
 
@@ -171,3 +170,40 @@ class SeedReportDemoDataTest(TestCase):
         self.assertIsNotNone(policy)
         self.assertLessEqual(policy.valid_from, earliest)
         self.assertTrue(Reservation.objects.filter(booking_policy=policy).exists())
+
+
+class SeedReportDemoDataExistingAllocationTest(TransactionTestCase):
+    def test_seed_preserves_manual_active_allocation_without_overlap(self):
+        days = 10
+        first_report_date = timezone.localdate() - timedelta(days=days)
+        target_date = timezone.localdate() - timedelta(days=1)
+        preferred_index = (target_date.toordinal() * 3) % 8
+        occupied_computer = Computer.objects.create(
+            code=f"PC-{preferred_index + 1:02d}"
+        )
+        allocation_started_at = timezone.make_aware(
+            datetime.combine(first_report_date - timedelta(days=1), time.min),
+            timezone.get_current_timezone(),
+        )
+        manual_session = create_use_session(
+            user_reference="manual-active-user",
+            started_at=allocation_started_at,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        manual_allocation = ComputerAllocation.objects.create(
+            session=manual_session,
+            computer=occupied_computer,
+            sequence=1,
+            started_at=allocation_started_at,
+        )
+
+        call_command("seed_report_demo_data", days=days, seed=12345, reset=True)
+
+        manual_allocation.refresh_from_db()
+        self.assertIsNone(manual_allocation.ended_at)
+        self.assertFalse(
+            ComputerAllocation.objects.filter(
+                session__user_reference__startswith="demo-report-",
+                computer=occupied_computer,
+            ).exists()
+        )

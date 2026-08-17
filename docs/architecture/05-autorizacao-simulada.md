@@ -60,4 +60,4 @@ A autenticação real substituirá a escolha de perfil. Os perfis conceituais po
 
 ## Critério de aceitação
 
-A seleção de perfil deve ser claramente identificada na interface como simulação. Uma faixa ou aviso persistente deve informar que o ambiente não possui autenticação real.
+A seleção de perfil deve ser claramente identificada na interface como simulação. O seletor inicial informa que o ambiente não possui autenticação real, e as telas funcionais identificam de forma persistente o perfil de teste atual.

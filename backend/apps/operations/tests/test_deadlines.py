@@ -66,7 +66,7 @@ class OperationalDeadlineTest(TestCase):
             "Prazo de check-in expirado.",
         )
 
-    def test_expired_session_is_closed_at_deadline(self):
+    def test_expired_session_is_closed_automatically_at_exit_deadline(self):
         session, allocation = self.create_active_session()
 
         expired = expire_overdue_sessions(self.aware(time(9, 3)))

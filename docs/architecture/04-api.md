@@ -200,6 +200,8 @@ PATCH /api/booking-policy/
 
 Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política encerra a versão anterior e cria outra; uma versão iniciada hoje e já ligada a reservas é preservada, e a nova começa amanhã. Versões de hoje ou futuras ainda sem reservas podem ser ajustadas. A política expõe somente limite de cancelamento e máximo de reservas futuras; duração de 15 minutos e tolerâncias de três minutos são regras fixas.
 
+Criação, preview e edição de `CalendarException` aceitam somente hoje ou datas futuras. Tentativas históricas retornam HTTP 400 com `CALENDAR_EXCEPTION_DATE_INVALID`; consultas históricas continuam permitidas.
+
 Calendários recebem exatamente sete dias. A API aceita `weekday` pelos nomes `MONDAY` a `SUNDAY`. Exemplo de criação temporária:
 
 ```json
@@ -301,10 +303,12 @@ POST /api/reservations/{id}/cancel/
 }
 ```
 
-O início deve estar alinhado à grade da janela operacional. O backend calcula `ends_at=10:00`, `check_in_deadline_at=09:03` e `exit_deadline_at=10:03`, validando todo o intervalo consecutivo. A resposta inclui esses campos, `booking_policy_id` e o `slot_count` derivado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o intervalo.
+O início deve estar alinhado à grade da janela operacional. Para uma reserva iniciada às 09:00, o backend calcula `ends_at=10:00`, `check_in_deadline_at=09:03` e `exit_deadline_at=10:03`; a entrada é aceita de 08:57 a 09:03, inclusive. A resposta inclui esses campos, `booking_policy_id` e o `slot_count` derivado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o intervalo.
 Cancelamento de terceiro exige justificativa e gera evento de auditoria.
 
-O ciclo de vida possui somente `CONFIRMED`, `CANCELLED` e `USED`. Entrada é aceita somente entre `starts_at` e `check_in_deadline_at`, inclusive; depois disso a reconciliação cancela a reserva com `cancelled_by_profile=SYSTEM_ADMIN` e motivo “Prazo de check-in expirado.” Alterações operacionais usam os mesmos campos de cancelamento.
+As listagens `reservations/`, `reservations/mine/`, `usage-sessions/history/` e `occurrences/` usam páginas fixas de 25 itens e aceitam somente o parâmetro `page`. A resposta segue `{count, next, previous, results}`. Reservas e sessões são ordenadas do início mais recente para o mais antigo; ocorrências, da criação mais recente para a mais antiga; todas usam `id` decrescente como desempate estável.
+
+O ciclo de vida possui somente `CONFIRMED`, `CANCELLED` e `USED`. Respeitados o funcionamento da sala e o estado do computador, a entrada é aceita entre três minutos antes de `starts_at` e `check_in_deadline_at`, inclusive; depois disso a reconciliação cancela a reserva com `cancelled_by_profile=SYSTEM_ADMIN` e motivo “Prazo de check-in expirado.” Alterações operacionais usam os mesmos campos de cancelamento.
 
 ### Sessões e alocações
 
@@ -328,9 +332,9 @@ Uso imediato recebe computador e duração:
 
 Se a entrada ocorrer às 08h21, a sessão responde com `planned_starts_at=08:21`, `planned_ends_at=08:51` e `exit_deadline_at=08:54`. O intervalo inteiro deve caber antes do fechamento e não pode invadir reserva confirmada ou sessão planejada.
 
-Entrada com reserva recebe `computer_id` e `reservation_id`; enviar também `slot_count` é erro 400. A sessão herda snapshots, intervalo e deadlines da reserva. Entrada antecipada é rejeitada e entrada atrasada não desloca o fim planejado.
+Entrada com reserva recebe `computer_id` e `reservation_id`; enviar também `slot_count` é erro 400. A sessão herda snapshots, intervalo e deadlines da reserva. A entrada pode ocorrer até três minutos antes ou depois do início, sem deslocar o fim planejado.
 
-Troca encerra a alocação atual e cria a próxima na mesma sessão depois de validar o destino até `planned_ends_at`; é rejeitada durante a tolerância. Saída antecipada ou exatamente no prazo é aceita. Saída operacional de terceiro exige justificativa e auditoria. Sessões vencidas são encerradas em `exit_deadline_at` com alocação `TIME_LIMIT_REACHED`.
+Troca encerra a alocação atual e cria a próxima na mesma sessão depois de validar o destino até `planned_ends_at`; é rejeitada durante a tolerância de saída. Saída antecipada ou exatamente no prazo é aceita. Saída operacional de terceiro exige justificativa e auditoria. Sessões vencidas têm a saída registrada automaticamente em `exit_deadline_at` com alocação `TIME_LIMIT_REACHED`.
 
 O comando periódico é:
 
@@ -338,7 +342,7 @@ O comando periódico é:
 python manage.py reconcile_operational_deadlines
 ```
 
-Ele deve ser agendado externamente a cada minuto, encerra sessões com `now >= exit_deadline_at` e cancela reservas vencidas quando `now > check_in_deadline_at`. Entrada e troca também reconciliam os computadores envolvidos antes de prosseguir; na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
+Ele deve ser agendado externamente a cada minuto, registra automaticamente a saída e encerra sessões com `now >= exit_deadline_at` e cancela reservas vencidas quando `now > check_in_deadline_at`. Entrada e troca também reconciliam os computadores envolvidos antes de prosseguir; na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
 
 ```text
 POST /api/usage-sessions/{id}/correct/

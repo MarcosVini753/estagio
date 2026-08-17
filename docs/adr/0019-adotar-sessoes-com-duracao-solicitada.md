@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita. A semântica de `NO_SHOW` foi substituída pela ADR 0021; intervalos planejados e deadlines permanecem vigentes.
+Aceita. A semântica de `NO_SHOW` foi substituída pela ADR 0021 e a regra de check-in antecipado pela ADR 0024; intervalos planejados e deadlines permanecem vigentes.
 
 ## Contexto
 

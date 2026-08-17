@@ -1,0 +1,43 @@
+<section class="configuration-intro"><p>Calendários alteram a disponibilidade real da sala. Toda proposta deve ser pré-visualizada; conflitos só são aplicados após confirmação explícita.</p></section>
+
+<details class="staff-card disclosure-card" {% if form_kind == 'schedule-create' %}open{% endif %}>
+  <summary>Criar calendário regular ou temporário</summary>
+  {% if form_error and form_kind == "schedule-create" %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+  {% if preview_result and not preview_schedule_id %}{% include "supervisor/partials/impact_preview.html" %}{% endif %}
+  <form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-schedule-create' %}">
+    {% csrf_token %}
+    <label class="field"><span>Nome</span><input name="name" maxlength="120" value="{{ form_data.name }}" required></label>
+    <label class="field"><span>Tipo</span><select name="schedule_type" required>{% for value, label in schedule_types %}<option value="{{ value }}" {% if form_data.schedule_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="field"><span>Válido a partir de</span><input type="date" name="valid_from" value="{{ form_data.valid_from }}" required><small>Novos calendários começam depois de hoje.</small></label>
+    <label class="field"><span>Válido até</span><input type="date" name="valid_until" value="{{ form_data.valid_until }}"><small>Obrigatório para calendário temporário.</small></label>
+    <label class="field field-wide"><span>Motivo</span><textarea name="reason">{{ form_data.reason }}</textarea></label>
+    {% include "supervisor/partials/schedule_weekdays.html" with weekday_fields=new_weekday_fields %}
+    {% if preview_result and not preview_schedule_id and preview_result.total %}<label class="check-field field-wide"><input type="checkbox" name="confirm_cancellation"><span>Confirmo o cancelamento auditado das {{ preview_result.total }} reserva(s) listada(s).</span></label>{% endif %}
+    <div class="form-actions field-wide"><button class="button button-ghost" type="submit" name="intent" value="preview">Visualizar impacto</button><button class="button button-primary" type="submit" name="intent" value="apply">Confirmar proposta pré-visualizada</button></div>
+  </form>
+</details>
+
+<section class="staff-list">
+  {% for schedule in schedules %}
+    <article class="staff-list-row staff-list-row-form">
+      <span class="timeline-sequence">{{ schedule.pk }}</span>
+      <div class="staff-list-main"><div class="inline-heading"><strong>{{ schedule.name }}</strong><span class="badge {% if schedule.is_active %}badge-success{% else %}badge-neutral{% endif %}">{{ schedule.type_label }}</span></div><span>{{ schedule.valid_from|date:"d/m/Y" }}–{% if schedule.valid_until %}{{ schedule.valid_until|date:"d/m/Y" }}{% else %}sem término{% endif %}</span><small>{% if schedule.is_active %}Versão ativa{% else %}Versão inativa{% endif %} · série {{ schedule.series_key }}</small></div>
+      {% if schedule.can_replace %}
+        <details class="row-disclosure" {% if preview_schedule_id == schedule.pk %}open{% endif %}>
+          <summary class="button button-ghost button-small">Substituir versão</summary>
+          {% if form_error and preview_schedule_id == schedule.pk %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+          {% if preview_result and preview_schedule_id == schedule.pk %}{% include "supervisor/partials/impact_preview.html" %}{% endif %}
+          <form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-schedule-replace' schedule.pk %}">
+            {% csrf_token %}
+            <label class="field"><span>Início da nova versão</span><input type="date" name="effective_from" value="{% if preview_schedule_id == schedule.pk %}{{ form_data.effective_from }}{% endif %}" required></label>
+            <label class="field"><span>Nome</span><input name="name" value="{% if preview_schedule_id == schedule.pk %}{{ form_data.name }}{% else %}{{ schedule.name }}{% endif %}" required></label>
+            <label class="field field-wide"><span>Motivo</span><textarea name="reason">{% if preview_schedule_id == schedule.pk %}{{ form_data.reason }}{% else %}{{ schedule.reason }}{% endif %}</textarea></label>
+            {% include "supervisor/partials/schedule_weekdays.html" with weekday_fields=schedule.weekday_fields %}
+            {% if preview_result and preview_schedule_id == schedule.pk and preview_result.total %}<label class="check-field field-wide"><input type="checkbox" name="confirm_cancellation"><span>Confirmo o cancelamento auditado das {{ preview_result.total }} reserva(s) listada(s).</span></label>{% endif %}
+            <div class="form-actions field-wide"><button class="button button-ghost" type="submit" name="intent" value="preview">Visualizar impacto</button><button class="button button-primary" type="submit" name="intent" value="apply">Confirmar substituição</button></div>
+          </form>
+        </details>
+      {% endif %}
+    </article>
+  {% empty %}<div class="empty-state"><strong>Nenhum calendário cadastrado</strong><p>Crie o calendário regular inicial.</p></div>{% endfor %}
+</section>

@@ -1,12 +1,14 @@
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.access.permissions import HasDemoProfile
 from apps.access.services import get_demo_profile, get_demo_user_reference
 from apps.computers.models import Computer
+from apps.core.api.pagination import StandardPageNumberPagination
 from apps.core.enums import DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.occurrences.services import create_occurrence, transition_occurrence
@@ -34,17 +36,19 @@ def _visible_occurrences(request):
     return occurrences
 
 
-class OccurrenceListCreateAPIView(APIView):
+class OccurrenceListCreateAPIView(GenericAPIView):
     permission_classes = [HasDemoProfile]
     allowed_demo_profiles = DemoProfile.values
+    serializer_class = OccurrenceSerializer
+    pagination_class = StandardPageNumberPagination
 
     @extend_schema(
         responses={200: OccurrenceSerializer(many=True)}, tags=["occurrences"]
     )
     def get(self, request):
-        return Response(
-            OccurrenceSerializer(_visible_occurrences(request), many=True).data
-        )
+        occurrences = _visible_occurrences(request).order_by("-created_at", "-pk")
+        page = self.paginate_queryset(occurrences)
+        return self.get_paginated_response(OccurrenceSerializer(page, many=True).data)
 
     @extend_schema(
         request=OccurrenceCreateSerializer,

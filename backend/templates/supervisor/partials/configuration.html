@@ -1,0 +1,19 @@
+<section class="staff-page-heading">
+  <div><p class="section-kicker">Regras versionadas</p><h2>{{ section_title }}</h2></div>
+</section>
+
+<nav class="subnav" aria-label="Seções de configuração">
+  <a href="{% url 'web:supervisor-configuration' %}?section=schedules" class="subnav-link {% if configuration_section == 'schedules' %}subnav-link-active{% endif %}" {% if configuration_section == 'schedules' %}aria-current="page"{% endif %}>Calendários</a>
+  <a href="{% url 'web:supervisor-configuration' %}?section=shifts" class="subnav-link {% if configuration_section == 'shifts' %}subnav-link-active{% endif %}" {% if configuration_section == 'shifts' %}aria-current="page"{% endif %}>Turnos</a>
+  <a href="{% url 'web:supervisor-configuration' %}?section=exceptions" class="subnav-link {% if configuration_section == 'exceptions' %}subnav-link-active{% endif %}" {% if configuration_section == 'exceptions' %}aria-current="page"{% endif %}>Exceções</a>
+  <a href="{% url 'web:supervisor-configuration' %}?section=notices" class="subnav-link {% if configuration_section == 'notices' %}subnav-link-active{% endif %}" {% if configuration_section == 'notices' %}aria-current="page"{% endif %}>Avisos</a>
+  <a href="{% url 'web:supervisor-configuration' %}?section=policies" class="subnav-link {% if configuration_section == 'policies' %}subnav-link-active{% endif %}" {% if configuration_section == 'policies' %}aria-current="page"{% endif %}>Parâmetros</a>
+</nav>
+
+{% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+
+{% if configuration_section == "schedules" %}{% include "supervisor/partials/schedules.html" %}
+{% elif configuration_section == "shifts" %}{% include "supervisor/partials/shifts.html" %}
+{% elif configuration_section == "exceptions" %}{% include "supervisor/partials/exceptions.html" %}
+{% elif configuration_section == "notices" %}{% include "supervisor/partials/notices.html" %}
+{% else %}{% include "supervisor/partials/policies.html" %}{% endif %}

@@ -11,8 +11,8 @@ Eventos mínimos:
 - cancelamento administrativo;
 - realocação automática de reserva;
 - encerramento de sessão por computador indisponível;
-- alteração de turno;
-- alteração de política de reserva;
+- criação (`SHIFT_CREATED`), edição/desativação (`SHIFT_UPDATED`) e substituição (`SHIFT_REPLACED`) de turno, com snapshots completos;
+- alteração de política de reserva (`BOOKING_POLICY_UPDATED`), com IDs e vigências das versões anterior e resultante;
 - alteração de parâmetros de relatório;
 - ações futuras de contas e permissões.
 
@@ -43,12 +43,12 @@ Cobrir:
 - intervalos adjacentes e intervalos que atravessam reserva ou fechamento;
 - entrada imediata;
 - entrada com reserva;
-- check-in sem antecipação, em `+3:00` e após o prazo;
+- check-in em `-3:00`, no início, em `+3:00` e antes ou depois da janela;
 - sessão duplicada;
 - alocação duplicada;
 - troca de computador;
 - troca pelo intervalo planejado restante e rejeição durante tolerância;
-- saída antecipada, no prazo e expiração lógica;
+- saída antecipada, no prazo e registro automático ao expirar;
 - reconciliação de cancelamento por check-in expirado e `TIME_LIMIT_REACHED`;
 - correção auditada;
 - alteração de estado operacional com transferência/encerramento de sessão e realocação/cancelamento de reservas;
@@ -89,7 +89,10 @@ Cobrir os fluxos principais do protótipo:
 5. reservar amanhã;
 6. selecionar vários slots consecutivos e conferir fim planejado e prazo;
 7. registrar ocorrência;
-8. acessar painel operacional e relatórios.
+8. acessar e operar o painel do Monitor;
+9. gerenciar inventário, funcionamento e avisos pelo Supervisor;
+10. pré-visualizar o impacto de calendário antes da confirmação;
+11. acessar o relatório mensal com parâmetros gerenciais.
 
 ## Invariantes que devem falhar no banco ou serviço
 
@@ -98,7 +101,10 @@ Cobrir os fluxos principais do protótipo:
 - mais de uma alocação ativa na mesma sessão;
 - reserva sobreposta válida;
 - reserva ou sessão planejada fora de uma janela operacional;
-- entrada anterior ao início planejado;
+- entrada anterior à tolerância de três minutos quando vinculada a reserva, ou anterior ao início planejado no uso imediato;
+- metadados de cancelamento incompatíveis com o estado da reserva;
+- metadados de saída incompatíveis com o estado da sessão;
+- alocação encerrada sem motivo ou ativa com motivo de encerramento;
 - sessão sem fim planejado ou prazo de saída;
 - intervalo com término anterior ao início;
 - uso imediato em data diferente de hoje;

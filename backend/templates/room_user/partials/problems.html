@@ -1,0 +1,48 @@
+<section class="summary-card">
+  <div>
+    <h2>Informar problema</h2>
+    <p>Descreva uma falha percebida. A equipe operacional acompanhará a ocorrência.</p>
+  </div>
+  {% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+  <form method="post" action="{% url 'web:problems' %}" class="problem-form" hx-post="{% url 'web:problems' %}" hx-target="#screen-content" hx-swap="outerHTML">
+    {% csrf_token %}
+    <label class="field">
+      <span>Computador</span>
+      <select name="computer_id" required>
+        <option value="">Selecione</option>
+        {% for computer in computer_choices %}
+          <option value="{{ computer.pk }}" {% if computer.pk|stringformat:"s" == selected_computer_id %}selected{% endif %}>{{ computer.code }} — {{ computer.description|default:"Sala de Informática" }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>Descrição do problema</span>
+      <textarea name="description" maxlength="5000" required placeholder="Ex.: mouse não funciona, computador travando, tela apagando…">{{ form_description }}</textarea>
+    </label>
+    {% if active_allocation and active_allocation.computer_id|stringformat:"s" == selected_computer_id %}
+      <p class="helper-text">A ocorrência será vinculada automaticamente à sua sessão e alocação atuais.</p>
+    {% endif %}
+    <button class="button button-primary button-full" type="submit">Enviar ocorrência</button>
+  </form>
+</section>
+
+<p class="section-title">Ocorrências enviadas</p>
+<section class="occurrence-list">
+  {% for occurrence in occurrences %}
+    <article class="occurrence-card">
+      <span class="problem-avatar">!</span>
+      <div>
+        <div class="reservation-heading">
+          <strong>{% if occurrence.computer %}{{ occurrence.computer.code }}{% else %}Sala de Informática{% endif %}</strong>
+          <span class="badge {% if occurrence.status == 'RESOLVED' %}badge-success{% elif occurrence.status == 'CANCELLED' %}badge-neutral{% else %}badge-warning{% endif %}">{{ occurrence.status_label }}</span>
+        </div>
+        <p>{{ occurrence.description }}</p>
+        <small>{{ occurrence.created_at|date:"d/m/Y H:i" }}</small>
+        {% if occurrence.resolution_notes %}<small class="resolution-note">Retorno: {{ occurrence.resolution_notes }}</small>{% endif %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="empty-state"><strong>Nenhuma ocorrência encontrada</strong><p>Os problemas informados aparecerão aqui.</p></div>
+  {% endfor %}
+</section>
+{% include "components/pagination.html" %}

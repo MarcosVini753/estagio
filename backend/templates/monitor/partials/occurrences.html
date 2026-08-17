@@ -1,0 +1,42 @@
+<section class="staff-page-heading">
+  <div><p class="section-kicker">Registro e acompanhamento</p><h2>{{ section_title }}</h2></div>
+</section>
+
+<details class="staff-card disclosure-card" {% if form_error %}open{% endif %}>
+  <summary>Registrar nova ocorrência</summary>
+  {% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+  <form class="staff-form" method="post" action="{% url 'web:monitor-occurrences' %}">
+    {% csrf_token %}
+    <label class="field"><span>Computador relacionado</span><select name="computer_id"><option value="">Sem computador específico</option>{% for computer in computer_choices %}<option value="{{ computer.pk }}" {% if form_data.computer_id|stringformat:'s' == computer.pk|stringformat:'s' %}selected{% endif %}>{{ computer.code }} — {{ computer.description }}</option>{% endfor %}</select></label>
+    <label class="field"><span>Descrição</span><textarea name="description" maxlength="5000" required>{{ form_data.description }}</textarea></label>
+    <button class="button button-primary" type="submit">Registrar ocorrência</button>
+  </form>
+</details>
+
+<form class="filter-bar" method="get" action="{% url 'web:monitor-occurrences' %}">
+  <input type="hidden" name="q" value="{{ query }}">
+  <label class="field"><span>Filtrar por situação</span><select name="status" onchange="this.form.submit()"><option value="">Todas</option>{% for value, label in status_choices %}<option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+</form>
+
+<section class="staff-list">
+  {% for item in occurrences %}
+    <article class="staff-list-row staff-list-row-form">
+      <span class="problem-avatar">#{{ item.pk }}</span>
+      <div class="staff-list-main">
+        <div class="inline-heading"><strong>{{ item.computer.code|default:"Sala" }}</strong><span class="badge badge-{% if item.status == 'RESOLVED' %}success{% elif item.status == 'CANCELLED' %}neutral{% elif item.status == 'IN_REVIEW' %}warning{% else %}danger{% endif %}">{{ item.status_label }}</span></div>
+        <span>{{ item.description }}</span>
+        <small>{{ item.reported_by_reference }} · {{ item.created_at|date:"d/m/Y H:i" }}{% if item.session_id %} · sessão #{{ item.session_id }}{% endif %}</small>
+        {% if item.resolution_notes %}<p class="resolution-note"><strong>Resolução:</strong> {{ item.resolution_notes }}</p>{% endif %}
+      </div>
+      {% if item.transition_choices %}
+        <form class="inline-action-form always-visible" method="post" action="{% url 'web:monitor-occurrence-transition' item.pk %}">
+          {% csrf_token %}
+          <label class="field"><span>Nova situação</span><select name="status" required>{% for value, label in item.transition_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></label>
+          <label class="field field-grow"><span>Notas de resolução</span><input name="resolution_notes" maxlength="5000" placeholder="Obrigatórias ao resolver"></label>
+          <button class="button button-primary" type="submit">Atualizar</button>
+        </form>
+      {% endif %}
+    </article>
+  {% empty %}<div class="empty-state"><strong>Nenhuma ocorrência encontrada</strong><p>Altere os filtros ou registre uma nova ocorrência.</p></div>{% endfor %}
+</section>
+{% include "components/pagination.html" %}

@@ -2,6 +2,20 @@
 
 O backend será dividido em apps Django por domínio. A separação não implica microsserviços.
 
+## `web`
+
+Camada de apresentação HTML, sem models próprios, responsável por:
+
+- seletor dos quatro perfis de demonstração;
+- proteção das rotas do Usuário da Sala, Monitor e Supervisor pelo contexto salvo na sessão;
+- páginas e partials HTMX para os fluxos próprios, operacionais e gerenciais;
+- painel do Monitor com sessões ativas, estados dos computadores, ocorrências e correções de histórico;
+- gestão do Supervisor para inventário, turnos, calendários, exceções, avisos, parâmetros e relatório mensal;
+- presenters e adaptação de erros de serviço para formulários e mensagens;
+- progressive enhancement e respostas completas quando HTMX ou JavaScript não estiverem disponíveis.
+
+O app reutiliza serializers de entrada, selectors e serviços dos módulos de domínio. Não chama a API HTTP internamente e não contém regras de disponibilidade, duração ou transição de estado.
+
 ## `core`
 
 Responsabilidades compartilhadas:
@@ -130,6 +144,11 @@ Entidade futura ou inicial:
 ## Dependências permitidas
 
 ```text
+web ──────────────────> access
+web ──────────────────> configuration
+web ──────────────────> computers
+web ──────────────────> operations
+web ──────────────────> occurrences
 access ───────────────┐
 configuration ────────┼──> operations
 computers ────────────┘
@@ -143,6 +162,7 @@ occurrences ─────────────> reports
 ## Regras de dependência
 
 - `computers` não depende de `operations` para persistência; estados efetivos são consultados por serviço de disponibilidade.
+- `web` pode orquestrar a apresentação dos demais módulos, mas não é dependência de nenhum domínio.
 - `reports` pode ler os demais domínios, mas os demais domínios não dependem de `reports`.
 - `audit` recebe eventos ou chamadas dos serviços, sem conter lógica de negócio principal.
 - evitar imports circulares; usar IDs, serviços e interfaces quando necessário.

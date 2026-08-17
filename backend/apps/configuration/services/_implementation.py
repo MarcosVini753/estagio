@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.audit.models import AuditEvent
 from apps.core.api.errors import (
+    CalendarExceptionDateInvalid,
     OperatingDayConfigurationInvalid,
     OperatingScheduleOverlap,
     OperatingScheduleRequired,
@@ -16,143 +17,23 @@ from apps.core.api.errors import (
     RoomNoticeMessageRequired,
     ScheduleChangeAffectsReservations,
     ScheduleReplacementInvalid,
-    ShiftReplacementConflict,
-    ShiftReplacementInvalid,
     TemporaryScheduleEndRequired,
 )
 
-from .calendar import (
+from ..calendar import (
+    aware_at,
     interval_is_within_operating_day,
     lock_operating_date,
     resolve_operating_day,
 )
-from .models import (
-    BookingPolicy,
+from ..models import (
     CalendarException,
     OperatingSchedule,
     OperatingScheduleDay,
     OperatingWindow,
     RoomNotice,
-    Shift,
     Weekday,
 )
-
-BOOKING_POLICY_FIELDS = (
-    "cancellation_limit_minutes",
-    "max_future_reservations_per_user",
-)
-
-
-@transaction.atomic
-def update_current_booking_policy(*, values: dict) -> BookingPolicy:
-    today = timezone.localdate()
-    policies = list(
-        BookingPolicy.objects.select_for_update().order_by(
-            "valid_from", "created_at", "pk"
-        )
-    )
-    base = policies[-1] if policies else None
-
-    if base and base.valid_from >= today and not base.reservations.exists():
-        for field, value in values.items():
-            setattr(base, field, value)
-        base.save(update_fields=[*values.keys(), "updated_at"])
-        return base
-
-    merged = {
-        field: values.get(
-            field,
-            getattr(base, field)
-            if base
-            else BookingPolicy._meta.get_field(field).default,
-        )
-        for field in BOOKING_POLICY_FIELDS
-    }
-    valid_from = (
-        max(today, base.valid_from + timedelta(days=1))
-        if base and base.valid_from >= today
-        else today
-    )
-
-    if base and (base.valid_until is None or base.valid_until >= valid_from):
-        base.valid_until = valid_from - timedelta(days=1)
-        base.save(update_fields=["valid_until", "updated_at"])
-
-    return BookingPolicy.objects.create(
-        **merged,
-        valid_from=valid_from,
-    )
-
-
-@transaction.atomic
-def replace_shift(
-    *,
-    shift_id: int,
-    effective_from: date,
-    name: str,
-    start_time: time,
-    end_time: time,
-    display_order: int,
-    actor_profile: str,
-) -> Shift:
-    shift = Shift.objects.select_for_update().get(pk=shift_id)
-    today = timezone.localdate()
-
-    if (
-        effective_from <= today
-        or effective_from <= shift.valid_from
-        or shift.valid_until is not None
-    ):
-        raise ShiftReplacementInvalid()
-
-    conflicts = (
-        Shift.objects.select_for_update()
-        .filter(
-            is_active=True,
-            start_time__lt=end_time,
-            end_time__gt=start_time,
-        )
-        .filter(Q(valid_until__isnull=True) | Q(valid_until__gte=effective_from))
-        .exclude(pk=shift.pk)
-    )
-    if conflicts.exists():
-        raise ShiftReplacementConflict()
-
-    old_values = {
-        "name": shift.name,
-        "start_time": shift.start_time.isoformat(),
-        "end_time": shift.end_time.isoformat(),
-        "display_order": shift.display_order,
-        "valid_from": shift.valid_from.isoformat(),
-        "valid_until": shift.valid_until.isoformat() if shift.valid_until else None,
-    }
-    shift.valid_until = effective_from - timedelta(days=1)
-    shift.save(update_fields=["valid_until", "updated_at"])
-
-    replacement = Shift.objects.create(
-        series_key=shift.series_key,
-        name=name,
-        start_time=start_time,
-        end_time=end_time,
-        display_order=display_order,
-        valid_from=effective_from,
-    )
-    AuditEvent.objects.create(
-        actor_profile=actor_profile,
-        action="SHIFT_REPLACED",
-        entity_type="Shift",
-        entity_id=str(shift.pk),
-        old_values=old_values,
-        new_values={
-            "shift_id": replacement.pk,
-            "name": replacement.name,
-            "start_time": replacement.start_time.isoformat(),
-            "end_time": replacement.end_time.isoformat(),
-            "display_order": replacement.display_order,
-            "valid_from": replacement.valid_from.isoformat(),
-        },
-    )
-    return replacement
 
 
 def validate_schedule_days(days: list[dict]) -> list[dict]:
@@ -408,7 +289,7 @@ def _reservation_conflicts_with_proposal(
     schedule_type: str,
     days: list[dict],
 ) -> bool:
-    from .selectors import (
+    from ..selectors import (
         get_calendar_exception_for_date,
         get_temporary_operating_schedule_for_date,
     )
@@ -473,6 +354,51 @@ def preview_operating_schedule_impact(
     }
 
 
+def preview_calendar_exception_impact(*, values: dict) -> dict:
+    target_date = values["date"]
+    _validate_calendar_exception_date(target_date)
+    reservations = _reservations_for_period(
+        valid_from=target_date,
+        valid_until=target_date,
+        lock=False,
+    )
+    if values["exception_type"] == CalendarException.ExceptionType.CLOSED:
+        conflicts = reservations
+    else:
+        starts_at = aware_at(target_date, values["opens_at"])
+        ends_at = aware_at(target_date, values["closes_at"])
+        conflicts = [
+            reservation
+            for reservation in reservations
+            if not (
+                starts_at <= reservation.starts_at and reservation.ends_at <= ends_at
+            )
+        ]
+    return {
+        "affected_period": {
+            "starts_on": target_date,
+            "ends_on": target_date,
+        },
+        "conflicting_reservations": [
+            {
+                "id": reservation.pk,
+                "user_reference": reservation.user_reference,
+                "computer_id": reservation.computer_id,
+                "starts_at": reservation.starts_at,
+                "ends_at": reservation.ends_at,
+                "reason": "OUTSIDE_EXCEPTION_HOURS",
+            }
+            for reservation in conflicts
+        ],
+        "total": len(conflicts),
+    }
+
+
+def _validate_calendar_exception_date(target_date: date) -> None:
+    if target_date < timezone.localdate():
+        raise CalendarExceptionDateInvalid()
+
+
 def _cancel_conflicting_reservations(
     *,
     conflicts,
@@ -489,6 +415,21 @@ def _cancel_conflicting_reservations(
             actor_profile=actor_profile,
             reason=reason,
         )
+
+
+def _validate_confirmed_schedule_impact(
+    *,
+    conflicts,
+    confirm_cancellation: bool,
+    expected_conflict_ids: list[int] | None,
+) -> None:
+    conflict_ids = [reservation.pk for reservation in conflicts]
+    if expected_conflict_ids is not None and set(conflict_ids) != set(
+        expected_conflict_ids
+    ):
+        raise ScheduleChangeAffectsReservations(conflict_ids)
+    if conflicts and not confirm_cancellation:
+        raise ScheduleChangeAffectsReservations(conflict_ids)
 
 
 def _notice_values_for_change(
@@ -534,6 +475,7 @@ def create_operating_schedule(
     confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
+    expected_conflict_ids: list[int] | None = None,
 ) -> OperatingSchedule:
     _validate_schedule_period(
         schedule_type=schedule_type,
@@ -568,10 +510,11 @@ def create_operating_schedule(
         raise OperatingScheduleOverlap() from error
 
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_cancellation:
-        raise ScheduleChangeAffectsReservations(
-            reservation.pk for reservation in conflicts
-        )
+    _validate_confirmed_schedule_impact(
+        conflicts=conflicts,
+        confirm_cancellation=confirm_cancellation,
+        expected_conflict_ids=expected_conflict_ids,
+    )
     cancellation_reason = reason.strip() or f"Alteração do calendário: {name}."
     _cancel_conflicting_reservations(
         conflicts=conflicts,
@@ -614,6 +557,7 @@ def replace_operating_schedule(
     confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
+    expected_conflict_ids: list[int] | None = None,
 ) -> OperatingSchedule:
     _lock_reservable_dates(
         valid_from=effective_from,
@@ -661,10 +605,11 @@ def replace_operating_schedule(
     )
     _create_schedule_days(replacement, replacement_days)
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_cancellation:
-        raise ScheduleChangeAffectsReservations(
-            reservation.pk for reservation in conflicts
-        )
+    _validate_confirmed_schedule_impact(
+        conflicts=conflicts,
+        confirm_cancellation=confirm_cancellation,
+        expected_conflict_ids=expected_conflict_ids,
+    )
     cancellation_reason = replacement.reason or (
         f"Substituição do calendário: {replacement.name}."
     )
@@ -878,6 +823,7 @@ def apply_calendar_exception(
     confirm_cancellation: bool = False,
     notify_users: bool = False,
     notice: dict | None = None,
+    expected_conflict_ids: list[int] | None = None,
 ) -> CalendarException:
     existing = None
     existing_preview = (
@@ -889,6 +835,7 @@ def apply_calendar_exception(
         "date",
         existing_preview.date if existing_preview else None,
     )
+    _validate_calendar_exception_date(target_date)
     _lock_reservable_dates(valid_from=target_date, valid_until=target_date)
     if exception_id is not None:
         existing = CalendarException.objects.select_for_update().get(pk=exception_id)
@@ -916,10 +863,11 @@ def apply_calendar_exception(
     exception.full_clean()
     exception.save()
     conflicts = _conflicts_under_effective_calendar(reservations)
-    if conflicts and not confirm_cancellation:
-        raise ScheduleChangeAffectsReservations(
-            reservation.pk for reservation in conflicts
-        )
+    _validate_confirmed_schedule_impact(
+        conflicts=conflicts,
+        confirm_cancellation=confirm_cancellation,
+        expected_conflict_ids=expected_conflict_ids,
+    )
     _cancel_conflicting_reservations(
         conflicts=conflicts,
         actor_profile=actor_profile,

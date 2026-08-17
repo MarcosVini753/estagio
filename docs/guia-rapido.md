@@ -10,7 +10,7 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 2. Consulta a disponibilidade de **hoje** ou **amanhã**.
 3. **Hoje**: pode iniciar uso imediato em um computador livre, escolhendo a duração em slots de 15 minutos.
 4. **Amanhã (ou horário futuro de hoje)**: pode reservar um ou mais slots consecutivos.
-5. Ao entrar, o sistema registra a sessão com um **fim planejado** e um **prazo de saída** (3 minutos após o fim).
+5. Em uma reserva, a entrada pode ser registrada de 3 minutos antes até 3 minutos depois do início. O sistema registra a sessão com um **fim planejado** e um **prazo de saída** (3 minutos após o fim).
 6. Durante a sessão, o usuário pode **trocar de computador** sem perder o histórico.
 7. Ao sair, a sessão é encerrada. Se o usuário não sair até o prazo, o sistema encerra logicamente.
 8. O Monitor acompanha a sala, corrige registros e trata ocorrências. O Supervisor configura horários e gera relatórios.
@@ -38,6 +38,9 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 | Entender decisões arquiteturais | `docs/adr/README.md` |
 | Ver diagramas de fluxo | `docs/diagrams/README.md` |
 | Rodar o backend | `docs/development/backend-setup.md` |
+| Usar a interface do Usuário da Sala | `/` e selecione `Usuário da Sala` |
+| Usar o painel operacional | `/` e selecione `Monitor da Sala` |
+| Usar configurações e relatórios | `/` e selecione `Supervisor da Biblioteca` |
 | Ver o protótipo visual | `prototipos/` |
 
 ## Como rodar o backend em 5 comandos
@@ -45,9 +48,12 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 ```bash
 cp .env.example .env
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements/dev.txt
+make install
 docker compose up -d db
 make migrate && make seed && make run
 ```
 
 A aplicação fica em `http://localhost:8000/` e a documentação da API em `http://localhost:8000/api/docs/`.
+
+Se a porta `5432` já estiver ocupada, ajuste `POSTGRES_PORT` no `.env` para uma
+porta livre, como `5433`. O Compose e os comandos `make` usarão o mesmo valor.

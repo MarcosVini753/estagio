@@ -30,7 +30,7 @@ A ADR 0023 substitui a estratégia anterior de Django Templates com JavaScript p
 - a API `/api/` continua disponível como contrato do backend;
 - regras de domínio não devem ser duplicadas no navegador.
 
-A migração deve ser incremental. O protótipo permanece disponível como referência até que os fluxos equivalentes tenham sido reproduzidos e validados no frontend Django.
+A migração é incremental. Os fluxos do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca já foram reproduzidos no frontend Django; o protótipo permanece como referência histórica e para a interface ainda não migrada do Administrador.
 
 ## Ajustes durante a integração
 
@@ -38,6 +38,7 @@ A migração deve ser incremental. O protótipo permanece disponível como refer
 - usar Monitor da Sala, não Servidor da Biblioteca;
 - separar estado operacional de estado efetivo;
 - permitir reserva de slots consecutivos para horário futuro de hoje ou para amanhã;
+- informar a janela de entrada por reserva, de três minutos antes do início até três minutos depois;
 - permitir uso imediato somente hoje, com duração escolhida antes da entrada;
 - exibir fim planejado e prazo de saída três minutos depois;
 - impedir intervalo que atravesse reserva ou fechamento;
@@ -50,6 +51,6 @@ A migração deve ser incremental. O protótipo permanece disponível como refer
 
 ## Estado atual
 
-A tela mínima de seleção de perfil já existe em Django. O protótipo completo ainda não foi migrado e continua sendo apenas referência visual.
+O seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca estão implementados no app Django `web`. Os fluxos usam dados e serviços reais do backend, preservam navegação convencional como alternativa a HTMX e Alpine.js e mantêm o perfil de demonstração visível.
 
-Enquanto o frontend definitivo não existir, a CI executa um fluxo E2E mínimo sobre o protótipo para detectar falhas de carregamento ou JavaScript. Esse teste deverá ser direcionado para a interface Django quando a migração começar.
+O Administrador continua exibindo uma página coerente de indisponibilidade. A CI compila os assets versionados e executa o E2E contra a aplicação Django real, com PostgreSQL, migrations e seed, cobrindo os três perfis migrados em mobile e desktop.

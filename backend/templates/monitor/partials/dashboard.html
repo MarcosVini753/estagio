@@ -1,0 +1,49 @@
+<section class="staff-page-heading">
+  <div>
+    <p class="section-kicker">Acompanhamento em tempo real</p>
+    <h2>{{ section_title }}</h2>
+  </div>
+  <span class="live-indicator"><span aria-hidden="true"></span> Atualização operacional</span>
+</section>
+
+<section class="metric-grid" aria-label="Resumo operacional">
+  <article class="metric-card"><span>Sessões ativas</span><strong>{{ active_session_count }}</strong></article>
+  <article class="metric-card"><span>Computadores operacionais</span><strong>{{ available_computer_count }}</strong></article>
+  <article class="metric-card"><span>Reservas de hoje</span><strong>{{ confirmed_reservation_count }}</strong></article>
+  <article class="metric-card"><span>Ocorrências pendentes</span><strong>{{ open_occurrence_count }}</strong></article>
+</section>
+
+{% if operating_day %}
+  <section class="staff-card operating-summary">
+    <div>
+      <p class="section-kicker">Funcionamento de hoje</p>
+      <h3>{% if operating_day.status == "OPEN" %}Sala aberta{% elif operating_day.status == "SPECIAL_HOURS" %}Horário especial{% else %}Sala fechada{% endif %}</h3>
+      {% if operating_day.reason %}<p>{{ operating_day.reason }}</p>{% endif %}
+    </div>
+    <div class="room-windows">
+      {% for window in operating_day.windows %}<span>{{ window.opens_at|time:"H:i" }}–{{ window.closes_at|time:"H:i" }}</span>{% empty %}<span>Sem funcionamento</span>{% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<section class="staff-section">
+  <div class="staff-section-heading">
+    <div><p class="section-kicker">Uso atual</p><h2>Sessões ativas</h2></div>
+    <span class="count-badge">{{ active_session_count }}</span>
+  </div>
+  <div class="staff-list">
+    {% for item in active_sessions %}
+      <article class="staff-list-row">
+        <span class="computer-avatar avatar-neutral">{% if item.current_allocation %}{{ item.current_allocation.computer.code }}{% else %}—{% endif %}</span>
+        <div class="staff-list-main">
+          <strong>{{ item.user_reference }}</strong>
+          <span>Entrada {{ item.started_at|date:"H:i" }} · fim planejado {{ item.planned_ends_at|date:"H:i" }}</span>
+          <small>{% if item.current_allocation %}{{ item.current_allocation.computer.description|default:item.current_allocation.computer.code }}{% else %}Sem alocação ativa{% endif %}</small>
+        </div>
+        <a class="button button-ghost button-small" href="{% url 'web:monitor-history-detail' item.pk %}">Detalhes</a>
+      </article>
+    {% empty %}
+      <div class="empty-state"><strong>Nenhuma sessão ativa</strong><p>As novas entradas aparecerão aqui.</p></div>
+    {% endfor %}
+  </div>
+</section>

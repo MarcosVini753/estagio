@@ -1,0 +1,22 @@
+<main id="staff-content" class="staff-content screen-enter" tabindex="-1">
+  <div class="demo-warning staff-demo-warning" role="note">
+    <strong>Autorização simulada</strong>
+    <span>Perfil atual: {{ current_profile_label }}. Use somente dados fictícios.</span>
+  </div>
+
+  {% for notice in active_notices %}
+    <article class="notice notice-{{ notice.notice_type|lower }}" role="{% if notice.notice_type == 'CLOSURE' %}alert{% else %}status{% endif %}">
+      <strong>{{ notice.title }}</strong>
+      <span>{{ notice.message }}</span>
+    </article>
+  {% endfor %}
+
+  {% if messages %}
+    <div class="toast-stack" aria-live="polite">
+      {% for message in messages %}<div class="flash flash-{{ message.tags }}" role="status">{{ message }}</div>{% endfor %}
+    </div>
+  {% endif %}
+
+  {% if screen_error %}<div class="form-error" role="alert">{{ screen_error }}</div>{% endif %}
+  {% include content_template %}
+</main>

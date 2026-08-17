@@ -1,0 +1,5 @@
+<fieldset class="weekday-grid">
+  <legend>Janelas semanais</legend>
+  <p class="helper-text field-wide">Deixe em branco para fechar o dia. Use HH:MM-HH:MM e separe múltiplas janelas por vírgula.</p>
+  {% for day in weekday_fields %}<label class="field"><span>{{ day.label }}</span><input name="{{ day.name }}" value="{{ day.value }}" placeholder="08:00-12:00,13:00-18:00"></label>{% endfor %}
+</fieldset>

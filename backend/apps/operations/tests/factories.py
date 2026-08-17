@@ -39,6 +39,9 @@ def create_reservation(**values):
                 valid_from=timezone.localdate(starts_at)
             )
         values["booking_policy"] = policy
+    if values.get("status") == Reservation.Status.CANCELLED:
+        values.setdefault("cancelled_at", timezone.now())
+        values.setdefault("cancelled_by_profile", values["created_by_profile"])
     return Reservation.objects.create(**values)
 
 
@@ -75,4 +78,10 @@ def create_use_session(**values):
             else planned_ends_at + timedelta(minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES)
         ),
     )
+    if values.get("status", UseSession.Status.ACTIVE) != UseSession.Status.ACTIVE:
+        values.setdefault("ended_at", planned_ends_at)
+        values.setdefault(
+            "exit_recorded_by_profile",
+            values["entry_recorded_by_profile"],
+        )
     return UseSession.objects.create(**values)

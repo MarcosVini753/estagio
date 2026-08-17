@@ -64,7 +64,7 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **options):
         for number in range(1, 9):
-            Computer.objects.update_or_create(
+            Computer.objects.get_or_create(
                 code=f"PC-{number:02d}",
                 defaults={
                     "description": "Computador da Sala de Informática",
@@ -73,23 +73,20 @@ class Command(BaseCommand):
                 },
             )
 
-        shifts = [
-            ("1º Turno", time(7, 15), time(13, 0), 1),
-            ("2º Turno", time(13, 0), time(17, 0), 2),
-            ("3º Turno", time(17, 0), time(21, 0), 3),
-        ]
-        for name, start_time, end_time, display_order in shifts:
-            Shift.objects.update_or_create(
-                name=name,
-                valid_from=BASE_VALID_FROM,
-                defaults={
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "display_order": display_order,
-                    "valid_until": None,
-                    "is_active": True,
-                },
-            )
+        if not Shift.objects.exists():
+            shifts = [
+                ("1º Turno", time(7, 15), time(13, 0), 1),
+                ("2º Turno", time(13, 0), time(17, 0), 2),
+                ("3º Turno", time(17, 0), time(21, 0), 3),
+            ]
+            for name, start_time, end_time, display_order in shifts:
+                Shift.objects.create(
+                    name=name,
+                    start_time=start_time,
+                    end_time=end_time,
+                    display_order=display_order,
+                    valid_from=BASE_VALID_FROM,
+                )
 
         ensure_regular_operating_schedule()
 

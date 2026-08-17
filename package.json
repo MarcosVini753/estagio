@@ -1,0 +1,23 @@
+{
+  "name": "sala-informatica-ufac",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build:vendor && npm run build:css",
+    "build:css": "tailwindcss -i backend/static/css/app.css -o backend/static/dist/app.css --minify",
+    "build:vendor": "node scripts/copy-frontend-vendor.mjs",
+    "check:frontend": "npm run build",
+    "test:e2e": "node scripts/frontend-e2e.mjs"
+  },
+  "dependencies": {
+    "alpinejs": "3.15.12",
+    "htmx.org": "2.0.10"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "playwright": "1.62.1",
+    "tailwindcss": "4.3.3"
+  }
+}

@@ -34,6 +34,15 @@ class OperatingScheduleStartInvalid(APIException):
     default_code = "OPERATING_SCHEDULE_START_INVALID"
 
 
+class CalendarExceptionDateInvalid(APIException):
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = (
+        "Exceções de calendário só podem ser criadas ou alteradas para hoje "
+        "ou datas futuras."
+    )
+    default_code = "CALENDAR_EXCEPTION_DATE_INVALID"
+
+
 class TemporaryScheduleEndRequired(APIException):
     status_code = status.HTTP_400_BAD_REQUEST
     default_detail = "Horário temporário exige uma data final."

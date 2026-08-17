@@ -1,0 +1,13 @@
+<section class="impact-panel impact-panel-warning" role="status" aria-labelledby="impact-title">
+  <div><p class="section-kicker">Prévia obrigatória</p><h3 id="impact-title">Impacto da proposta</h3></div>
+  {% if preview_result.total == 0 %}
+    <p><strong>Nenhuma reserva será cancelada.</strong> A proposta pode ser confirmada sem cancelamentos.</p>
+  {% elif preview_result.total == 1 %}
+    <p><strong>1 reserva será cancelada.</strong> Revise o registro antes de confirmar.</p>
+  {% else %}
+    <p><strong>{{ preview_result.total }} reservas serão canceladas.</strong> Revise os registros antes de confirmar.</p>
+  {% endif %}
+  {% if preview_result.conflicting_reservations %}
+    <ul>{% for reservation in preview_result.conflicting_reservations %}<li>Reserva #{{ reservation.id }} · {{ reservation.user_reference }} · computador #{{ reservation.computer_id }} · {{ reservation.starts_at|date:"d/m/Y H:i" }}–{{ reservation.ends_at|date:"H:i" }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>

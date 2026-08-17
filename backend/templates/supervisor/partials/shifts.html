@@ -1,0 +1,39 @@
+<section class="configuration-intro"><p>Turnos são dimensões analíticas para relatórios. Alterá-los não muda o horário de funcionamento da sala.</p></section>
+
+<details class="staff-card disclosure-card" {% if form_kind == 'shift-create' %}open{% endif %}>
+  <summary>Criar turno analítico</summary>
+  {% if form_error and form_kind == "shift-create" %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+  <form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-shifts' %}">
+    {% csrf_token %}
+    <label class="field"><span>Nome</span><input name="name" maxlength="100" value="{{ form_data.name }}" required></label>
+    <label class="field"><span>Ordem</span><input type="number" min="0" name="display_order" value="{{ form_data.display_order|default:0 }}" required></label>
+    <label class="field"><span>Início</span><input type="time" name="start_time" value="{{ form_data.start_time }}" required></label>
+    <label class="field"><span>Fim</span><input type="time" name="end_time" value="{{ form_data.end_time }}" required></label>
+    <label class="field"><span>Válido a partir de</span><input type="date" name="valid_from" value="{{ form_data.valid_from }}" required></label>
+    <label class="check-field"><input type="checkbox" name="is_active" checked><span>Ativo</span></label>
+    <button class="button button-primary field-wide" type="submit">Criar turno</button>
+  </form>
+</details>
+
+<section class="staff-list">
+  {% for shift in shifts %}
+    <article class="staff-list-row staff-list-row-form">
+      <span class="timeline-sequence">{{ shift.display_order }}</span>
+      <div class="staff-list-main"><div class="inline-heading"><strong>{{ shift.name }}</strong><span class="badge {% if shift.is_active %}badge-success{% else %}badge-neutral{% endif %}">{% if shift.is_active %}Ativo{% else %}Inativo{% endif %}</span></div><span>{{ shift.start_time|time:"H:i" }}–{{ shift.end_time|time:"H:i" }}</span><small>{{ shift.valid_from|date:"d/m/Y" }}–{% if shift.valid_until %}{{ shift.valid_until|date:"d/m/Y" }}{% else %}sem término{% endif %}</small></div>
+      <details class="row-disclosure">
+        <summary class="button button-ghost button-small">Gerenciar</summary>
+        <div class="stacked-forms">
+          {% if shift.has_sessions %}
+            {% if shift.is_active %}<form class="staff-form" method="post" action="{% url 'web:supervisor-shift-update' shift.pk %}">{% csrf_token %}<h3>Versão utilizada</h3><p class="helper-text">Os horários são imutáveis porque já explicam sessões históricas. Apenas a desativação é permitida.</p><button class="button button-warning" type="submit">Desativar esta versão</button></form>{% endif %}
+          {% else %}
+            <form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-shift-update' shift.pk %}">
+              {% csrf_token %}<h3 class="field-wide">Editar versão sem uso</h3>
+              <label class="field"><span>Nome</span><input name="name" value="{{ shift.name }}" required></label><label class="field"><span>Ordem</span><input type="number" min="0" name="display_order" value="{{ shift.display_order }}" required></label><label class="field"><span>Início</span><input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required></label><label class="field"><span>Fim</span><input type="time" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required></label><input type="hidden" name="valid_from" value="{{ shift.valid_from|date:'Y-m-d' }}"><label class="check-field"><input type="checkbox" name="is_active" {% if shift.is_active %}checked{% endif %}><span>Ativo</span></label><button class="button button-ghost" type="submit">Salvar versão</button>
+            </form>
+          {% endif %}
+          {% if shift.is_active and not shift.valid_until %}<form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-shift-replace' shift.pk %}">{% csrf_token %}<h3 class="field-wide">Criar versão futura</h3><label class="field"><span>Início da vigência</span><input type="date" name="effective_from" required></label><label class="field"><span>Nome</span><input name="name" value="{{ shift.name }}" required></label><label class="field"><span>Início</span><input type="time" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required></label><label class="field"><span>Fim</span><input type="time" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required></label><label class="field"><span>Ordem</span><input type="number" min="0" name="display_order" value="{{ shift.display_order }}" required></label><button class="button button-primary" type="submit">Substituir no futuro</button></form>{% endif %}
+        </div>
+      </details>
+    </article>
+  {% empty %}<div class="empty-state"><strong>Nenhum turno cadastrado</strong><p>Crie dimensões analíticas para o relatório mensal.</p></div>{% endfor %}
+</section>

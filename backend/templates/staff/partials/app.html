@@ -1,0 +1,76 @@
+<div id="staff-app" class="staff-shell">
+  <aside class="staff-sidebar" aria-label="Navegação principal">
+    <div class="staff-brand">
+      <p class="eyebrow">Biblioteca UFAC</p>
+      <strong>Sala de Informática</strong>
+    </div>
+    <nav class="staff-sidebar-nav">
+      {% for item in nav_items %}
+        <a
+          class="nav-link {% if item.key == screen %}nav-link-active{% endif %}"
+          href="{{ item.url }}"
+          {% if item.key == screen %}aria-current="page"{% endif %}
+          hx-get="{{ item.url }}"
+          hx-target="#staff-app"
+          hx-swap="outerHTML"
+          hx-push-url="true">
+          <span class="nav-icon">{% include "components/icon.html" with name=item.key %}</span>
+          <span>{{ item.label }}</span>
+        </a>
+      {% endfor %}
+    </nav>
+    <div class="staff-sidebar-footer">
+      {% if area_switch_url %}<a class="button button-ghost button-full" href="{{ area_switch_url }}">{{ area_switch_label }}</a>{% endif %}
+      <a class="button button-ghost button-full" href="{% url 'web:home' %}">Trocar perfil</a>
+    </div>
+  </aside>
+
+  <header class="staff-header">
+    <div class="header-topline">
+      <div>
+        <p class="eyebrow">Biblioteca UFAC</p>
+        <h1>{{ screen_title }}</h1>
+      </div>
+      <a class="icon-button" href="{% url 'web:home' %}" title="Trocar perfil" aria-label="Trocar perfil">
+        {% include "components/icon.html" with name="switch" %}
+      </a>
+    </div>
+    <div class="profile-strip">
+      <strong>{{ current_profile_label }}</strong>
+      <span>{{ current_user_reference }}</span>
+    </div>
+    {% if search_placeholder %}
+      <form
+        class="search-box"
+        action="{{ search_url }}"
+        method="get"
+        hx-get="{{ search_url }}"
+        hx-target="#staff-content"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+        hx-trigger="submit, input changed delay:350ms from:input[type='search']">
+        <span class="search-icon">{% include "components/icon.html" with name="search" %}</span>
+        <input type="search" name="q" value="{{ query }}" placeholder="{{ search_placeholder }}" aria-label="{{ search_placeholder }}">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+      </form>
+    {% endif %}
+  </header>
+
+  {% include "staff/partials/content.html" %}
+
+  <nav class="staff-mobile-navigation" aria-label="Navegação principal">
+    {% for item in nav_items %}
+      <a
+        class="mobile-nav-link {% if item.key == screen %}mobile-nav-link-active{% endif %}"
+        href="{{ item.url }}"
+        {% if item.key == screen %}aria-current="page"{% endif %}
+        hx-get="{{ item.url }}"
+        hx-target="#staff-app"
+        hx-swap="outerHTML"
+        hx-push-url="true">
+        <span class="nav-icon">{% include "components/icon.html" with name=item.key %}</span>
+        <span>{{ item.label }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+</div>

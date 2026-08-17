@@ -8,7 +8,11 @@ from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, Shift
 from apps.configuration.selectors import get_shifts_for_date
-from apps.configuration.services import replace_shift
+from apps.configuration.services import (
+    create_shift,
+    replace_shift,
+    update_current_booking_policy,
+)
 from apps.operations.models import UseSession
 from apps.operations.tests.factories import create_reservation, create_use_session
 
@@ -69,6 +73,11 @@ class ConfigurationAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["name"], "Manhã")
+        audit_event = AuditEvent.objects.get(action="SHIFT_CREATED")
+        self.assertEqual(audit_event.actor_profile, "LIBRARY_SUPERVISOR")
+        self.assertEqual(audit_event.entity_id, str(response.data["id"]))
+        self.assertEqual(audit_event.old_values, {})
+        self.assertEqual(audit_event.new_values["name"], "Manhã")
 
     def test_rejects_overlapping_active_shifts(self):
         Shift.objects.create(
@@ -112,6 +121,16 @@ class ConfigurationAPITest(APITestCase):
         )
         self.assertEqual(
             BookingPolicy.objects.filter(valid_until__isnull=True).count(), 1
+        )
+        audit_event = AuditEvent.objects.get(action="BOOKING_POLICY_UPDATED")
+        self.assertEqual(audit_event.actor_profile, "LIBRARY_SUPERVISOR")
+        self.assertEqual(
+            audit_event.old_values["id"],
+            old_policy.pk,
+        )
+        self.assertEqual(
+            audit_event.new_values["id"],
+            response.data["id"],
         )
 
     def test_booking_policy_referenced_today_is_not_changed_retroactively(self):
@@ -258,6 +277,49 @@ class ConfigurationAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["start_time"], "08:00:00")
+        audit_event = AuditEvent.objects.get(action="SHIFT_UPDATED")
+        self.assertEqual(audit_event.old_values["start_time"], "07:00:00")
+        self.assertEqual(audit_event.new_values["start_time"], "08:00:00")
+
+    def test_shift_and_policy_changes_roll_back_when_audit_fails(self):
+        policy = BookingPolicy.objects.create(
+            valid_from=timezone.localdate() - timedelta(days=1)
+        )
+
+        with (
+            patch(
+                "apps.configuration.services.shifts.AuditEvent.objects.create",
+                side_effect=RuntimeError("audit unavailable"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            create_shift(
+                values={
+                    "name": "Manhã",
+                    "start_time": time(7),
+                    "end_time": time(12),
+                    "display_order": 1,
+                    "valid_from": timezone.localdate(),
+                    "is_active": True,
+                },
+                actor_profile="LIBRARY_SUPERVISOR",
+            )
+        self.assertFalse(Shift.objects.exists())
+
+        with (
+            patch(
+                "apps.configuration.services.policies.AuditEvent.objects.create",
+                side_effect=RuntimeError("audit unavailable"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            update_current_booking_policy(
+                values={"cancellation_limit_minutes": 30},
+                actor_profile="LIBRARY_SUPERVISOR",
+            )
+        policy.refresh_from_db()
+        self.assertEqual(policy.cancellation_limit_minutes, 0)
+        self.assertIsNone(policy.valid_until)
 
     def test_replace_rejects_conflicting_active_shift(self):
         today = timezone.localdate()
@@ -349,7 +411,7 @@ class ConfigurationAPITest(APITestCase):
 
         with (
             patch(
-                "apps.configuration.services.AuditEvent.objects.create",
+                "apps.configuration.services.shifts.AuditEvent.objects.create",
                 side_effect=RuntimeError("audit unavailable"),
             ),
             self.assertRaises(RuntimeError),

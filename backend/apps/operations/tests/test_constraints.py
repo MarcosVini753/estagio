@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.computers.models import Computer
-from apps.operations.models import ComputerAllocation, Reservation
+from apps.operations.models import ComputerAllocation, Reservation, UseSession
 
 from .factories import create_reservation, create_use_session
 
@@ -133,7 +133,7 @@ class OperationConstraintTest(TestCase):
                 created_by_profile="ROOM_USER",
             )
 
-    def test_session_enforces_planned_interval_and_no_early_entry(self):
+    def test_session_enforces_planned_interval_and_early_check_in_limit(self):
         starts_at = timezone.now()
 
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -146,12 +146,128 @@ class OperationConstraintTest(TestCase):
                 entry_recorded_by_profile="ROOM_USER",
             )
 
+        reservation = create_reservation(
+            user_reference="allowed-early-entry",
+            computer=self.computer,
+            starts_at=starts_at + timedelta(minutes=3),
+            ends_at=starts_at + timedelta(minutes=18),
+            created_by_profile="ROOM_USER",
+        )
+        allowed_early_session = create_use_session(
+            user_reference="allowed-early-entry",
+            reservation=reservation,
+            started_at=starts_at,
+            planned_starts_at=reservation.starts_at,
+            planned_ends_at=reservation.ends_at,
+            exit_deadline_at=reservation.exit_deadline_at,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+
+        self.assertEqual(allowed_early_session.started_at, starts_at)
+
         with self.assertRaises(IntegrityError), transaction.atomic():
             create_use_session(
-                user_reference="early-entry",
+                user_reference="immediate-entry-before-start",
                 started_at=starts_at,
-                planned_starts_at=starts_at + timedelta(minutes=1),
-                planned_ends_at=starts_at + timedelta(minutes=16),
-                exit_deadline_at=starts_at + timedelta(minutes=19),
+                planned_starts_at=starts_at + timedelta(minutes=3),
+                planned_ends_at=starts_at + timedelta(minutes=18),
+                exit_deadline_at=starts_at + timedelta(minutes=21),
                 entry_recorded_by_profile="ROOM_USER",
+            )
+
+    def test_reservation_status_requires_consistent_cancellation_metadata(self):
+        starts_at = timezone.now() + timedelta(days=1)
+        values = {
+            "user_reference": "invalid-cancellation",
+            "computer": self.computer,
+            "starts_at": starts_at,
+            "ends_at": starts_at + timedelta(hours=1),
+            "created_by_profile": "ROOM_USER",
+        }
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_reservation(
+                **values,
+                status=Reservation.Status.CANCELLED,
+                cancelled_at=None,
+                cancelled_by_profile="",
+            )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_reservation(
+                **values,
+                cancelled_by_profile="ROOM_USER",
+                cancelled_at=timezone.now(),
+                cancellation_reason="Metadado indevido.",
+            )
+
+        create_reservation(
+            **values,
+            status=Reservation.Status.CANCELLED,
+            cancelled_by_profile="ROOM_USER",
+            cancelled_at=timezone.now(),
+        )
+
+    def test_session_status_requires_consistent_exit_metadata(self):
+        started_at = timezone.now()
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_use_session(
+                user_reference="finished-without-exit",
+                started_at=started_at,
+                status=UseSession.Status.FINISHED,
+                ended_at=None,
+                exit_recorded_by_profile="",
+                entry_recorded_by_profile="ROOM_USER",
+            )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            create_use_session(
+                user_reference="active-with-exit",
+                started_at=started_at,
+                ended_at=started_at + timedelta(minutes=10),
+                exit_recorded_by_profile="ROOM_USER",
+                status=UseSession.Status.ACTIVE,
+                entry_recorded_by_profile="ROOM_USER",
+            )
+
+        create_use_session(
+            user_reference="valid-finished",
+            started_at=started_at,
+            ended_at=started_at + timedelta(minutes=10),
+            exit_recorded_by_profile="ROOM_USER",
+            status=UseSession.Status.FINISHED,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+
+    def test_allocation_end_requires_end_reason_and_vice_versa(self):
+        started_at = timezone.now()
+        finished = create_use_session(
+            user_reference="allocation-finished",
+            started_at=started_at,
+            ended_at=started_at + timedelta(minutes=10),
+            exit_recorded_by_profile="ROOM_USER",
+            status=UseSession.Status.FINISHED,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ComputerAllocation.objects.create(
+                session=finished,
+                computer=self.computer,
+                sequence=1,
+                started_at=started_at,
+                ended_at=started_at + timedelta(minutes=10),
+            )
+
+        active = create_use_session(
+            user_reference="allocation-active",
+            started_at=started_at,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ComputerAllocation.objects.create(
+                session=active,
+                computer=self.computer,
+                sequence=1,
+                started_at=started_at,
+                end_reason=ComputerAllocation.EndReason.SWITCH,
             )

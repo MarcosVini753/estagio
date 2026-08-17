@@ -1,0 +1,39 @@
+<section class="staff-page-heading">
+  <div><p class="section-kicker">Sessão #{{ session.pk }}</p><h2>{{ session.user_reference }}</h2></div>
+  <a class="button button-ghost" href="{% url 'web:monitor-history' %}">Voltar ao histórico</a>
+</section>
+
+<section class="detail-grid">
+  <article class="staff-card"><span class="muted">Início registrado</span><strong>{{ session.started_at|date:"d/m/Y H:i" }}</strong></article>
+  <article class="staff-card"><span class="muted">Fim registrado</span><strong>{{ session.ended_at|date:"d/m/Y H:i"|default:"Não encerrada" }}</strong></article>
+  <article class="staff-card"><span class="muted">Fim planejado</span><strong>{{ session.planned_ends_at|date:"d/m/Y H:i" }}</strong></article>
+  <article class="staff-card"><span class="muted">Situação</span><strong>{{ session.status_label }}</strong></article>
+</section>
+
+<section class="staff-section">
+  <div class="staff-section-heading"><div><p class="section-kicker">Rastreabilidade</p><h2>Alocações</h2></div></div>
+  <div class="timeline">
+    {% for allocation in session.allocations.all %}
+      <article class="timeline-item"><span class="timeline-sequence">{{ allocation.sequence }}</span><div><strong>{{ allocation.computer.code }} — {{ allocation.computer.description }}</strong><p>{{ allocation.started_at|date:"d/m/Y H:i" }}–{% if allocation.ended_at %}{{ allocation.ended_at|date:"d/m/Y H:i" }}{% else %}em uso{% endif %}</p>{% if allocation.switch_reason %}<small>{{ allocation.switch_reason }}</small>{% endif %}</div></article>
+    {% endfor %}
+  </div>
+</section>
+
+{% if session.status != "ACTIVE" %}
+  <details class="staff-card disclosure-card" {% if form_error %}open{% endif %}>
+    <summary>Corrigir horários permitidos</summary>
+    <p class="helper-text">A correção preserva o histórico, valida a linha do tempo e exige justificativa auditável.</p>
+    {% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+    <form class="staff-form form-grid-two" method="post" action="{% url 'web:monitor-history-correct' session.pk %}">
+      {% csrf_token %}
+      <label class="field"><span>Início da sessão</span><input type="datetime-local" name="started_at" value="{{ form_data.started_at }}"></label>
+      <label class="field"><span>Fim da sessão</span><input type="datetime-local" name="ended_at" value="{{ form_data.ended_at }}"></label>
+      <label class="field"><span>Início da última alocação</span><input type="datetime-local" name="last_allocation_started_at" value="{{ form_data.last_allocation_started_at }}"></label>
+      <label class="field"><span>Fim da última alocação</span><input type="datetime-local" name="last_allocation_ended_at" value="{{ form_data.last_allocation_ended_at }}"></label>
+      <label class="field field-wide"><span>Justificativa obrigatória</span><textarea name="reason" maxlength="2000" required>{{ form_data.reason }}</textarea></label>
+      <button class="button button-primary field-wide" type="submit">Validar e registrar correção</button>
+    </form>
+  </details>
+{% else %}
+  <div class="notice" role="status"><strong>Sessão em andamento</strong><span>Correções de histórico ficam disponíveis após o encerramento.</span></div>
+{% endif %}

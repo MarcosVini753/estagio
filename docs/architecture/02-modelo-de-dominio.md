@@ -49,6 +49,8 @@ Tipos: `CLOSED` e `SPECIAL_HOURS`. Ponto facultativo é um motivo de fechamento,
 
 A exceção de uma data prevalece sobre calendários temporário e regular.
 
+Os serviços administrativos permitem criar ou alterar exceções somente para hoje ou datas futuras. Exceções passadas são históricas e imutáveis pela API e pelo frontend; migrations, fixtures e seeds ainda podem registrar histórico diretamente.
+
 ### `RoomNotice`
 
 `notice_type`, `title`, `message`, `effective_from`, `effective_until`, `visible_from`, `visible_until`, `is_active`, `created_by_profile` e vínculos opcionais com `OperatingSchedule` ou `CalendarException`.
@@ -89,7 +91,7 @@ Estados: `CONFIRMED`, `CANCELLED`, `USED`.
 
 `slot_count` é derivado de `(ends_at - starts_at) / 15 minutos`. Constraints PostgreSQL exigem início anterior ao fim, deadlines não anteriores aos respectivos horários e impedem sobreposição de reservas confirmadas por computador e por usuário com intervalos `[)`. O serviço bloqueia referência de usuário e computador para validar o intervalo completo, limite e disponibilidade antes da criação.
 
-`booking_policy` protege a regra histórica aplicada na criação. Expiração de check-in, mudança de calendário e indisponibilidade sem alternativa usam `CANCELLED` com autor, instante e motivo preservados.
+`booking_policy` protege a regra histórica aplicada na criação. Uma reserva `CANCELLED` sempre possui instante e perfil de cancelamento; o motivo pode ficar vazio apenas no cancelamento pelo próprio usuário. Outros estados não possuem metadados de cancelamento.
 
 ### `UseSession`
 
@@ -101,13 +103,13 @@ Estados: `ACTIVE`, `FINISHED`, `CANCELLED`.
 
 O intervalo planejado representa a duração solicitada; `started_at` e `ended_at` representam uso real. Em sessão de reserva, o intervalo e o prazo são copiados da reserva. Em uso imediato, o início planejado é a entrada e o fim soma a quantidade solicitada de slots de 15 minutos.
 
-Constraints exigem uma sessão ativa por referência de usuário, início planejado anterior ao fim, prazo não anterior ao fim planejado e entrada real entre início planejado e prazo de saída.
+Constraints exigem uma sessão ativa por referência de usuário, início planejado anterior ao fim e prazo não anterior ao fim planejado. Sessão `ACTIVE` não possui saída nem perfil de saída; `FINISHED` e `CANCELLED` possuem ambos. Uso imediato não pode começar antes do início planejado; sessão vinculada a reserva pode começar até três minutos antes dele. O serviço limita o check-in de uma reserva até `check_in_deadline_at`.
 
 ### `ComputerAllocation`
 
 `session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`. `TIME_LIMIT_REACHED` identifica o encerramento lógico automático no prazo; `COMPUTER_UNAVAILABLE` distingue o encerramento da alocação causado por indisponibilidade, com ou sem transferência da sessão. `SWITCH` permanece reservado à troca normal.
 
-Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início; intervalos históricos do mesmo computador sem sobreposição.
+Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início; intervalos históricos do mesmo computador sem sobreposição. Alocação ativa não possui `end_reason`; alocação encerrada possui `ended_at` e `end_reason`.
 
 ## Ocorrências
 
