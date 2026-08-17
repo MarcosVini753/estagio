@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita
+Substituída pela ADR 0018.
 
 ## Contexto
 

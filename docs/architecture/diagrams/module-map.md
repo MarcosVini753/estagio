@@ -4,6 +4,7 @@
 flowchart LR
     access[access]
     config[configuration]
+    calendar[configuration/calendar.py<br/>resolvedor único]
     computers[computers]
     operations[operations]
     occurrences[occurrences]
@@ -13,6 +14,7 @@ flowchart LR
 
     core --> access
     core --> config
+    config --> calendar
     core --> computers
     core --> operations
     core --> occurrences
@@ -21,10 +23,12 @@ flowchart LR
 
     access --> operations
     config --> operations
+    calendar --> operations
     computers --> operations
     operations --> occurrences
     operations --> reports
     config --> reports
+    calendar --> reports
     computers --> reports
     occurrences --> reports
     operations --> audit

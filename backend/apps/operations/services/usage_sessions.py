@@ -1,14 +1,18 @@
 from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
-from apps.configuration.selectors import (
-    get_booking_policy_for_date,
-    get_shifts_for_date,
+from apps.configuration.calendar import (
+    interval_is_within_operating_day,
+    is_open_at,
+    lock_operating_date,
+    resolve_operating_day,
 )
+from apps.configuration.selectors import get_shifts_for_date
 from apps.core.api.errors import (
     ReservationCheckInUnavailable,
     RoomClosed,
@@ -19,22 +23,23 @@ from apps.core.api.errors import (
     UsageSessionReasonRequired,
 )
 from apps.core.enums import AffiliationType, DemoProfile
-from apps.operations.availability import get_operating_windows
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.rules import (
+    EARLY_CHECK_IN_TOLERANCE_MINUTES,
+    LATE_CHECK_OUT_TOLERANCE_MINUTES,
+)
+from apps.operations.services.deadlines import (
+    expire_locked_session,
+    reconcile_computer_deadlines,
+)
 from apps.operations.services.reservations import lock_user_reference
+from apps.operations.slotting import calculate_interval
 
 OPERATIONAL_PROFILES = {
-    DemoProfile.INTERN,
+    DemoProfile.ROOM_MONITOR,
     DemoProfile.LIBRARY_SUPERVISOR,
     DemoProfile.SYSTEM_ADMIN,
 }
-
-
-def _room_is_open(current: datetime) -> bool:
-    return any(
-        starts_at <= current < ends_at
-        for starts_at, ends_at in get_operating_windows(timezone.localdate(current))
-    )
 
 
 def _shift_at(current: datetime):
@@ -46,19 +51,37 @@ def _shift_at(current: datetime):
     )
 
 
-def _reservation_blocks(
-    *, computer_id: int, user_reference: str, current: datetime
+def _reservation_blocks_interval(
+    *,
+    computer_id: int,
+    user_reference: str,
+    starts_at: datetime,
+    ends_at: datetime,
 ) -> bool:
     return (
         Reservation.objects.filter(
-            computer_id=computer_id,
             status=Reservation.Status.CONFIRMED,
-            starts_at__lte=current,
-            ends_at__gt=current,
+            starts_at__lt=ends_at,
+            ends_at__gt=starts_at,
         )
-        .exclude(user_reference=user_reference)
+        .filter(Q(computer_id=computer_id) | Q(user_reference=user_reference))
         .exists()
     )
+
+
+def _planned_allocation_blocks_interval(
+    *,
+    computer_id: int,
+    starts_at: datetime,
+    ends_at: datetime,
+) -> bool:
+    return ComputerAllocation.objects.filter(
+        computer_id=computer_id,
+        ended_at__isnull=True,
+        session__status=UseSession.Status.ACTIVE,
+        session__planned_starts_at__lt=ends_at,
+        session__planned_ends_at__gt=starts_at,
+    ).exists()
 
 
 def _validate_identity(
@@ -102,20 +125,80 @@ def _get_active_session(
     return session
 
 
-@transaction.atomic
 def start_usage_session(
     *,
     computer_id: int,
     actor_profile: str,
     actor_reference: str,
     reservation_id: int | None = None,
+    slot_count: int | None = None,
     user_reference: str | None = None,
     affiliation_type: str | None = None,
     institutional_unit: str | None = None,
     now: datetime | None = None,
 ) -> UseSession:
     current = now or timezone.now()
+    if reservation_id is not None:
+        reconciliation_user_reference = (
+            Reservation.objects.filter(pk=reservation_id)
+            .values_list("user_reference", flat=True)
+            .first()
+        )
+    elif actor_profile == DemoProfile.ROOM_USER:
+        reconciliation_user_reference = actor_reference
+    else:
+        reconciliation_user_reference = user_reference
+    computer_ids = {computer_id}
+    if reconciliation_user_reference:
+        computer_ids.update(
+            Reservation.objects.filter(
+                user_reference=reconciliation_user_reference,
+                status=Reservation.Status.CONFIRMED,
+                check_in_deadline_at__lt=current,
+            ).values_list("computer_id", flat=True)
+        )
+        computer_ids.update(
+            ComputerAllocation.objects.filter(
+                session__user_reference=reconciliation_user_reference,
+                session__status=UseSession.Status.ACTIVE,
+                ended_at__isnull=True,
+            ).values_list("computer_id", flat=True)
+        )
+    for target_id in sorted(computer_ids):
+        reconcile_computer_deadlines(target_id, current)
+    return _start_usage_session(
+        computer_id=computer_id,
+        actor_profile=actor_profile,
+        actor_reference=actor_reference,
+        reservation_id=reservation_id,
+        slot_count=slot_count,
+        user_reference=user_reference,
+        affiliation_type=affiliation_type,
+        institutional_unit=institutional_unit,
+        current=current,
+    )
+
+
+@transaction.atomic
+def _start_usage_session(
+    *,
+    computer_id: int,
+    actor_profile: str,
+    actor_reference: str,
+    reservation_id: int | None,
+    slot_count: int | None,
+    user_reference: str | None,
+    affiliation_type: str | None,
+    institutional_unit: str | None,
+    current: datetime,
+) -> UseSession:
+    lock_operating_date(timezone.localdate(current))
     reservation = None
+
+    if reservation_id is not None and slot_count is not None:
+        raise UsageSessionConflict("A duração é definida pela reserva informada.")
+    if reservation_id is None and slot_count is None:
+        raise UsageSessionConflict("Informe a duração do uso imediato.")
 
     if reservation_id is not None:
         reservation_preview = Reservation.objects.get(pk=reservation_id)
@@ -130,18 +213,14 @@ def start_usage_session(
             affiliation_type=affiliation_type,
             institutional_unit=institutional_unit,
         )
-        if not _room_is_open(current):
-            raise RoomClosed()
+    operating_day = resolve_operating_day(timezone.localdate(current))
+    if not is_open_at(operating_day, current):
+        raise RoomClosed()
 
-    computer = Computer.objects.select_for_update().get(pk=computer_id)
     lock_user_reference(user_reference)
+    computer = Computer.objects.select_for_update().get(pk=computer_id)
     if reservation_id is not None:
         reservation = Reservation.objects.select_for_update().get(pk=reservation_id)
-        policy = get_booking_policy_for_date(timezone.localdate(reservation.starts_at))
-        if policy is None:
-            raise ReservationCheckInUnavailable()
-        tolerance = timedelta(minutes=policy.check_in_tolerance_minutes)
-        latest_entry = min(reservation.starts_at + tolerance, reservation.ends_at)
         if (
             reservation.status != Reservation.Status.CONFIRMED
             or reservation.computer_id != computer_id
@@ -149,12 +228,37 @@ def start_usage_session(
                 actor_profile == DemoProfile.ROOM_USER
                 and actor_reference != reservation.user_reference
             )
-            or not reservation.starts_at - tolerance <= current <= latest_entry
+            or not (
+                reservation.starts_at
+                - timedelta(minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES)
+                <= current
+                <= reservation.check_in_deadline_at
+            )
         ):
             raise ReservationCheckInUnavailable()
         user_reference = reservation.user_reference
         affiliation_type = reservation.affiliation_type
         institutional_unit = reservation.institutional_unit
+        planned_starts_at = reservation.starts_at
+        planned_ends_at = reservation.ends_at
+        exit_deadline_at = reservation.exit_deadline_at
+    else:
+        try:
+            planned_starts_at = current
+            planned_ends_at = calculate_interval(current, slot_count)
+        except ValueError as error:
+            raise UsageSessionConflict("A duração solicitada é inválida.") from error
+        if not interval_is_within_operating_day(
+            operating_day,
+            planned_starts_at,
+            planned_ends_at,
+        ):
+            raise UsageSessionConflict(
+                "O uso planejado ultrapassa o fechamento da sala."
+            )
+        exit_deadline_at = planned_ends_at + timedelta(
+            minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES
+        )
     if computer.operational_state != Computer.OperationalState.AVAILABLE:
         raise UsageSessionConflict("O computador não está operacionalmente disponível.")
     if UseSession.objects.filter(
@@ -167,12 +271,19 @@ def start_usage_session(
         ended_at__isnull=True,
     ).exists():
         raise UsageSessionConflict("O computador já possui uma alocação ativa.")
-    if reservation is None and _reservation_blocks(
+    if reservation is None and _reservation_blocks_interval(
         computer_id=computer.pk,
         user_reference=user_reference,
-        current=current,
+        starts_at=planned_starts_at,
+        ends_at=planned_ends_at,
     ):
-        raise UsageSessionConflict("O computador está reservado para outro usuário.")
+        raise UsageSessionConflict("O intervalo conflita com uma reserva confirmada.")
+    if _planned_allocation_blocks_interval(
+        computer_id=computer.pk,
+        starts_at=planned_starts_at,
+        ends_at=planned_ends_at,
+    ):
+        raise UsageSessionConflict("O intervalo conflita com outra sessão planejada.")
 
     try:
         with transaction.atomic():
@@ -182,6 +293,9 @@ def start_usage_session(
                 institutional_unit=institutional_unit,
                 reservation=reservation,
                 started_at=current,
+                planned_starts_at=planned_starts_at,
+                planned_ends_at=planned_ends_at,
+                exit_deadline_at=exit_deadline_at,
                 start_shift=_shift_at(current),
                 entry_recorded_by_profile=actor_profile,
             )
@@ -199,7 +313,6 @@ def start_usage_session(
         raise UsageSessionConflict() from error
 
 
-@transaction.atomic
 def switch_computer(
     *,
     session_id: int,
@@ -210,6 +323,58 @@ def switch_computer(
     now: datetime | None = None,
 ) -> UseSession:
     current = now or timezone.now()
+    source_computer_id = (
+        ComputerAllocation.objects.filter(
+            session_id=session_id,
+            ended_at__isnull=True,
+        )
+        .values_list("computer_id", flat=True)
+        .first()
+    )
+    computer_ids = {computer_id}
+    if source_computer_id is not None:
+        computer_ids.add(source_computer_id)
+    for target_id in sorted(computer_ids):
+        reconcile_computer_deadlines(target_id, current)
+    return _switch_computer(
+        session_id=session_id,
+        computer_id=computer_id,
+        actor_profile=actor_profile,
+        actor_reference=actor_reference,
+        reason=reason,
+        current=current,
+    )
+
+
+@transaction.atomic
+def _switch_computer(
+    *,
+    session_id: int,
+    computer_id: int,
+    actor_profile: str,
+    actor_reference: str,
+    reason: str,
+    current: datetime,
+) -> UseSession:
+    session_preview = UseSession.objects.only("user_reference").get(pk=session_id)
+    lock_user_reference(session_preview.user_reference)
+    source_computer_id = (
+        ComputerAllocation.objects.filter(
+            session_id=session_id,
+            ended_at__isnull=True,
+        )
+        .values_list("computer_id", flat=True)
+        .first()
+    )
+    computer_ids = {computer_id}
+    if source_computer_id is not None:
+        computer_ids.add(source_computer_id)
+    computers = {
+        computer.pk: computer
+        for computer in Computer.objects.select_for_update()
+        .filter(pk__in=sorted(computer_ids))
+        .order_by("pk")
+    }
     session = _get_active_session(
         session_id=session_id,
         actor_profile=actor_profile,
@@ -218,12 +383,10 @@ def switch_computer(
     allocation = session.allocations.select_for_update().get(ended_at__isnull=True)
     if current < allocation.started_at:
         raise UsageSessionConflict("A troca não pode anteceder a alocação atual.")
-    computers = {
-        computer.pk: computer
-        for computer in Computer.objects.select_for_update()
-        .filter(pk__in=sorted({allocation.computer_id, computer_id}))
-        .order_by("pk")
-    }
+    if current >= session.planned_ends_at:
+        raise UsageSessionConflict(
+            "A troca exige tempo planejado restante e não ocorre na tolerância."
+        )
     destination = computers[computer_id]
     if (
         destination.pk == allocation.computer_id
@@ -234,10 +397,16 @@ def switch_computer(
         )
         .exclude(pk=allocation.pk)
         .exists()
-        or _reservation_blocks(
+        or _reservation_blocks_interval(
             computer_id=destination.pk,
             user_reference=session.user_reference,
-            current=current,
+            starts_at=current,
+            ends_at=session.planned_ends_at,
+        )
+        or _planned_allocation_blocks_interval(
+            computer_id=destination.pk,
+            starts_at=current,
+            ends_at=session.planned_ends_at,
         )
     ):
         raise UsageSessionConflict("O computador de destino não está disponível.")
@@ -272,6 +441,9 @@ def finish_usage_session(
         actor_profile=actor_profile,
         actor_reference=actor_reference,
     )
+    if current > session.exit_deadline_at:
+        expire_locked_session(session)
+        return session
     is_owner = actor_reference == session.user_reference
     finish_reason = reason.strip()
     if not is_owner and not finish_reason:

@@ -1,83 +1,81 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sala de Informática — Ambiente de demonstração</title>
-  <style>
-    :root { font-family: system-ui, sans-serif; color-scheme: light dark; }
-    body { max-width: 760px; margin: 0 auto; padding: 2rem 1rem; }
-    .warning { border: 1px solid #b7791f; padding: 1rem; border-radius: .5rem; margin-bottom: 1.5rem; }
-    .profiles { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-    button { padding: .8rem; cursor: pointer; }
-    code { word-break: break-word; }
-  </style>
-</head>
-<body>
-  <h1>Sala de Informática da Biblioteca da UFAC</h1>
-  <div class="warning" role="alert">
-    Este ambiente usa autorização simulada. Não há autenticação nem identidade real.
-  </div>
-  <h2>Escolha o perfil de teste</h2>
-  <div id="profiles" class="profiles"></div>
-  <form id="room-user-form" hidden>
-    <p>Dados fictícios para demonstração.</p>
-    <p><label>Referência <input id="user-reference" name="user_reference" required maxlength="100"></label></p>
-    <p><label>Vínculo
-      <select id="affiliation-type" name="affiliation_type" required>
-        <option value="">Selecione</option>
-        <option value="STUDENT">Aluno</option>
-        <option value="PROFESSOR">Professor</option>
-        <option value="TECHNICAL_STAFF">Técnico-administrativo</option>
-      </select>
-    </label></p>
-    <p><label>Unidade institucional <input id="institutional-unit" name="institutional_unit" required maxlength="255"></label></p>
-    <button type="submit">Selecionar Usuário da Sala</button>
-  </form>
-  <p>Perfil atual: <strong id="current-profile">nenhum</strong></p>
-  <p>Referência atual: <strong id="current-reference">nenhuma</strong></p>
-  <p><a href="/api/docs/">Documentação interativa da API</a></p>
+{% extends "base.html" %}
+{% block title %}Escolher perfil — Sala de Informática{% endblock %}
+{% block body %}
+<main class="profile-page" x-data="{ selected: '{{ form_data.profile|default:''|escapejs }}' }">
+  <section class="profile-hero">
+    <p class="eyebrow">Biblioteca UFAC</p>
+    <h1>Sala de Informática</h1>
+    <p>Ambiente de demonstração do controle de uso dos computadores.</p>
+  </section>
 
-  <script>
-    async function loadContext() {
-      const response = await fetch('/api/v1/demo/context/');
-      const context = await response.json();
-      document.getElementById('current-profile').textContent = context.profile || 'nenhum';
-      document.getElementById('current-reference').textContent = context.user_reference || 'nenhuma';
-      const root = document.getElementById('profiles');
-      root.innerHTML = '';
-      for (const item of context.available_profiles) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = item.label;
-        button.addEventListener('click', () => {
-          document.getElementById('room-user-form').hidden = item.value !== 'ROOM_USER';
-          if (item.value !== 'ROOM_USER') selectProfile(item.value);
-        });
-        root.appendChild(button);
-      }
-    }
+  <section class="profile-panel" aria-labelledby="profile-title">
+    <div class="demo-warning" role="note">
+      <strong>Autorização simulada</strong>
+      <span>Use somente dados fictícios. Este ambiente não possui login ou identidade real.</span>
+    </div>
 
-    async function selectProfile(profile, identity = {}) {
-      const response = await fetch('/api/v1/demo/select-profile/', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({profile, ...identity})
-      });
-      if (!response.ok) {
-        alert('Não foi possível selecionar o perfil.');
-        return;
-      }
-      await loadContext();
-    }
+    {% for notice in active_notices %}
+      <article class="notice notice-{{ notice.notice_type|lower }}" role="{% if notice.notice_type == 'CLOSURE' %}alert{% else %}status{% endif %}">
+        <strong>{{ notice.title }}</strong>
+        <span>{{ notice.message }}</span>
+      </article>
+    {% endfor %}
 
-    document.getElementById('room-user-form').addEventListener('submit', (event) => {
-      event.preventDefault();
-      const form = new FormData(event.currentTarget);
-      selectProfile('ROOM_USER', Object.fromEntries(form.entries()));
-    });
+    {% if messages %}
+      {% for message in messages %}<div class="flash flash-{{ message.tags }}" role="status">{{ message }}</div>{% endfor %}
+    {% endif %}
 
-    loadContext();
-  </script>
-</body>
-</html>
+    <div class="profile-heading">
+      <div>
+        <p class="eyebrow eyebrow-dark">Acesso ao ambiente funcional</p>
+        <h2 id="profile-title">Escolha o perfil de teste</h2>
+      </div>
+      <span class="current-profile">Atual: {{ current_profile_label }}</span>
+    </div>
+
+    {% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+
+    <form method="post" class="profile-form">
+      {% csrf_token %}
+      <fieldset class="profile-grid">
+        <legend class="sr-only">Perfis disponíveis</legend>
+        {% for profile in profiles %}
+          <label class="profile-option" :class="{ 'profile-option-active': selected === '{{ profile.value }}' }">
+            <input type="radio" name="profile" value="{{ profile.value }}" x-model="selected" {% if form_data.profile == profile.value %}checked{% endif %} required>
+            <span class="profile-icon" aria-hidden="true">{% if profile.is_room_user %}U{% else %}{{ profile.label|first }}{% endif %}</span>
+            <span>
+              <strong>{{ profile.label }}</strong>
+              <small>{% if profile.value == "ROOM_USER" %}Disponibilidade, reservas, sessão e problemas{% elif profile.value == "ROOM_MONITOR" %}Sessões, computadores, ocorrências e histórico{% elif profile.value == "LIBRARY_SUPERVISOR" %}Inventário, funcionamento, parâmetros e relatórios{% else %}Interface funcional em uma próxima entrega{% endif %}</small>
+            </span>
+          </label>
+        {% endfor %}
+      </fieldset>
+
+      <section class="identity-fields" x-show="selected === 'ROOM_USER'">
+        <h3>Identidade fictícia do Usuário da Sala</h3>
+        <div class="form-grid">
+          <label class="field">
+            <span>Referência fictícia</span>
+            <input name="user_reference" maxlength="100" value="{{ form_data.user_reference|default:'' }}" placeholder="Ex.: aluno-si-001" :required="selected === 'ROOM_USER'">
+          </label>
+          <label class="field">
+            <span>Vínculo</span>
+            <select name="affiliation_type" :required="selected === 'ROOM_USER'">
+              <option value="">Selecione</option>
+              {% for value, label in affiliation_types %}
+                <option value="{{ value }}" {% if form_data.affiliation_type == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="field field-wide">
+            <span>Unidade institucional fictícia</span>
+            <input name="institutional_unit" maxlength="255" value="{{ form_data.institutional_unit|default:'' }}" placeholder="Ex.: Sistemas de Informação" :required="selected === 'ROOM_USER'">
+          </label>
+        </div>
+      </section>
+
+      <button class="button button-primary button-full" type="submit">Entrar no ambiente de demonstração</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

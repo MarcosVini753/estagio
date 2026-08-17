@@ -5,7 +5,7 @@ flowchart TB
     browser[Navegador]
     web[Django Web
 Templates + JavaScript]
-    api[API REST /api/v1/
+    api[API REST /api/
 Django REST Framework]
     services[Serviços de domínio]
     reports[Consultas e projeções]
@@ -24,7 +24,7 @@ Django REST Framework]
 ## Responsabilidades
 
 - Django Web: entrega páginas, assets e seletor de perfil.
-- API: contrato versionado para operações e consultas.
+- API: contrato REST para operações e consultas, exposto sob `/api/`.
 - Serviços: garantem invariantes e transações.
 - Projeções: calculam relatórios sem persistir totais manuais.
 - PostgreSQL: fonte de verdade operacional.

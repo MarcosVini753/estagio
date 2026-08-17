@@ -16,9 +16,10 @@ O comando cria uma linha do tempo fictícia determinística e informa no termina
 
 - `UseSession`: visita, entrada, saída, duração e usuário de demonstração;
 - `ComputerAllocation`: computador utilizado, intervalo e trocas;
-- `Reservation`: confirmadas, canceladas, usadas e não comparecimentos;
+- `Reservation`: confirmadas, canceladas e usadas;
 - `Occurrence`: problemas por computador e período;
 - `Shift`: classificação temporal;
+- calendário operacional efetivo: dias, janelas e denominador de funcionamento;
 - `ComputerOperationalStateChange`: manutenção e inatividade históricas;
 - dados fictícios de curso, setor e vínculo usados no MVP.
 
@@ -51,9 +52,11 @@ tempo operacional disponível
 
 O denominador deve excluir manutenção, inatividade e períodos sem funcionamento quando houver dados históricos suficientes.
 
+O calendário é a fonte do período de funcionamento: domingo regular soma zero minuto, sábado regular termina às 13h, horário temporário substitui o regular durante sua vigência e exceção específica tem precedência. `Shift` permanece somente como dimensão analítica.
+
 ### Reservas
 
-Contagem por estado: confirmada, cancelada, usada, não comparecida e invalidada.
+Contagem por estado: confirmada, cancelada e usada.
 
 ### Ocorrências
 
@@ -85,7 +88,7 @@ Deve apresentar:
 Implementado em:
 
 ```text
-GET /api/v1/reports/monthly/?year=YYYY&month=M
+GET /api/reports/monthly/?year=YYYY&month=M
 ```
 
 O endpoint é restrito ao Supervisor e Administrador e reproduz o modelo atual:
@@ -95,10 +98,12 @@ O endpoint é restrito ao Supervisor e Administrador e reproduz o modelo atual:
 - totais por turno;
 - total geral mensal;
 - dias sem uso;
-- estado de calendário `OPEN`, `CLOSED`, `OPTIONAL_HOLIDAY` ou `SPECIAL_HOURS`;
+- estado de calendário `OPEN`, `CLOSED` ou `SPECIAL_HOURS`;
+- origem `REGULAR_SCHEDULE`, `TEMPORARY_SCHEDULE` ou `CALENDAR_EXCEPTION`;
+- minutos operacionais calculados pelas janelas efetivas de cada dia;
 - grupo `NOT_INFORMED` para sessões sem turno.
 
-As métricas complementares são visitas, pessoas distintas, reservas pelo horário agendado, ocorrências pela criação, computadores utilizados, minutos alocados e tempo médio de sessões finalizadas. Uma sessão com troca continua sendo uma visita, mas suas alocações contribuem para todos os computadores e intervalos utilizados.
+As métricas complementares são visitas, pessoas distintas, reservas totais e por estado, ocorrências pela criação, computadores utilizados, minutos operacionais, minutos alocados e tempo médio de sessões finalizadas. Uma sessão com troca continua sendo uma visita, mas suas alocações contribuem para todos os computadores e intervalos utilizados.
 
 ## Relatório anual
 

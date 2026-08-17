@@ -3,7 +3,7 @@ from rest_framework.test import APITestCase
 
 class DemoProfileAPITest(APITestCase):
     def test_context_starts_without_selected_profile(self):
-        response = self.client.get("/api/v1/demo/context/")
+        response = self.client.get("/api/demo/context/")
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.data["profile"])
@@ -11,18 +11,18 @@ class DemoProfileAPITest(APITestCase):
 
     def test_select_profile_persists_in_session(self):
         response = self.client.post(
-            "/api/v1/demo/select-profile/",
-            {"profile": "INTERN"},
+            "/api/demo/select-profile/",
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["profile"], "INTERN")
-        self.assertEqual(self.client.session["demo_profile"], "INTERN")
+        self.assertEqual(response.data["profile"], "ROOM_MONITOR")
+        self.assertEqual(self.client.session["demo_profile"], "ROOM_MONITOR")
 
     def test_room_user_requires_identity(self):
         response = self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "ROOM_USER"},
             format="json",
         )
@@ -32,7 +32,7 @@ class DemoProfileAPITest(APITestCase):
 
     def test_room_user_identity_is_returned_in_context(self):
         response = self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {
                 "profile": "ROOM_USER",
                 "user_reference": "aluno-si-001",
@@ -45,12 +45,12 @@ class DemoProfileAPITest(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["user_reference"], "aluno-si-001")
         self.assertEqual(response.data["affiliation_type"], "STUDENT")
-        context = self.client.get("/api/v1/demo/context/")
+        context = self.client.get("/api/demo/context/")
         self.assertEqual(context.data["institutional_unit"], "Sistemas de Informação")
 
     def test_operational_profile_clears_room_user_identity(self):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {
                 "profile": "ROOM_USER",
                 "user_reference": "aluno-si-001",
@@ -61,19 +61,19 @@ class DemoProfileAPITest(APITestCase):
         )
 
         response = self.client.post(
-            "/api/v1/demo/select-profile/",
-            {"profile": "INTERN"},
+            "/api/demo/select-profile/",
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["user_reference"], "demo-intern")
+        self.assertEqual(response.data["user_reference"], "demo-room-monitor")
         self.assertIsNone(response.data["affiliation_type"])
         self.assertNotIn("demo_institutional_unit", self.client.session)
 
     def test_rejects_unknown_profile(self):
         response = self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": "UNKNOWN"},
             format="json",
         )

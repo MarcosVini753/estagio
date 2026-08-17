@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -6,8 +7,30 @@ from rest_framework.views import APIView
 
 from apps.access.permissions import HasDemoProfile
 from apps.access.services import get_demo_profile
-from apps.configuration.models import BookingPolicy, CalendarException, Shift
-from apps.configuration.services import replace_shift, update_active_booking_policy
+from apps.configuration.calendar import room_status_payload
+from apps.configuration.models import (
+    CalendarException,
+    OperatingSchedule,
+    RoomNotice,
+    Shift,
+)
+from apps.configuration.selectors import (
+    get_active_room_notices,
+    get_booking_policy_for_date,
+)
+from apps.configuration.services import (
+    apply_calendar_exception,
+    create_operating_schedule,
+    create_room_notice,
+    create_shift,
+    preview_operating_schedule_impact,
+    replace_operating_schedule,
+    replace_shift,
+    update_current_booking_policy,
+    update_future_operating_schedule,
+    update_room_notice,
+    update_shift,
+)
 from apps.core.api.errors import ConfigurationRequired
 from apps.core.enums import DemoProfile
 
@@ -15,6 +38,17 @@ from .serializers import (
     BookingPolicySerializer,
     BookingPolicyUpdateSerializer,
     CalendarExceptionSerializer,
+    OperatingScheduleCreateSerializer,
+    OperatingScheduleImpactResponseSerializer,
+    OperatingScheduleImpactSerializer,
+    OperatingScheduleReplaceSerializer,
+    OperatingScheduleSerializer,
+    OperatingScheduleUpdateSerializer,
+    RoomNoticeCreateSerializer,
+    RoomNoticeSerializer,
+    RoomNoticeUpdateSerializer,
+    RoomStatusQuerySerializer,
+    RoomStatusSerializer,
     ShiftReplaceSerializer,
     ShiftSerializer,
 )
@@ -37,6 +71,15 @@ class ShiftListCreateAPIView(generics.ListCreateAPIView):
         )
         return super().get_permissions()
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        shift = create_shift(
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
+        return Response(ShiftSerializer(shift).data, status=status.HTTP_201_CREATED)
+
 
 class ShiftDetailAPIView(generics.RetrieveUpdateAPIView):
     queryset = Shift.objects.all()
@@ -49,6 +92,21 @@ class ShiftDetailAPIView(generics.RetrieveUpdateAPIView):
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=kwargs.pop("partial", False),
+        )
+        serializer.is_valid(raise_exception=True)
+        shift = update_shift(
+            shift_id=instance.pk,
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
+        return Response(ShiftSerializer(shift).data)
 
 
 class ShiftReplaceAPIView(APIView):
@@ -72,9 +130,7 @@ class ShiftReplaceAPIView(APIView):
         return Response(ShiftSerializer(shift).data, status=status.HTTP_201_CREATED)
 
 
-class CalendarExceptionListCreateAPIView(generics.ListCreateAPIView):
-    queryset = CalendarException.objects.all()
-    serializer_class = CalendarExceptionSerializer
+class CalendarExceptionListCreateAPIView(APIView):
     permission_classes = [HasDemoProfile]
 
     def get_permissions(self):
@@ -83,18 +139,283 @@ class CalendarExceptionListCreateAPIView(generics.ListCreateAPIView):
         )
         return super().get_permissions()
 
+    @extend_schema(
+        responses={200: CalendarExceptionSerializer(many=True)},
+        tags=["configuration"],
+    )
+    def get(self, request):
+        return Response(
+            CalendarExceptionSerializer(CalendarException.objects.all(), many=True).data
+        )
 
-class CalendarExceptionDetailAPIView(generics.RetrieveUpdateAPIView):
-    queryset = CalendarException.objects.all()
-    serializer_class = CalendarExceptionSerializer
+    @extend_schema(
+        request=CalendarExceptionSerializer,
+        responses={201: CalendarExceptionSerializer},
+        tags=["configuration"],
+    )
+    def post(self, request):
+        serializer = CalendarExceptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = dict(serializer.validated_data)
+        confirm_cancellation = values.pop("confirm_cancellation", False)
+        notify_users = values.pop("notify_users", False)
+        notice = values.pop("notice", None)
+        exception = apply_calendar_exception(
+            values=values,
+            actor_profile=get_demo_profile(request),
+            confirm_cancellation=confirm_cancellation,
+            notify_users=notify_users,
+            notice=notice,
+        )
+        return Response(
+            CalendarExceptionSerializer(exception).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CalendarExceptionDetailAPIView(APIView):
     permission_classes = [HasDemoProfile]
-    http_method_names = ["get", "patch", "head", "options"]
 
     def get_permissions(self):
         self.allowed_demo_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
+
+    @extend_schema(
+        responses={200: CalendarExceptionSerializer},
+        tags=["configuration"],
+    )
+    def get(self, request, pk):
+        exception = get_object_or_404(CalendarException, pk=pk)
+        return Response(CalendarExceptionSerializer(exception).data)
+
+    @extend_schema(
+        request=CalendarExceptionSerializer,
+        responses={200: CalendarExceptionSerializer},
+        tags=["configuration"],
+    )
+    def patch(self, request, pk):
+        exception = get_object_or_404(CalendarException, pk=pk)
+        serializer = CalendarExceptionSerializer(
+            exception,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        values = dict(serializer.validated_data)
+        confirm_cancellation = values.pop("confirm_cancellation", False)
+        notify_users = values.pop("notify_users", False)
+        notice = values.pop("notice", None)
+        exception = apply_calendar_exception(
+            exception_id=pk,
+            values=values,
+            actor_profile=get_demo_profile(request),
+            confirm_cancellation=confirm_cancellation,
+            notify_users=notify_users,
+            notice=notice,
+        )
+        return Response(CalendarExceptionSerializer(exception).data)
+
+
+class OperatingScheduleListCreateAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+
+    def get_permissions(self):
+        self.allowed_demo_profiles = (
+            READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
+        )
+        return super().get_permissions()
+
+    @extend_schema(
+        responses={200: OperatingScheduleSerializer(many=True)},
+        tags=["configuration"],
+    )
+    def get(self, request):
+        schedules = OperatingSchedule.objects.prefetch_related("days__windows")
+        return Response(OperatingScheduleSerializer(schedules, many=True).data)
+
+    @extend_schema(
+        request=OperatingScheduleCreateSerializer,
+        responses={201: OperatingScheduleSerializer},
+        tags=["configuration"],
+    )
+    def post(self, request):
+        serializer = OperatingScheduleCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        schedule = create_operating_schedule(
+            actor_profile=get_demo_profile(request),
+            **serializer.validated_data,
+        )
+        return Response(
+            OperatingScheduleSerializer(schedule).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class OperatingScheduleDetailAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+
+    def get_permissions(self):
+        self.allowed_demo_profiles = (
+            READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
+        )
+        return super().get_permissions()
+
+    @extend_schema(
+        responses={200: OperatingScheduleSerializer},
+        tags=["configuration"],
+    )
+    def get(self, request, pk):
+        schedule = get_object_or_404(
+            OperatingSchedule.objects.prefetch_related("days__windows"),
+            pk=pk,
+        )
+        return Response(OperatingScheduleSerializer(schedule).data)
+
+    @extend_schema(
+        request=OperatingScheduleUpdateSerializer,
+        responses={200: OperatingScheduleSerializer},
+        tags=["configuration"],
+    )
+    def patch(self, request, pk):
+        get_object_or_404(OperatingSchedule, pk=pk)
+        serializer = OperatingScheduleUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = dict(serializer.validated_data)
+        confirm_cancellation = values.pop("confirm_cancellation", False)
+        schedule = update_future_operating_schedule(
+            schedule_id=pk,
+            values=values,
+            actor_profile=get_demo_profile(request),
+            confirm_cancellation=confirm_cancellation,
+        )
+        return Response(OperatingScheduleSerializer(schedule).data)
+
+
+class OperatingScheduleReplaceAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = MANAGEMENT_PROFILES
+
+    @extend_schema(
+        request=OperatingScheduleReplaceSerializer,
+        responses={201: OperatingScheduleSerializer},
+        tags=["configuration"],
+    )
+    def post(self, request, pk):
+        get_object_or_404(OperatingSchedule, pk=pk)
+        serializer = OperatingScheduleReplaceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        schedule = replace_operating_schedule(
+            schedule_id=pk,
+            actor_profile=get_demo_profile(request),
+            **serializer.validated_data,
+        )
+        return Response(
+            OperatingScheduleSerializer(schedule).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class OperatingScheduleImpactPreviewAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = MANAGEMENT_PROFILES
+
+    @extend_schema(
+        request=OperatingScheduleImpactSerializer,
+        responses={200: OperatingScheduleImpactResponseSerializer},
+        tags=["configuration"],
+    )
+    def post(self, request):
+        serializer = OperatingScheduleImpactSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        data.pop("name", None)
+        data.pop("reason", None)
+        return Response(preview_operating_schedule_impact(**data))
+
+
+class RoomStatusAPIView(APIView):
+    permission_classes = []
+
+    @extend_schema(
+        parameters=[RoomStatusQuerySerializer],
+        responses={200: RoomStatusSerializer},
+        tags=["configuration"],
+    )
+    def get(self, request):
+        query = RoomStatusQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        return Response(room_status_payload(query.validated_data["date"]))
+
+
+class ActiveRoomNoticeListAPIView(APIView):
+    permission_classes = []
+
+    @extend_schema(
+        responses={200: RoomNoticeSerializer(many=True)},
+        tags=["configuration"],
+    )
+    def get(self, request):
+        return Response(RoomNoticeSerializer(get_active_room_notices(), many=True).data)
+
+
+class RoomNoticeListCreateAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = MANAGEMENT_PROFILES
+
+    @extend_schema(
+        responses={200: RoomNoticeSerializer(many=True)},
+        tags=["configuration"],
+    )
+    def get(self, request):
+        return Response(RoomNoticeSerializer(RoomNotice.objects.all(), many=True).data)
+
+    @extend_schema(
+        request=RoomNoticeCreateSerializer,
+        responses={201: RoomNoticeSerializer},
+        tags=["configuration"],
+    )
+    def post(self, request):
+        serializer = RoomNoticeCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        notice = create_room_notice(
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
+        return Response(
+            RoomNoticeSerializer(notice).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RoomNoticeDetailAPIView(APIView):
+    permission_classes = [HasDemoProfile]
+    allowed_demo_profiles = MANAGEMENT_PROFILES
+
+    @extend_schema(
+        responses={200: RoomNoticeSerializer},
+        tags=["configuration"],
+    )
+    def get(self, request, pk):
+        notice = get_object_or_404(RoomNotice, pk=pk)
+        return Response(RoomNoticeSerializer(notice).data)
+
+    @extend_schema(
+        request=RoomNoticeUpdateSerializer,
+        responses={200: RoomNoticeSerializer},
+        tags=["configuration"],
+    )
+    def patch(self, request, pk):
+        get_object_or_404(RoomNotice, pk=pk)
+        serializer = RoomNoticeUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        notice = update_room_notice(
+            notice_id=pk,
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
+        return Response(RoomNoticeSerializer(notice).data)
 
 
 class BookingPolicyAPIView(APIView):
@@ -108,11 +429,7 @@ class BookingPolicyAPIView(APIView):
 
     @extend_schema(responses={200: BookingPolicySerializer}, tags=["configuration"])
     def get(self, request):
-        policy = (
-            BookingPolicy.objects.filter(is_active=True)
-            .order_by("-valid_from", "-created_at")
-            .first()
-        )
+        policy = get_booking_policy_for_date(timezone.localdate())
         if not policy:
             raise ConfigurationRequired("Nenhuma política de reservas está ativa.")
         return Response(BookingPolicySerializer(policy).data)
@@ -125,5 +442,8 @@ class BookingPolicyAPIView(APIView):
     def patch(self, request):
         serializer = BookingPolicyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        policy = update_active_booking_policy(values=serializer.validated_data)
+        policy = update_current_booking_policy(
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
         return Response(BookingPolicySerializer(policy).data)

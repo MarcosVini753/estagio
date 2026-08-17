@@ -1,10 +1,20 @@
 PYTHON ?= python
+NPM ?= npm
 MANAGE := cd backend && $(PYTHON) manage.py
 
-.PHONY: install db-up db-down migrate migrations seed seed-reports run check test lint format-check
+ifneq ($(wildcard .env),)
+include .env
+export DJANGO_SETTINGS_MODULE DJANGO_SECRET_KEY DJANGO_DEBUG
+export DJANGO_ALLOWED_HOSTS DJANGO_CSRF_TRUSTED_ORIGINS
+export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT
+endif
+
+.PHONY: install db-up db-down migrate migrations seed seed-reports run check test lint format-check frontend-build frontend-check frontend-e2e
 
 install:
 	$(PYTHON) -m pip install -r requirements/dev.txt
+	$(NPM) ci
+	$(NPM) run build
 
 db-up:
 	docker compose up -d db
@@ -31,12 +41,22 @@ check:
 	$(MANAGE) check
 	$(MANAGE) makemigrations --check --dry-run
 	$(PYTHON) -m compileall -q backend
+	$(NPM) run check:frontend
 
 test:
 	$(MANAGE) test
 
 lint:
-	ruff check backend
+	$(PYTHON) -m ruff check backend
 
 format-check:
-	ruff format --check backend
+	$(PYTHON) -m ruff format --check backend
+
+frontend-build:
+	$(NPM) run build
+
+frontend-check:
+	$(NPM) run check:frontend
+
+frontend-e2e:
+	$(NPM) run test:e2e

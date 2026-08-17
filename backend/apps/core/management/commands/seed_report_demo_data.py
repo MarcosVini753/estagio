@@ -7,15 +7,24 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.computers.models import Computer, ComputerOperationalStateChange
+from apps.configuration.calendar import as_datetime_windows, resolve_operating_day
 from apps.configuration.models import (
     BookingPolicy,
     CalendarException,
+    OperatingSchedule,
     ReportConfiguration,
     Shift,
 )
+from apps.configuration.selectors import get_booking_policy_for_date
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.rules import (
+    LATE_CHECK_IN_TOLERANCE_MINUTES,
+    LATE_CHECK_OUT_TOLERANCE_MINUTES,
+)
+
+from .seed_demo_data import ensure_regular_operating_schedule
 
 DEMO_PREFIX = "demo-report-"
 BASE_VALID_FROM = date(2025, 1, 1)
@@ -68,18 +77,19 @@ class Command(BaseCommand):
                 "Já existem dados de outra semente. Execute novamente com --reset."
             )
 
-        computers, shifts = self._ensure_canonical_data()
         dates = [
             timezone.localdate() - timedelta(days=days - offset)
             for offset in range(days)
         ]
+        computers, shifts = self._ensure_canonical_data(earliest_date=dates[0])
         closed_date = dates[len(dates) // 3]
         special_date = dates[(2 * len(dates)) // 3]
         self._create_calendar(closed_date, special_date)
 
         sessions_by_date = {}
         for target_date in dates:
-            if target_date == closed_date:
+            operating_day = resolve_operating_day(target_date)
+            if operating_day.is_closed:
                 sessions_by_date[target_date] = []
                 continue
             sessions_by_date[target_date] = self._create_day_sessions(
@@ -88,6 +98,7 @@ class Command(BaseCommand):
                 rng=random.Random(f"{seed}:{target_date.isoformat()}"),
                 computers=computers,
                 shifts=shifts,
+                operating_day=operating_day,
             )
             self._create_reservation(
                 target_date=target_date,
@@ -96,11 +107,18 @@ class Command(BaseCommand):
                 computers=computers,
                 sessions=sessions_by_date[target_date],
             )
-            if target_date.toordinal() % 4 == 0:
-                self._create_occurrence(
-                    target_date=target_date,
-                    sessions=sessions_by_date[target_date],
-                )
+
+        operating_dates = [
+            target_date
+            for target_date, sessions in sessions_by_date.items()
+            if sessions
+        ]
+        for occurrence_index, target_date in enumerate(operating_dates[::4]):
+            self._create_occurrence(
+                target_date=target_date,
+                sessions=sessions_by_date[target_date],
+                resolved=occurrence_index % 2 == 0,
+            )
 
         self._create_maintenance_history(
             computer=computers[0],
@@ -125,7 +143,12 @@ class Command(BaseCommand):
         ).delete()
         CalendarException.objects.filter(description__startswith=DEMO_PREFIX).delete()
 
-    def _ensure_canonical_data(self):
+    def _ensure_canonical_data(self, *, earliest_date):
+        if not OperatingSchedule.objects.filter(
+            schedule_type=OperatingSchedule.ScheduleType.REGULAR,
+            is_active=True,
+        ).exists():
+            ensure_regular_operating_schedule()
         computers = []
         for number in range(1, 9):
             computer, _ = Computer.objects.get_or_create(
@@ -153,16 +176,26 @@ class Command(BaseCommand):
                 )
             shifts.append(shift)
 
-        if not BookingPolicy.objects.filter(is_active=True).exists():
-            BookingPolicy.objects.create(
-                slot_duration_minutes=60,
-                check_in_tolerance_minutes=15,
-                max_future_reservations_per_user=1,
-                valid_from=BASE_VALID_FROM,
-            )
+        self._ensure_booking_policy_covers(earliest_date)
         if not ReportConfiguration.objects.filter(is_active=True).exists():
             ReportConfiguration.objects.create()
         return computers, shifts
+
+    def _ensure_booking_policy_covers(self, earliest_date):
+        policies = list(
+            BookingPolicy.objects.order_by("valid_from", "created_at", "pk")
+        )
+        if not policies:
+            BookingPolicy.objects.create(
+                max_future_reservations_per_user=1,
+                valid_from=earliest_date,
+            )
+            return
+        first = policies[0]
+        if first.valid_from <= earliest_date:
+            return
+        first.valid_from = earliest_date
+        first.save(update_fields=["valid_from", "updated_at"])
 
     def _create_calendar(self, closed_date, special_date):
         CalendarException.objects.get_or_create(
@@ -190,8 +223,10 @@ class Command(BaseCommand):
         rng,
         computers,
         shifts,
+        operating_day,
     ):
         sessions = []
+        operating_windows = as_datetime_windows(operating_day)
         for shift_index, (_, _, _, _, entry_time) in enumerate(SHIFTS):
             identity_index = (
                 target_date.toordinal() * len(SHIFTS) + shift_index
@@ -199,8 +234,39 @@ class Command(BaseCommand):
             affiliation, unit = IDENTITIES[identity_index]
             reference = f"{DEMO_PREFIX}{seed}-user-{identity_index:02d}"
             started_at = aware(target_date, entry_time)
+            window_end = next(
+                (
+                    ends_at
+                    for starts_at, ends_at in operating_windows
+                    if starts_at <= started_at < ends_at
+                ),
+                None,
+            )
+            if window_end is None:
+                continue
             duration = rng.choice([60, 90, 120, 150])
-            ended_at = started_at + timedelta(minutes=duration)
+            ended_at = min(started_at + timedelta(minutes=duration), window_end)
+            existing_session = UseSession.objects.filter(
+                user_reference=reference,
+                started_at=started_at,
+            ).first()
+            if existing_session is not None and existing_session.allocations.exists():
+                sessions.append(existing_session)
+                continue
+
+            first_computer_index = (
+                target_date.toordinal() * len(SHIFTS) + shift_index
+            ) % len(computers)
+            available_computers = self._find_available_computers(
+                computers=computers,
+                preferred_index=first_computer_index,
+                started_at=started_at,
+                ended_at=ended_at,
+            )
+            if not available_computers:
+                continue
+            should_switch = (target_date.toordinal() + shift_index) % 5 == 0
+
             session, _ = UseSession.objects.get_or_create(
                 user_reference=reference,
                 started_at=started_at,
@@ -208,46 +274,65 @@ class Command(BaseCommand):
                     "affiliation_type": affiliation,
                     "institutional_unit": unit,
                     "ended_at": ended_at,
+                    "planned_starts_at": started_at,
+                    "planned_ends_at": ended_at,
+                    "exit_deadline_at": ended_at
+                    + timedelta(minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES),
                     "status": UseSession.Status.FINISHED,
                     "start_shift": shifts[shift_index],
                     "entry_recorded_by_profile": DemoProfile.ROOM_USER,
                     "exit_recorded_by_profile": DemoProfile.ROOM_USER,
                 },
             )
-            if not session.allocations.exists():
-                first_computer_index = (
-                    target_date.toordinal() * len(SHIFTS) + shift_index
-                ) % len(computers)
-                if (target_date.toordinal() + shift_index) % 5 == 0:
-                    switched_at = started_at + (ended_at - started_at) / 2
+            if should_switch and len(available_computers) > 1:
+                switched_at = started_at + (ended_at - started_at) / 2
+                for sequence, computer in enumerate(available_computers[:2], start=1):
                     ComputerAllocation.objects.create(
                         session=session,
-                        computer=computers[first_computer_index],
-                        sequence=1,
-                        started_at=started_at,
-                        ended_at=switched_at,
-                        end_reason=ComputerAllocation.EndReason.SWITCH,
-                        switch_reason=f"{DEMO_PREFIX}troca planejada",
+                        computer=computer,
+                        sequence=sequence,
+                        started_at=started_at if sequence == 1 else switched_at,
+                        ended_at=switched_at if sequence == 1 else ended_at,
+                        end_reason=(
+                            ComputerAllocation.EndReason.SWITCH
+                            if sequence == 1
+                            else ComputerAllocation.EndReason.SESSION_FINISHED
+                        ),
+                        switch_reason=(
+                            f"{DEMO_PREFIX}troca planejada" if sequence == 1 else ""
+                        ),
                     )
-                    ComputerAllocation.objects.create(
-                        session=session,
-                        computer=computers[(first_computer_index + 1) % len(computers)],
-                        sequence=2,
-                        started_at=switched_at,
-                        ended_at=ended_at,
-                        end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
-                    )
-                else:
-                    ComputerAllocation.objects.create(
-                        session=session,
-                        computer=computers[first_computer_index],
-                        sequence=1,
-                        started_at=started_at,
-                        ended_at=ended_at,
-                        end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
-                    )
+            else:
+                ComputerAllocation.objects.create(
+                    session=session,
+                    computer=available_computers[0],
+                    sequence=1,
+                    started_at=started_at,
+                    ended_at=ended_at,
+                    end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
+                )
             sessions.append(session)
         return sessions
+
+    def _find_available_computers(
+        self,
+        *,
+        computers,
+        preferred_index,
+        started_at,
+        ended_at,
+    ):
+        occupied_ids = set(
+            ComputerAllocation.objects.filter(
+                computer__in=computers,
+                started_at__lt=ended_at,
+            )
+            .filter(Q(ended_at__isnull=True) | Q(ended_at__gt=started_at))
+            .values_list("computer_id", flat=True)
+        )
+        normalized_index = preferred_index % len(computers)
+        candidates = computers[normalized_index:] + computers[:normalized_index]
+        return [computer for computer in candidates if computer.pk not in occupied_ids]
 
     def _create_reservation(
         self,
@@ -262,8 +347,6 @@ class Command(BaseCommand):
             Reservation.Status.CONFIRMED,
             Reservation.Status.USED,
             Reservation.Status.CANCELLED,
-            Reservation.Status.NO_SHOW,
-            Reservation.Status.INVALIDATED,
         ]
         reservation_status = statuses[target_date.toordinal() % len(statuses)]
         if reservation_status == Reservation.Status.USED and sessions:
@@ -284,10 +367,21 @@ class Command(BaseCommand):
         defaults = {
             "affiliation_type": affiliation,
             "institutional_unit": unit,
-            "ends_at": started_at + timedelta(hours=1),
+            "ends_at": (
+                session.planned_ends_at
+                if session is not None
+                else started_at + timedelta(hours=1)
+            ),
             "status": reservation_status,
+            "booking_policy": get_booking_policy_for_date(target_date),
             "created_by_profile": DemoProfile.ROOM_USER,
         }
+        defaults["check_in_deadline_at"] = started_at + timedelta(
+            minutes=LATE_CHECK_IN_TOLERANCE_MINUTES
+        )
+        defaults["exit_deadline_at"] = defaults["ends_at"] + timedelta(
+            minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES
+        )
         if reservation_status == Reservation.Status.CANCELLED:
             defaults.update(
                 cancelled_by_profile=DemoProfile.ROOM_USER,
@@ -304,13 +398,12 @@ class Command(BaseCommand):
             session.reservation = reservation
             session.save(update_fields=["reservation", "updated_at"])
 
-    def _create_occurrence(self, *, target_date, sessions):
+    def _create_occurrence(self, *, target_date, sessions, resolved):
         if not sessions:
             return
         session = sessions[target_date.toordinal() % len(sessions)]
         allocation = session.allocations.order_by("sequence").first()
         description = f"{DEMO_PREFIX}ocorrência-{target_date.isoformat()}"
-        resolved = target_date.toordinal() % 8 == 0
         occurrence, created = Occurrence.objects.get_or_create(
             reported_by_reference=session.user_reference,
             description=description,
@@ -321,7 +414,7 @@ class Command(BaseCommand):
                 "status": (
                     Occurrence.Status.RESOLVED if resolved else Occurrence.Status.OPEN
                 ),
-                "resolved_by_profile": DemoProfile.INTERN if resolved else "",
+                "resolved_by_profile": DemoProfile.ROOM_MONITOR if resolved else "",
                 "resolution_notes": (
                     f"{DEMO_PREFIX}resolução fictícia" if resolved else ""
                 ),
@@ -359,7 +452,7 @@ class Command(BaseCommand):
                 previous_state=previous_state,
                 new_state=new_state,
                 reason=reason,
-                defaults={"actor_profile": DemoProfile.INTERN},
+                defaults={"actor_profile": DemoProfile.ROOM_MONITOR},
             )
             if created:
                 ComputerOperationalStateChange.objects.filter(pk=change.pk).update(

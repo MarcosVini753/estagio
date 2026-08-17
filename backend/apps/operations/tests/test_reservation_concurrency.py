@@ -6,7 +6,8 @@ from django.test import TransactionTestCase
 from django.utils import timezone
 
 from apps.computers.models import Computer
-from apps.configuration.models import BookingPolicy, Shift
+from apps.configuration.models import BookingPolicy, OperatingSchedule, Shift, Weekday
+from apps.configuration.tests.factories import create_operating_schedule
 from apps.core.api.errors import ReservationConflict
 from apps.operations.models import Reservation
 from apps.operations.services import create_reservation
@@ -23,11 +24,16 @@ class ReservationConcurrencyTest(TransactionTestCase):
             end_time=time(10, 0),
             valid_from=self.today - timedelta(days=1),
         )
+        OperatingSchedule.objects.all().delete()
+        create_operating_schedule(
+            valid_from=self.today - timedelta(days=1),
+            weekday_windows={
+                weekday: [(time(7), time(10))] for weekday in Weekday.values
+            },
+        )
         BookingPolicy.objects.create(
-            slot_duration_minutes=60,
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
-            is_active=True,
         )
 
     def test_concurrent_attempts_do_not_confirm_two_conflicting_reservations(self):
@@ -45,6 +51,7 @@ class ReservationConcurrencyTest(TransactionTestCase):
                 create_reservation(
                     computer_id=self.computer.pk,
                     starts_at=starts_at,
+                    slot_count=4,
                     user_reference="aluno-si-001",
                     affiliation_type="STUDENT",
                     institutional_unit="Sistemas de Informação",

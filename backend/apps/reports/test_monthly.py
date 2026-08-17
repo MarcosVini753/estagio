@@ -1,13 +1,20 @@
-from datetime import datetime
+from datetime import datetime, time
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from rest_framework.test import APITestCase
 
 from apps.computers.models import Computer
-from apps.configuration.models import CalendarException, Shift
+from apps.configuration.models import (
+    CalendarException,
+    OperatingSchedule,
+    Shift,
+    Weekday,
+)
+from apps.configuration.tests.factories import create_operating_schedule
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.tests.factories import create_reservation, create_use_session
 from apps.reports.projections import NOT_INFORMED, overlap_minutes
 
 REPORT_TZ = ZoneInfo("America/Rio_Branco")
@@ -20,7 +27,7 @@ def report_datetime(month, day, hour=0, minute=0):
 class MonthlyReportAPITest(APITestCase):
     def select_profile(self, profile="LIBRARY_SUPERVISOR"):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {"profile": profile},
             format="json",
         )
@@ -34,7 +41,7 @@ class MonthlyReportAPITest(APITestCase):
         shift=None,
         status=UseSession.Status.FINISHED,
     ):
-        return UseSession.objects.create(
+        return create_use_session(
             user_reference=reference,
             started_at=started_at,
             ended_at=ended_at,
@@ -81,6 +88,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(2, 10, 8),
             ended_at=report_datetime(2, 10, 9),
+            end_reason=ComputerAllocation.EndReason.SWITCH,
         )
         ComputerAllocation.objects.create(
             session=first,
@@ -88,6 +96,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=2,
             started_at=report_datetime(2, 10, 9),
             ended_at=report_datetime(2, 10, 10),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         second = self.create_session(
             reference="demo-report-user-a",
@@ -101,6 +110,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(2, 11, 13),
             ended_at=report_datetime(2, 11, 14),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         active = self.create_session(
             reference="demo-report-user-b",
@@ -126,6 +136,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(2, 13, 10),
             ended_at=report_datetime(2, 13, 10, 30),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         cancelled = self.create_session(
             reference="demo-report-cancelled",
@@ -140,9 +151,10 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(2, 14, 10),
             ended_at=report_datetime(2, 14, 11),
+            end_reason=ComputerAllocation.EndReason.CANCELLED,
         )
 
-        Reservation.objects.create(
+        create_reservation(
             user_reference="demo-report-user-a",
             computer=computers[0],
             starts_at=report_datetime(2, 20, 8),
@@ -150,7 +162,7 @@ class MonthlyReportAPITest(APITestCase):
             status=Reservation.Status.USED,
             created_by_profile="ROOM_USER",
         )
-        Reservation.objects.create(
+        create_reservation(
             user_reference="demo-report-user-a",
             computer=computers[0],
             starts_at=report_datetime(3, 1, 8),
@@ -188,10 +200,17 @@ class MonthlyReportAPITest(APITestCase):
             "apps.reports.projections.timezone.now",
             return_value=report_datetime(2, 12, 19),
         ):
-            response = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+            response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["days"]), 28)
+        self.assertEqual(response.data["days"][0]["calendar_status"], "CLOSED")
+        self.assertEqual(
+            response.data["days"][0]["calendar_source"],
+            "REGULAR_SCHEDULE",
+        )
+        self.assertEqual(response.data["days"][0]["operating_minutes"], 0)
+        self.assertEqual(response.data["days"][6]["operating_minutes"], 345)
         self.assertEqual(response.data["days"][8]["calendar_status"], "CLOSED")
         self.assertEqual(response.data["days"][14]["calendar_status"], "SPECIAL_HOURS")
         first_key = str(shifts[0].series_key)
@@ -204,6 +223,10 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.assertEqual(response.data["summary"]["distinct_users"], 3)
         self.assertEqual(response.data["summary"]["reservations"], 1)
+        self.assertEqual(
+            response.data["summary"]["reservations_by_status"]["CANCELLED"],
+            0,
+        )
         self.assertEqual(response.data["summary"]["occurrences"], 1)
         self.assertEqual(response.data["summary"]["computers_used"], 2)
         self.assertEqual(response.data["summary"]["allocated_minutes"], 270)
@@ -245,7 +268,7 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.select_profile()
 
-        response = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+        response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
         key = str(old.series_key)
         self.assertEqual(response.status_code, 200)
@@ -265,6 +288,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(1, 31, 23, 30),
             ended_at=report_datetime(2, 1, 0, 30),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         self.create_session(
             reference="demo-report-start",
@@ -278,19 +302,19 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.select_profile()
 
-        response = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+        response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["summary"]["visits"], 1)
         self.assertEqual(response.data["summary"]["allocated_minutes"], 30)
 
     def test_permissions_query_validation_and_interval_helper(self):
-        self.select_profile("INTERN")
-        forbidden = self.client.get("/api/v1/reports/monthly/?year=2026&month=2")
+        self.select_profile("ROOM_MONITOR")
+        forbidden = self.client.get("/api/reports/monthly/?year=2026&month=2")
         self.select_profile()
-        invalid = self.client.get("/api/v1/reports/monthly/?year=2026&month=13")
+        invalid = self.client.get("/api/reports/monthly/?year=2026&month=13")
         self.select_profile("SYSTEM_ADMIN")
-        allowed = self.client.get("/api/v1/reports/monthly/?year=2028&month=2")
+        allowed = self.client.get("/api/reports/monthly/?year=2028&month=2")
 
         minutes = overlap_minutes(
             report_datetime(2, 10, 12, 30),
@@ -305,3 +329,25 @@ class MonthlyReportAPITest(APITestCase):
         self.assertEqual(allowed.status_code, 200)
         self.assertEqual(len(allowed.data["days"]), 29)
         self.assertEqual(minutes, 30)
+
+    def test_temporary_schedule_changes_operating_denominator(self):
+        create_operating_schedule(
+            schedule_type=OperatingSchedule.ScheduleType.TEMPORARY,
+            valid_from=report_datetime(2, 2).date(),
+            valid_until=report_datetime(2, 6).date(),
+            weekday_windows={
+                weekday: [(time(8), time(13))] for weekday in Weekday.values
+            },
+            name="Recesso de fevereiro",
+        )
+        self.select_profile()
+
+        response = self.client.get("/api/reports/monthly/?year=2026&month=2")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["days"][1]["calendar_status"], "SPECIAL_HOURS")
+        self.assertEqual(
+            response.data["days"][1]["calendar_source"],
+            "TEMPORARY_SCHEDULE",
+        )
+        self.assertEqual(response.data["days"][1]["operating_minutes"], 300)

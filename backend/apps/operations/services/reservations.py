@@ -6,9 +6,10 @@ from django.utils import timezone
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
+from apps.configuration.calendar import lock_operating_date, resolve_operating_day
+from apps.configuration.models import BookingPolicy
 from apps.configuration.selectors import get_booking_policy_for_date
 from apps.core.api.errors import (
-    ConfigurationRequired,
     ReservationCancellationNotAllowed,
     ReservationCancellationReasonRequired,
     ReservationCancellationUnavailable,
@@ -18,8 +19,17 @@ from apps.core.api.errors import (
     ReservationUnavailable,
 )
 from apps.core.enums import DemoProfile
-from apps.operations.availability import generate_slot_intervals, validate_target_date
-from apps.operations.models import ComputerAllocation, Reservation
+from apps.operations.availability import validate_target_date
+from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.rules import (
+    LATE_CHECK_IN_TOLERANCE_MINUTES,
+    LATE_CHECK_OUT_TOLERANCE_MINUTES,
+)
+from apps.operations.slotting import (
+    calculate_interval,
+    validate_interval_inside_operating_window,
+    validate_reservation_slot_start,
+)
 
 
 def lock_user_reference(user_reference: str) -> None:
@@ -32,8 +42,11 @@ def _overlapping_allocations(
 ):
     return ComputerAllocation.objects.filter(
         computer_id=computer_id,
-        started_at__lt=ends_at,
-    ).filter(Q(ended_at__isnull=True) | Q(ended_at__gt=starts_at))
+        ended_at__isnull=True,
+        session__status=UseSession.Status.ACTIVE,
+        session__planned_starts_at__lt=ends_at,
+        session__planned_ends_at__gt=starts_at,
+    )
 
 
 @transaction.atomic
@@ -41,6 +54,7 @@ def create_reservation(
     *,
     computer_id: int,
     starts_at: datetime,
+    slot_count: int,
     user_reference: str,
     affiliation_type: str,
     institutional_unit: str,
@@ -50,23 +64,41 @@ def create_reservation(
     current = now or timezone.now()
     target_date = timezone.localdate(starts_at)
     today = validate_target_date(target_date, now=current)
-    _, _, slots = generate_slot_intervals(target_date)
-    ends_at = next((end for start, end in slots if start == starts_at), None)
+    lock_operating_date(target_date)
+    operating_day = resolve_operating_day(target_date)
+    try:
+        ends_at = calculate_interval(starts_at, slot_count)
+        validate_reservation_slot_start(starts_at, operating_day)
+        validate_interval_inside_operating_window(starts_at, ends_at, operating_day)
+    except ValueError as error:
+        raise ReservationSlotInvalid() from error
 
-    if ends_at is None or (target_date == today and starts_at <= current):
+    if target_date == today and starts_at <= current:
         raise ReservationSlotInvalid()
 
+    lock_user_reference(user_reference)
     computer = Computer.objects.select_for_update().get(pk=computer_id)
     if computer.operational_state != Computer.OperationalState.AVAILABLE:
         raise ReservationUnavailable()
 
-    lock_user_reference(user_reference)
     if _overlapping_allocations(
         computer_id=computer.pk,
         starts_at=starts_at,
         ends_at=ends_at,
     ).exists():
         raise ReservationUnavailable()
+
+    if (
+        UseSession.objects.select_for_update()
+        .filter(
+            status=UseSession.Status.ACTIVE,
+            user_reference=user_reference,
+            planned_starts_at__lt=ends_at,
+            planned_ends_at__gt=starts_at,
+        )
+        .exists()
+    ):
+        raise ReservationConflict()
 
     conflicts = Reservation.objects.select_for_update().filter(
         status=Reservation.Status.CONFIRMED,
@@ -81,6 +113,7 @@ def create_reservation(
     policy = get_booking_policy_for_date(target_date)
     if policy is None:
         raise ReservationSlotInvalid()
+    policy = BookingPolicy.objects.select_for_update().get(pk=policy.pk)
     if (
         Reservation.objects.filter(
             user_reference=user_reference,
@@ -93,13 +126,22 @@ def create_reservation(
 
     try:
         with transaction.atomic():
+            check_in_deadline_at = starts_at + timedelta(
+                minutes=LATE_CHECK_IN_TOLERANCE_MINUTES
+            )
+            exit_deadline_at = ends_at + timedelta(
+                minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES
+            )
             return Reservation.objects.create(
                 user_reference=user_reference,
                 affiliation_type=affiliation_type,
                 institutional_unit=institutional_unit,
                 computer=computer,
+                booking_policy=policy,
                 starts_at=starts_at,
                 ends_at=ends_at,
+                check_in_deadline_at=check_in_deadline_at,
+                exit_deadline_at=exit_deadline_at,
                 created_by_profile=created_by_profile,
             )
     except IntegrityError as error:
@@ -117,7 +159,7 @@ def cancel_reservation(
 ) -> Reservation:
     reservation = Reservation.objects.select_for_update().get(pk=reservation_id)
     operational_profiles = {
-        DemoProfile.INTERN,
+        DemoProfile.ROOM_MONITOR,
         DemoProfile.LIBRARY_SUPERVISOR,
         DemoProfile.SYSTEM_ADMIN,
     }
@@ -129,12 +171,7 @@ def cancel_reservation(
         raise ReservationCancellationReasonRequired()
 
     current = now or timezone.now()
-    target_date = timezone.localdate(reservation.starts_at)
-    policy = get_booking_policy_for_date(target_date)
-    if policy is None:
-        raise ConfigurationRequired(
-            "Nenhuma política de reservas está ativa para a data da reserva."
-        )
+    policy = reservation.booking_policy
     cancellation_deadline = reservation.starts_at - timedelta(
         minutes=policy.cancellation_limit_minutes
     )
@@ -145,9 +182,30 @@ def cancel_reservation(
     ):
         raise ReservationCancellationUnavailable()
 
+    return cancel_locked_reservation(
+        reservation=reservation,
+        actor_profile=actor_profile,
+        reason=cancellation_reason,
+        cancelled_at=current,
+        create_audit_event=not is_owner,
+    )
+
+
+def cancel_locked_reservation(
+    *,
+    reservation: Reservation,
+    actor_profile: str,
+    reason: str,
+    cancelled_at: datetime,
+    create_audit_event: bool = True,
+) -> Reservation:
+    if reservation.status != Reservation.Status.CONFIRMED:
+        return reservation
+
+    cancellation_reason = reason.strip()
     reservation.status = Reservation.Status.CANCELLED
     reservation.cancelled_by_profile = actor_profile
-    reservation.cancelled_at = current
+    reservation.cancelled_at = cancelled_at
     reservation.cancellation_reason = cancellation_reason
     reservation.save(
         update_fields=[
@@ -158,7 +216,7 @@ def cancel_reservation(
             "updated_at",
         ]
     )
-    if not is_owner:
+    if create_audit_event:
         AuditEvent.objects.create(
             actor_profile=actor_profile,
             action="RESERVATION_CANCELLED",
@@ -167,8 +225,28 @@ def cancel_reservation(
             old_values={"status": Reservation.Status.CONFIRMED},
             new_values={
                 "status": Reservation.Status.CANCELLED,
-                "cancelled_at": current.isoformat(),
+                "cancelled_at": cancelled_at.isoformat(),
             },
             reason=cancellation_reason,
         )
     return reservation
+
+
+@transaction.atomic
+def cancel_reservation_due_to_operational_change(
+    *,
+    reservation_id: int,
+    actor_profile: str,
+    reason: str,
+    now: datetime | None = None,
+) -> Reservation:
+    reservation = Reservation.objects.select_for_update().get(pk=reservation_id)
+    if reservation.status != Reservation.Status.CONFIRMED:
+        return reservation
+
+    return cancel_locked_reservation(
+        reservation=reservation,
+        actor_profile=actor_profile,
+        reason=reason,
+        cancelled_at=now or timezone.now(),
+    )

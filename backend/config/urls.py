@@ -1,5 +1,4 @@
 from django.urls import include, path
-from django.views.generic import TemplateView
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -7,8 +6,8 @@ from drf_spectacular.views import (
 )
 
 urlpatterns = [
-    path("", TemplateView.as_view(template_name="home.html"), name="home"),
-    path("api/v1/", include(("config.api_v1_urls", "api"), namespace="v1")),
+    path("", include("apps.web.urls")),
+    path("api/", include("config.api_urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",

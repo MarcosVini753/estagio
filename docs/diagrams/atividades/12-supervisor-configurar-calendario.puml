@@ -1,0 +1,42 @@
+@startuml
+title Fluxo de Atividade - Supervisor configura calendário operacional
+
+|Supervisor da Biblioteca|
+start
+:Escolhe horário regular, temporário
+ou exceção de data;
+:Informa vigência, sete dias,
+janelas e justificativa;
+
+|Sistema|
+:Valida período, dias e janelas;
+:Aplica precedência sobre a proposta;
+:Bloqueia e identifica reservas
+confirmadas afetadas;
+:Exibe preview de impacto;
+
+|Supervisor da Biblioteca|
+if (Existem reservas afetadas?) then (Sim)
+  if (Confirma cancelamento?) then (Sim)
+    :Escolhe se deseja publicar aviso;
+  else (Nao)
+    :Cancela alteração;
+    stop
+  endif
+else (Nao)
+  :Escolhe se deseja publicar aviso;
+endif
+
+|Sistema|
+:Salva calendário ou exceção;
+:Cancela reservas conflitantes;
+:Registra auditoria de cada alteração;
+if (Publicar aviso?) then (Sim)
+  :Cria aviso interno vinculado;
+else (Nao)
+endif
+:Confirma toda a transação;
+:Retorna configuração efetiva;
+stop
+
+@enduml

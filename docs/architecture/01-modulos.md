@@ -2,6 +2,20 @@
 
 O backend será dividido em apps Django por domínio. A separação não implica microsserviços.
 
+## `web`
+
+Camada de apresentação HTML, sem models próprios, responsável por:
+
+- seletor dos quatro perfis de demonstração;
+- proteção das rotas do Usuário da Sala, Monitor e Supervisor pelo contexto salvo na sessão;
+- páginas e partials HTMX para os fluxos próprios, operacionais e gerenciais;
+- painel do Monitor com sessões ativas, estados dos computadores, ocorrências e correções de histórico;
+- gestão do Supervisor para inventário, turnos, calendários, exceções, avisos, parâmetros e relatório mensal;
+- presenters e adaptação de erros de serviço para formulários e mensagens;
+- progressive enhancement e respostas completas quando HTMX ou JavaScript não estiverem disponíveis.
+
+O app reutiliza serializers de entrada, selectors e serviços dos módulos de domínio. Não chama a API HTTP internamente e não contém regras de disponibilidade, duração ou transição de estado.
+
 ## `core`
 
 Responsabilidades compartilhadas:
@@ -30,15 +44,21 @@ A autenticação real será tratada em etapa futura. O nome `access` evita criar
 Responsável por:
 
 - turnos;
-- horário de funcionamento;
+- calendários semanais regulares e temporários;
+- resolução do horário de funcionamento;
 - exceções de calendário;
+- avisos internos;
 - parâmetros de reserva;
 - parâmetros de relatório.
 
-Entidades iniciais:
+Entidades:
 
 - `Shift`;
+- `OperatingSchedule`;
+- `OperatingScheduleDay`;
+- `OperatingWindow`;
 - `CalendarException`;
+- `RoomNotice`;
 - `BookingPolicy`;
 - `ReportConfiguration`.
 
@@ -67,7 +87,9 @@ Núcleo transacional do sistema:
 - alocações;
 - troca de computador;
 - saída;
-- correções operacionais.
+- correções operacionais;
+- orquestração atômica da indisponibilidade de computadores;
+- realocação e cancelamento operacional de reservas.
 
 Entidades:
 
@@ -98,7 +120,7 @@ Responsável por consultas analíticas e exportações:
 - ocupação;
 - uso por computador;
 - uso por curso, setor e vínculo;
-- reservas, cancelamentos e não comparecimentos.
+- reservas e cancelamentos.
 
 Deve possuir principalmente selectors, projections e exporters. Não deve criar lançamentos manuais de totais.
 O relatório semanal permanece como evolução futura, fora da Etapa 4.
@@ -110,6 +132,9 @@ Responsável por eventos administrativos sensíveis:
 - alteração de estado operacional;
 - correção de registros;
 - mudança de parâmetros;
+- criação, substituição ou edição de calendário e exceção;
+- publicação ou desativação de aviso;
+- realocação ou cancelamento de reserva por mudança operacional;
 - ações futuras de contas e permissões.
 
 Entidade futura ou inicial:
@@ -119,6 +144,11 @@ Entidade futura ou inicial:
 ## Dependências permitidas
 
 ```text
+web ──────────────────> access
+web ──────────────────> configuration
+web ──────────────────> computers
+web ──────────────────> operations
+web ──────────────────> occurrences
 access ───────────────┐
 configuration ────────┼──> operations
 computers ────────────┘
@@ -132,6 +162,7 @@ occurrences ─────────────> reports
 ## Regras de dependência
 
 - `computers` não depende de `operations` para persistência; estados efetivos são consultados por serviço de disponibilidade.
+- `web` pode orquestrar a apresentação dos demais módulos, mas não é dependência de nenhum domínio.
 - `reports` pode ler os demais domínios, mas os demais domínios não dependem de `reports`.
 - `audit` recebe eventos ou chamadas dos serviços, sem conter lógica de negócio principal.
 - evitar imports circulares; usar IDs, serviços e interfaces quando necessário.

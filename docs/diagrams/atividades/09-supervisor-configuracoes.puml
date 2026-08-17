@@ -21,6 +21,16 @@ else (Nao)
 endif
 
 |Supervisor da Biblioteca|
+if (Deseja configurar funcionamento?) then (Sim)
+  :Abre fluxo de calendario regular,
+  temporario ou excecao pontual;
+
+  |Sistema|
+  :Executa fluxo detalhado no diagrama 12;
+else (Nao)
+endif
+
+|Supervisor da Biblioteca|
 if (Deseja configurar parametros de relatorio?) then (Sim)
   :Define criterios de agrupamento e totalizacao;
 

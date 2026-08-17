@@ -1,0 +1,18 @@
+<section class="staff-page-heading">
+  <div><p class="section-kicker">Rastreabilidade operacional</p><h2>{{ section_title }}</h2></div>
+</section>
+
+<section class="staff-list">
+  {% for item in sessions %}
+    <a class="staff-list-row" href="{% url 'web:monitor-history-detail' item.pk %}">
+      <span class="timeline-sequence">#{{ item.pk }}</span>
+      <span class="staff-list-main">
+        <span class="inline-heading"><strong>{{ item.user_reference }}</strong><span class="badge badge-neutral">{{ item.status_label }}</span></span>
+        <span>{{ item.started_at|date:"d/m/Y H:i" }}–{% if item.ended_at %}{{ item.ended_at|date:"H:i" }}{% else %}—{% endif %}</span>
+        <small>{% for allocation in item.allocations.all %}{{ allocation.computer.code }}{% if not forloop.last %} → {% endif %}{% empty %}Sem alocações{% endfor %}</small>
+      </span>
+      <span class="nav-icon">{% include "components/icon.html" with name="arrow" %}</span>
+    </a>
+  {% empty %}<div class="empty-state"><strong>Nenhuma sessão encontrada</strong><p>Ajuste a pesquisa e tente novamente.</p></div>{% endfor %}
+</section>
+{% include "components/pagination.html" %}

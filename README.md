@@ -4,25 +4,7 @@ Repositório de documentação, diagramas, protótipo navegável e implementaç�
 
 ## Estado atual
 
-As etapas documentais e de inicialização do backend foram concluídas. O backend já possui:
-
-- Django 5.2 e Django REST Framework;
-- PostgreSQL via Docker Compose;
-- apps separados por domínio;
-- seleção de perfil de demonstração em sessão;
-- referência, vínculo e unidade fictícios para Usuário da Sala;
-- modelos e migrations iniciais;
-- CRUD inicial de computadores, turnos e exceções de calendário;
-- substituição versionada de turnos com auditoria;
-- identidade lógica compartilhada entre versões do mesmo turno;
-- alteração auditável do estado operacional dos computadores;
-- política de duração dos slots;
-- criação e cancelamento transacionais de reservas;
-- entrada, sessão ativa, troca de computador e saída transacionais;
-- geração de slots para hoje e amanhã;
-- cálculo de `AVAILABLE`, `MAINTENANCE`, `INACTIVE`, `OCCUPIED` e `RESERVED`;
-- OpenAPI, testes, Ruff e CI;
-- relatório mensal JSON derivado dos registros operacionais.
+O sistema já implementa reservas, sessões de uso, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca possuem interfaces funcionais e responsivas; o Administrador continua selecionável no ambiente de demonstração, mas sua interface própria ainda não foi migrada. Consulte [docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md) para o detalhamento.
 
 ## Regras centrais
 
@@ -31,19 +13,21 @@ As etapas documentais e de inicialização do backend foram concluídas. O backe
 - reservas para horários futuros de hoje ou para amanhã;
 - fila de espera fora do escopo;
 - ator operacional denominado Monitor da Sala;
-- autenticação real fora do MVP;
+- autorização real fora do MVP;
 - computadores persistem apenas `AVAILABLE`, `MAINTENANCE` e `INACTIVE`;
 - `OCCUPIED` e `RESERVED` são calculados;
 - troca de computador preserva a sessão e cria nova alocação;
 - relatórios são projeções dos registros operacionais.
 
-## Execução do backend
+## Execução local
 
 ```bash
 cp .env.example .env
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements/dev.txt
+npm ci
+npm run build
 docker compose up -d db
 make migrate
 make seed
@@ -53,13 +37,18 @@ make run
 
 A aplicação fica em `http://localhost:8000/`.
 
+O Compose e os comandos `make` usam o mesmo arquivo `.env`. Se a porta `5432`
+já estiver ocupada, defina outra porta livre, por exemplo
+`POSTGRES_PORT=5433`, antes de executar `docker compose up -d db`.
+
+- [Guia rápido](docs/guia-rapido.md)
 - [Índice da documentação](docs/README.md)
 - [Visão geral do produto](docs/product/00-visao-geral.md)
 - [Escopo do MVP](docs/product/01-escopo-mvp.md)
 - [Regras de negócio](docs/product/03-regras-de-negocio.md)
 - [Visão geral da arquitetura](docs/architecture/00-visao-geral.md)
 - [Modelo de domínio](docs/architecture/02-modelo-de-dominio.md)
-- [API v1](docs/architecture/04-api-v1.md)
+- [API](docs/architecture/04-api.md)
 - [Índice de ADRs](docs/adr/README.md)
 - [Índice dos diagramas](docs/diagrams/README.md)
 - [Instruções para agentes](AGENTS.md)
@@ -72,60 +61,19 @@ http://localhost:8000/api/docs/
 http://localhost:8000/api/redoc/
 ```
 
-## Endpoints disponíveis
-
-```text
-GET  /api/v1/health/
-GET  /api/v1/demo/context/
-POST /api/v1/demo/select-profile/
-
-GET  /api/v1/computers/
-POST /api/v1/computers/
-GET  /api/v1/computers/{id}/
-PATCH /api/v1/computers/{id}/
-PATCH /api/v1/computers/{id}/operational-state/
-GET  /api/v1/computers/availability/?date=YYYY-MM-DD
-GET  /api/v1/computers/{id}/slots/?date=YYYY-MM-DD
-
-GET  /api/v1/shifts/
-POST /api/v1/shifts/
-PATCH /api/v1/shifts/{id}/
-POST /api/v1/shifts/{id}/replace/
-GET  /api/v1/calendar-exceptions/
-POST /api/v1/calendar-exceptions/
-PATCH /api/v1/calendar-exceptions/{id}/
-GET  /api/v1/booking-policy/
-PATCH /api/v1/booking-policy/
-
-GET  /api/v1/reservations/
-GET  /api/v1/reservations/mine/
-POST /api/v1/reservations/
-POST /api/v1/reservations/{id}/cancel/
-
-GET  /api/v1/usage-sessions/current/
-GET  /api/v1/usage-sessions/active/
-GET  /api/v1/usage-sessions/history/
-POST /api/v1/usage-sessions/start/
-POST /api/v1/usage-sessions/{id}/switch-computer/
-POST /api/v1/usage-sessions/{id}/finish/
-POST /api/v1/usage-sessions/{id}/correct/
-
-GET   /api/v1/occurrences/
-POST  /api/v1/occurrences/
-GET   /api/v1/occurrences/{id}/
-PATCH /api/v1/occurrences/{id}/
-
-GET /api/v1/reports/monthly/?year=YYYY&month=M
-```
+A lista completa de endpoints está em [docs/architecture/04-api.md](docs/architecture/04-api.md).
 
 ## Estrutura
 
 - `backend/`: aplicação Django;
+- `backend/apps/web/`: apresentação HTML e partials HTMX;
+- `backend/static/`: fontes e assets compilados do frontend;
 - `docs/product/`: regras funcionais;
 - `docs/architecture/`: arquitetura corrente e API;
 - `docs/adr/`: decisões arquiteturais;
 - `docs/diagrams/`: UML em PlantUML;
 - `prototipos/`: referência visual em HTML, CSS e JavaScript;
+- `package.json`: build local de Tailwind CSS, HTMX, Alpine.js e E2E;
 - `AGENTS.md`: instruções para agentes de código.
 
 ## Qualidade

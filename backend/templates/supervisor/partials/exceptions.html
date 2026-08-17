@@ -1,0 +1,22 @@
+<section class="configuration-intro"><p>Use exceções para fechamento ou horário especial em uma data. A prévia lista reservas afetadas antes da confirmação.</p></section>
+
+<details class="staff-card disclosure-card" open>
+  <summary>Criar ou atualizar exceção pontual</summary>
+  {% if form_error and form_kind == "exception" %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+  {% if preview_result %}{% include "supervisor/partials/impact_preview.html" %}{% endif %}
+  <form class="staff-form form-grid-two" method="post" action="{% url 'web:supervisor-exceptions' %}" x-data="{ type: '{{ form_data.exception_type|default:'CLOSED' }}' }">
+    {% csrf_token %}
+    {% if form_data.exception_id %}<input type="hidden" name="exception_id" value="{{ form_data.exception_id }}">{% endif %}
+    <label class="field"><span>Data</span><input type="date" name="date" value="{{ form_data.date }}" required></label>
+    <label class="field"><span>Tipo</span><select name="exception_type" x-model="type" required>{% for value, label in exception_types %}<option value="{{ value }}" {% if form_data.exception_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="field" x-show="type === 'SPECIAL_HOURS'"><span>Abertura</span><input type="time" name="opens_at" value="{{ form_data.opens_at }}" :required="type === 'SPECIAL_HOURS'"></label>
+    <label class="field" x-show="type === 'SPECIAL_HOURS'"><span>Fechamento</span><input type="time" name="closes_at" value="{{ form_data.closes_at }}" :required="type === 'SPECIAL_HOURS'"></label>
+    <label class="field field-wide"><span>Descrição e justificativa</span><textarea name="description" maxlength="255">{{ form_data.description }}</textarea></label>
+    {% if preview_result.total %}<label class="check-field field-wide"><input type="checkbox" name="confirm_cancellation"><span>Confirmo o cancelamento auditado das {{ preview_result.total }} reserva(s) listada(s).</span></label>{% endif %}
+    <div class="form-actions field-wide"><button class="button button-ghost" type="submit" name="intent" value="preview">Visualizar impacto</button><button class="button button-primary" type="submit" name="intent" value="apply">Confirmar exceção</button></div>
+  </form>
+</details>
+
+<section class="staff-list">
+  {% for exception in exceptions %}<article class="staff-list-row"><span class="timeline-sequence">{{ exception.date|date:"d" }}</span><div class="staff-list-main"><div class="inline-heading"><strong>{{ exception.date|date:"d/m/Y" }}</strong><span class="badge badge-warning">{{ exception.get_exception_type_display }}</span></div><span>{% if exception.opens_at %}{{ exception.opens_at|time:"H:i" }}–{{ exception.closes_at|time:"H:i" }}{% else %}Sem funcionamento{% endif %}</span><small>{{ exception.description }}</small></div><form method="post" action="{% url 'web:supervisor-exceptions' %}">{% csrf_token %}<input type="hidden" name="exception_id" value="{{ exception.pk }}"><input type="hidden" name="date" value="{{ exception.date|date:'Y-m-d' }}"><input type="hidden" name="exception_type" value="{{ exception.exception_type }}"><input type="hidden" name="opens_at" value="{{ exception.opens_at|time:'H:i' }}"><input type="hidden" name="closes_at" value="{{ exception.closes_at|time:'H:i' }}"><input type="hidden" name="description" value="{{ exception.description }}"><button class="button button-ghost button-small" type="submit" name="intent" value="preview">Revisar impacto</button></form></article>{% empty %}<div class="empty-state"><strong>Nenhuma exceção cadastrada</strong><p>O calendário semanal será usado integralmente.</p></div>{% endfor %}
+</section>

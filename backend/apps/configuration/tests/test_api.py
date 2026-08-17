@@ -5,10 +5,16 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.audit.models import AuditEvent
+from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, Shift
 from apps.configuration.selectors import get_shifts_for_date
-from apps.configuration.services import replace_shift
+from apps.configuration.services import (
+    create_shift,
+    replace_shift,
+    update_current_booking_policy,
+)
 from apps.operations.models import UseSession
+from apps.operations.tests.factories import create_reservation, create_use_session
 
 
 class ConfigurationAPITest(APITestCase):
@@ -23,7 +29,7 @@ class ConfigurationAPITest(APITestCase):
                 }
             )
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             payload,
             format="json",
         )
@@ -36,9 +42,9 @@ class ConfigurationAPITest(APITestCase):
         )
         self.select_profile("ROOM_USER")
 
-        list_response = self.client.get("/api/v1/shifts/")
+        list_response = self.client.get("/api/shifts/")
         create_response = self.client.post(
-            "/api/v1/shifts/",
+            "/api/shifts/",
             {
                 "name": "Tarde",
                 "start_time": "13:00:00",
@@ -55,7 +61,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/shifts/",
+            "/api/shifts/",
             {
                 "name": "Manhã",
                 "start_time": "07:15:00",
@@ -67,6 +73,11 @@ class ConfigurationAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["name"], "Manhã")
+        audit_event = AuditEvent.objects.get(action="SHIFT_CREATED")
+        self.assertEqual(audit_event.actor_profile, "LIBRARY_SUPERVISOR")
+        self.assertEqual(audit_event.entity_id, str(response.data["id"]))
+        self.assertEqual(audit_event.old_values, {})
+        self.assertEqual(audit_event.new_values["name"], "Manhã")
 
     def test_rejects_overlapping_active_shifts(self):
         Shift.objects.create(
@@ -77,7 +88,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            "/api/v1/shifts/",
+            "/api/shifts/",
             {
                 "name": "Sobreposto",
                 "start_time": "12:00:00",
@@ -92,23 +103,88 @@ class ConfigurationAPITest(APITestCase):
     def test_booking_policy_update_preserves_previous_version(self):
         previous_date = timezone.localdate() - timedelta(days=1)
         old_policy = BookingPolicy.objects.create(
-            slot_duration_minutes=60,
             valid_from=previous_date,
-            is_active=True,
         )
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.patch(
-            "/api/v1/booking-policy/",
-            {"slot_duration_minutes": 30},
+            "/api/booking-policy/",
+            {"cancellation_limit_minutes": 30},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["slot_duration_minutes"], 30)
+        self.assertEqual(response.data["cancellation_limit_minutes"], 30)
         old_policy.refresh_from_db()
-        self.assertFalse(old_policy.is_active)
-        self.assertEqual(BookingPolicy.objects.filter(is_active=True).count(), 1)
+        self.assertEqual(
+            old_policy.valid_until, timezone.localdate() - timedelta(days=1)
+        )
+        self.assertEqual(
+            BookingPolicy.objects.filter(valid_until__isnull=True).count(), 1
+        )
+        audit_event = AuditEvent.objects.get(action="BOOKING_POLICY_UPDATED")
+        self.assertEqual(audit_event.actor_profile, "LIBRARY_SUPERVISOR")
+        self.assertEqual(
+            audit_event.old_values["id"],
+            old_policy.pk,
+        )
+        self.assertEqual(
+            audit_event.new_values["id"],
+            response.data["id"],
+        )
+
+    def test_booking_policy_referenced_today_is_not_changed_retroactively(self):
+        today = timezone.localdate()
+        original = BookingPolicy.objects.create(
+            cancellation_limit_minutes=15,
+            valid_from=today,
+        )
+        starts_at = timezone.now() + timedelta(days=1)
+        reservation = create_reservation(
+            user_reference="aluno-politica-historica",
+            computer=Computer.objects.create(code="PC-POLICY-HISTORY"),
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=15),
+            booking_policy=original,
+            created_by_profile="ROOM_USER",
+        )
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.patch(
+            "/api/booking-policy/",
+            {"cancellation_limit_minutes": 30},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        original.refresh_from_db()
+        reservation.refresh_from_db()
+        self.assertEqual(original.cancellation_limit_minutes, 15)
+        self.assertEqual(original.valid_until, today)
+        self.assertEqual(reservation.booking_policy, original)
+        self.assertEqual(
+            response.data["valid_from"], (today + timedelta(days=1)).isoformat()
+        )
+        self.assertEqual(response.data["cancellation_limit_minutes"], 30)
+
+    def test_booking_policy_does_not_expose_fixed_slot_or_tolerance_rules(self):
+        BookingPolicy.objects.create()
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        read_response = self.client.get("/api/booking-policy/")
+        update_response = self.client.patch(
+            "/api/booking-policy/",
+            {
+                "slot_duration_minutes": 60,
+                "check_in_tolerance_minutes": 15,
+            },
+            format="json",
+        )
+
+        self.assertEqual(read_response.status_code, 200)
+        self.assertNotIn("slot_duration_minutes", read_response.data)
+        self.assertNotIn("check_in_tolerance_minutes", read_response.data)
+        self.assertEqual(update_response.status_code, 400)
 
     def test_replace_preserves_historical_shift_reference(self):
         today = timezone.localdate()
@@ -118,7 +194,7 @@ class ConfigurationAPITest(APITestCase):
             end_time=time(12, 0),
             valid_from=today - timedelta(days=7),
         )
-        session = UseSession.objects.create(
+        session = create_use_session(
             user_reference="aluno-historico",
             start_shift=shift,
             started_at=timezone.now() - timedelta(days=1),
@@ -130,7 +206,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/shifts/{shift.pk}/replace/",
+            f"/api/shifts/{shift.pk}/replace/",
             {
                 "effective_from": effective_from.isoformat(),
                 "name": "1º Turno",
@@ -161,7 +237,7 @@ class ConfigurationAPITest(APITestCase):
             start_time=time(7, 0),
             end_time=time(12, 0),
         )
-        UseSession.objects.create(
+        create_use_session(
             user_reference="aluno-historico",
             start_shift=shift,
             status=UseSession.Status.FINISHED,
@@ -170,12 +246,12 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         time_response = self.client.patch(
-            f"/api/v1/shifts/{shift.pk}/",
+            f"/api/shifts/{shift.pk}/",
             {"start_time": "08:00:00"},
             format="json",
         )
         deactivate_response = self.client.patch(
-            f"/api/v1/shifts/{shift.pk}/",
+            f"/api/shifts/{shift.pk}/",
             {"is_active": False},
             format="json",
         )
@@ -194,13 +270,56 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.patch(
-            f"/api/v1/shifts/{shift.pk}/",
+            f"/api/shifts/{shift.pk}/",
             {"start_time": "08:00:00"},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["start_time"], "08:00:00")
+        audit_event = AuditEvent.objects.get(action="SHIFT_UPDATED")
+        self.assertEqual(audit_event.old_values["start_time"], "07:00:00")
+        self.assertEqual(audit_event.new_values["start_time"], "08:00:00")
+
+    def test_shift_and_policy_changes_roll_back_when_audit_fails(self):
+        policy = BookingPolicy.objects.create(
+            valid_from=timezone.localdate() - timedelta(days=1)
+        )
+
+        with (
+            patch(
+                "apps.configuration.services.shifts.AuditEvent.objects.create",
+                side_effect=RuntimeError("audit unavailable"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            create_shift(
+                values={
+                    "name": "Manhã",
+                    "start_time": time(7),
+                    "end_time": time(12),
+                    "display_order": 1,
+                    "valid_from": timezone.localdate(),
+                    "is_active": True,
+                },
+                actor_profile="LIBRARY_SUPERVISOR",
+            )
+        self.assertFalse(Shift.objects.exists())
+
+        with (
+            patch(
+                "apps.configuration.services.policies.AuditEvent.objects.create",
+                side_effect=RuntimeError("audit unavailable"),
+            ),
+            self.assertRaises(RuntimeError),
+        ):
+            update_current_booking_policy(
+                values={"cancellation_limit_minutes": 30},
+                actor_profile="LIBRARY_SUPERVISOR",
+            )
+        policy.refresh_from_db()
+        self.assertEqual(policy.cancellation_limit_minutes, 0)
+        self.assertIsNone(policy.valid_until)
 
     def test_replace_rejects_conflicting_active_shift(self):
         today = timezone.localdate()
@@ -219,7 +338,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/shifts/{shift.pk}/replace/",
+            f"/api/shifts/{shift.pk}/replace/",
             {
                 "effective_from": (today + timedelta(days=1)).isoformat(),
                 "name": "Novo turno",
@@ -244,7 +363,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/shifts/{shift.pk}/replace/",
+            f"/api/shifts/{shift.pk}/replace/",
             {
                 "effective_from": timezone.localdate().isoformat(),
                 "name": "Novo turno",
@@ -269,7 +388,7 @@ class ConfigurationAPITest(APITestCase):
         self.select_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
-            f"/api/v1/shifts/{shift.pk}/replace/",
+            f"/api/shifts/{shift.pk}/replace/",
             {
                 "effective_from": effective_from.isoformat(),
                 "name": "Novo turno",
@@ -292,7 +411,7 @@ class ConfigurationAPITest(APITestCase):
 
         with (
             patch(
-                "apps.configuration.services.AuditEvent.objects.create",
+                "apps.configuration.services.shifts.AuditEvent.objects.create",
                 side_effect=RuntimeError("audit unavailable"),
             ),
             self.assertRaises(RuntimeError),

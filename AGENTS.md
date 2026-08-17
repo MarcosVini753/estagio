@@ -43,8 +43,13 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 - Backend em Django 5.2 LTS e Django REST Framework.
 - Monólito modular em apps por domínio.
 - PostgreSQL como banco-alvo.
-- API versionada em `/api/v1/`.
-- Django Templates e JavaScript puro.
+- API exposta em `/api/`, sem versão no caminho.
+- Frontend em Django Templates com progressive enhancement.
+- HTMX para interações orientadas pelo servidor.
+- Alpine.js somente para estado local e efêmero de interface.
+- Tailwind CSS 4 como base de estilos quando a migração do frontend começar.
+- JavaScript ou TypeScript adicional somente quando necessário; não criar SPA sem novo ADR.
+- Chart.js é a opção prevista para gráficos gerenciais.
 - OpenAPI com `drf-spectacular`.
 - Configurações separadas para local, testes e produção.
 
@@ -59,11 +64,13 @@ Aplique o princípio Ponytail depois de compreender integralmente a tarefa e o f
 5. mantenha regras transacionais em serviços de domínio;
 6. mantenha consultas complexas e projeções em selectors;
 7. use constraints para invariantes persistentes;
-8. atualize migrations, testes, OpenAPI e documentação quando aplicável.
+8. atualize migrations, testes, OpenAPI e documentação quando aplicável;
 9. reutilize dependências já instaladas antes de adicionar outra;
 10. escreva somente o mínimo necessário para atender corretamente à regra.
 
 Não crie abstrações, camadas, dependências ou configurações para necessidades hipotéticas. O menor diff correto vence, mas minimalismo nunca pode remover validação, integridade, segurança, acessibilidade, auditoria, migrations ou testes exigidos pelo projeto.
+
+No frontend, o backend é a fonte de verdade. Não replique em Alpine.js, JavaScript ou TypeScript regras de disponibilidade, reserva, duração de sessão, concorrência, autorização ou transições de estado.
 
 ## Skills e fluxo de qualidade
 
@@ -84,4 +91,6 @@ make test
 - `ponytail-review` para uma segunda revisão focada em sobre-engenharia;
 - `documentation-sync` para manter código e documentação coerentes.
 
-Antes de concluir uma implementação, execute os comandos de qualidade disponíveis no repositório. Não declare a tarefa concluída quando testes, lint, migrations ou verificações obrigatórias falharem. Mudanças arquiteturais exigem ADR. Mudanças funcionais atualizam `docs/product/`. Mudanças de endpoint atualizam OpenAPI, `docs/architecture/04-api-v1.md` e testes.
+A CI executa verificações de qualidade, build do container e teste E2E do frontend em branches. Consulte `docs/development/ci.md`.
+
+Antes de concluir uma implementação, execute os comandos de qualidade disponíveis no repositório. Não declare a tarefa concluída quando testes, lint, migrations ou verificações obrigatórias falharem. Mudanças arquiteturais exigem ADR. Mudanças funcionais atualizam `docs/product/`. Mudanças de endpoint atualizam OpenAPI, `docs/architecture/04-api.md` e testes.

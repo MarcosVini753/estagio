@@ -1,6 +1,6 @@
 ---
 name: api-endpoint
-description: Cria ou altera endpoints Django REST Framework da API v1 deste projeto. Use ao trabalhar com serializers, views, routers, URLs, erros, filtros, permissões simuladas ou documentação OpenAPI.
+description: Cria ou altera endpoints Django REST Framework da API deste projeto. Use ao trabalhar com serializers, views, routers, URLs, erros, filtros, permissões simuladas ou documentação OpenAPI.
 ---
 
 # Endpoint DRF
@@ -8,11 +8,11 @@ description: Cria ou altera endpoints Django REST Framework da API v1 deste proj
 ## 1. Contrato antes do código
 
 1. Leia `AGENTS.md`.
-2. Consulte `docs/architecture/04-api-v1.md` e as regras funcionais relacionadas.
+2. Consulte `docs/architecture/04-api.md` e as regras funcionais relacionadas.
 3. Defina método, rota, parâmetros, corpo, resposta, erros e perfil autorizado.
 4. Verifique se um endpoint existente já cobre o caso.
 
-Todos os endpoints públicos desta etapa devem permanecer sob `/api/v1/`.
+Todos os endpoints públicos desta etapa devem permanecer sob `/api/`, sem segmento de versão no caminho.
 
 ## 2. Separação de responsabilidades
 
@@ -43,7 +43,7 @@ Documente:
 - exemplos de erro relevantes;
 - descrição da regra de negócio quando não for óbvia.
 
-Atualize `docs/architecture/04-api-v1.md` quando o contrato mudar.
+Atualize `docs/architecture/04-api.md` quando o contrato mudar.
 
 ## 5. Testes
 

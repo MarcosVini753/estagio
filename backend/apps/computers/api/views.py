@@ -7,17 +7,18 @@ from rest_framework.views import APIView
 from apps.access.permissions import HasDemoProfile
 from apps.access.services import get_demo_profile, get_demo_user_reference
 from apps.computers.models import Computer
-from apps.computers.services import change_operational_state
 from apps.core.enums import DemoProfile
 from apps.operations.availability import (
     get_computer_slots,
     get_computers_availability,
 )
+from apps.operations.services.computer_state import change_computer_operational_state
 
 from .serializers import (
     AvailabilityDateQuerySerializer,
     ComputerAvailabilityResponseSerializer,
     ComputerCreateSerializer,
+    ComputerOperationalStateResponseSerializer,
     ComputerOperationalStateSerializer,
     ComputerSerializer,
     ComputerSlotsResponseSerializer,
@@ -29,7 +30,7 @@ MANAGEMENT_PROFILES = [
     DemoProfile.SYSTEM_ADMIN,
 ]
 OPERATIONAL_STATE_PROFILES = [
-    DemoProfile.INTERN,
+    DemoProfile.ROOM_MONITOR,
     DemoProfile.LIBRARY_SUPERVISOR,
     DemoProfile.SYSTEM_ADMIN,
 ]
@@ -70,20 +71,24 @@ class ComputerOperationalStateAPIView(APIView):
 
     @extend_schema(
         request=ComputerOperationalStateSerializer,
-        responses={200: ComputerSerializer},
+        responses={200: ComputerOperationalStateResponseSerializer},
         tags=["computers"],
     )
     def patch(self, request, pk):
         get_object_or_404(Computer, pk=pk)
         serializer = ComputerOperationalStateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        computer = change_operational_state(
+        result = change_computer_operational_state(
             computer_id=pk,
             new_state=serializer.validated_data["operational_state"],
             actor_profile=get_demo_profile(request),
             reason=serializer.validated_data.get("reason", ""),
         )
-        return Response(ComputerSerializer(computer).data)
+        return Response(
+            ComputerOperationalStateResponseSerializer(
+                {"computer": result.computer, "impact": result.impact}
+            ).data
+        )
 
 
 class ComputerAvailabilityAPIView(APIView):
@@ -103,7 +108,7 @@ class ComputerAvailabilityAPIView(APIView):
             computers=Computer.objects.all(),
             user_reference=get_demo_user_reference(request),
         )
-        return Response(payload)
+        return Response(ComputerAvailabilityResponseSerializer(payload).data)
 
 
 class ComputerSlotsAPIView(APIView):
@@ -125,4 +130,4 @@ class ComputerSlotsAPIView(APIView):
             user_reference=get_demo_user_reference(request),
         )
         payload["computer"] = ComputerSerializer(computer).data
-        return Response(payload)
+        return Response(ComputerSlotsResponseSerializer(payload).data)

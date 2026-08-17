@@ -5,14 +5,23 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.computers.models import Computer
-from apps.configuration.models import CalendarException
-from apps.configuration.selectors import (
-    get_booking_policy_for_date,
-    get_calendar_exception_for_date,
-    get_shifts_for_date,
+from apps.configuration.calendar import (
+    OperatingDayResult,
+    as_datetime_windows,
+    aware_at,
+    resolve_operating_day,
+    room_status_payload,
 )
-from apps.core.api.errors import ConfigurationRequired, DateOutsideAllowedWindow
-from apps.operations.models import ComputerAllocation, Reservation
+from apps.core.api.errors import DateOutsideAllowedWindow
+from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.rules import SLOT_DURATION_MINUTES
+from apps.operations.slotting import (
+    ACTIVE_ALLOCATION,
+    COMPUTER_UNAVAILABLE,
+    NEXT_RESERVATION,
+    USER_RESERVATION,
+    calculate_max_immediate_slot_count,
+)
 
 OCCUPIED = "OCCUPIED"
 RESERVED = "RESERVED"
@@ -27,59 +36,21 @@ def validate_target_date(target_date: date, *, now=None) -> date:
     return today
 
 
-def _aware(target_date: date, target_time: time) -> datetime:
-    value = datetime.combine(target_date, target_time)
-    return timezone.make_aware(value, timezone.get_current_timezone())
-
-
-def get_operating_windows(target_date: date) -> list[tuple[datetime, datetime]]:
-    exception = get_calendar_exception_for_date(target_date)
-    if exception and exception.exception_type in {
-        CalendarException.ExceptionType.CLOSED,
-        CalendarException.ExceptionType.OPTIONAL_HOLIDAY,
-    }:
-        return []
-
-    if (
-        exception
-        and exception.exception_type == CalendarException.ExceptionType.SPECIAL_HOURS
-    ):
-        if not exception.opens_at or not exception.closes_at:
-            return []
-        return [
-            (
-                _aware(target_date, exception.opens_at),
-                _aware(target_date, exception.closes_at),
-            )
-        ]
-
-    return [
-        (
-            _aware(target_date, shift.start_time),
-            _aware(target_date, shift.end_time),
-        )
-        for shift in get_shifts_for_date(target_date)
-    ]
-
-
 def generate_slot_intervals(
     target_date: date,
+    *,
+    operating_day: OperatingDayResult | None = None,
 ) -> tuple[int, list[tuple[datetime, datetime]], list[tuple[datetime, datetime]]]:
-    policy = get_booking_policy_for_date(target_date)
-    if not policy:
-        raise ConfigurationRequired(
-            "Nenhuma política de reservas está ativa para a data."
-        )
-
-    windows = get_operating_windows(target_date)
-    duration = timedelta(minutes=policy.slot_duration_minutes)
+    operating_day = operating_day or resolve_operating_day(target_date)
+    windows = as_datetime_windows(operating_day)
+    duration = timedelta(minutes=SLOT_DURATION_MINUTES)
     slots = []
     for window_start, window_end in windows:
         cursor = window_start
         while cursor + duration <= window_end:
             slots.append((cursor, cursor + duration))
             cursor += duration
-    return policy.slot_duration_minutes, windows, slots
+    return SLOT_DURATION_MINUTES, windows, slots
 
 
 def _overlaps(
@@ -105,7 +76,7 @@ def _load_events(
     if not computers:
         return allocations_by_computer, reservations_by_computer
 
-    day_start = _aware(target_date, time.min)
+    day_start = aware_at(target_date, time.min)
     day_end = day_start + timedelta(days=1)
     range_start = windows[0][0] if windows else day_start
     range_end = windows[-1][1] if windows else day_end
@@ -120,7 +91,14 @@ def _load_events(
             started_at__lt=range_end,
         )
         .filter(Q(ended_at__isnull=True) | Q(ended_at__gt=range_start))
-        .only("computer_id", "started_at", "ended_at")
+        .select_related("session")
+        .only(
+            "computer_id",
+            "started_at",
+            "ended_at",
+            "session__planned_ends_at",
+            "session__exit_deadline_at",
+        )
     )
     for allocation in allocations:
         allocations_by_computer[allocation.computer_id].append(allocation)
@@ -143,6 +121,8 @@ def _effective_status(
     interval_end: datetime,
     allocations,
     reservations,
+    *,
+    current_status: bool = False,
 ) -> str:
     if computer.operational_state == Computer.OperationalState.INACTIVE:
         return Computer.OperationalState.INACTIVE
@@ -153,7 +133,14 @@ def _effective_status(
             interval_start,
             interval_end,
             allocation.started_at,
-            allocation.ended_at,
+            (
+                allocation.ended_at
+                or (
+                    allocation.session.exit_deadline_at
+                    if current_status
+                    else allocation.session.planned_ends_at
+                )
+            ),
         )
         for allocation in allocations
     ):
@@ -230,6 +217,73 @@ def _computer_slots(
     return payload
 
 
+def _immediate_usage_payload(
+    *,
+    computer: Computer,
+    current: datetime,
+    operating_day: OperatingDayResult,
+    allocations,
+    reservations,
+    user_reservations,
+    user_has_active_allocation: bool,
+) -> dict:
+    if computer.operational_state != Computer.OperationalState.AVAILABLE:
+        return {
+            "can_start_now": False,
+            "max_slot_count": 0,
+            "max_planned_ends_at": None,
+            "limited_by": COMPUTER_UNAVAILABLE,
+        }
+
+    if any(
+        _overlaps(
+            current,
+            current + timedelta(microseconds=1),
+            allocation.started_at,
+            allocation.ended_at or allocation.session.exit_deadline_at,
+        )
+        for allocation in allocations
+    ):
+        return {
+            "can_start_now": False,
+            "max_slot_count": 0,
+            "max_planned_ends_at": None,
+            "limited_by": ACTIVE_ALLOCATION,
+        }
+
+    if user_has_active_allocation:
+        return {
+            "can_start_now": False,
+            "max_slot_count": 0,
+            "max_planned_ends_at": None,
+            "limited_by": ACTIVE_ALLOCATION,
+        }
+
+    limits = [
+        (reservation.starts_at, NEXT_RESERVATION)
+        for reservation in reservations
+        if reservation.ends_at > current
+    ]
+    limits.extend(
+        (reservation.starts_at, USER_RESERVATION)
+        for reservation in user_reservations
+        if reservation.ends_at > current
+    )
+    max_slot_count, max_planned_ends_at, limited_by = (
+        calculate_max_immediate_slot_count(
+            starts_at=current,
+            operating_day=operating_day,
+            limits=limits,
+        )
+    )
+    return {
+        "can_start_now": max_slot_count > 0,
+        "max_slot_count": max_slot_count,
+        "max_planned_ends_at": max_planned_ends_at,
+        "limited_by": limited_by,
+    }
+
+
 def get_computers_availability(
     *,
     target_date: date,
@@ -240,13 +294,39 @@ def get_computers_availability(
     current = now or timezone.now()
     today = validate_target_date(target_date, now=current)
     is_today = target_date == today
-    duration, windows, intervals = generate_slot_intervals(target_date)
+    operating_day = resolve_operating_day(target_date)
+    duration, windows, intervals = generate_slot_intervals(
+        target_date,
+        operating_day=operating_day,
+    )
     computer_list = list(computers)
     allocations, reservations = _load_events(
         computer_list,
         target_date,
         windows,
         now=current,
+    )
+    user_reservations = (
+        list(
+            Reservation.objects.filter(
+                user_reference=user_reference,
+                status=Reservation.Status.CONFIRMED,
+                starts_at__lt=(aware_at(target_date, time.min) + timedelta(days=1)),
+                ends_at__gt=current,
+            ).only("starts_at", "ends_at")
+        )
+        if is_today and user_reference
+        else []
+    )
+    user_has_active_allocation = bool(
+        is_today
+        and user_reference
+        and UseSession.objects.filter(
+            user_reference=user_reference,
+            status=UseSession.Status.ACTIVE,
+            exit_deadline_at__gt=current,
+            allocations__ended_at__isnull=True,
+        ).exists()
     )
 
     items = []
@@ -268,25 +348,31 @@ def get_computers_availability(
 
         status_now = None
         can_start_now = False
+        immediate_usage = {
+            "can_start_now": False,
+            "max_slot_count": 0,
+            "max_planned_ends_at": None,
+            "limited_by": None,
+        }
         if is_today:
             status_now = _effective_status(
                 computer,
                 current,
-                current + timedelta(minutes=1),
+                current + timedelta(microseconds=1),
                 computer_allocations,
                 computer_reservations,
+                current_status=True,
             )
-            reserved_by_user = _reserved_by_user(
-                current,
-                current + timedelta(minutes=1),
-                computer_reservations,
-                user_reference,
+            immediate_usage = _immediate_usage_payload(
+                computer=computer,
+                current=current,
+                operating_day=operating_day,
+                allocations=computer_allocations,
+                reservations=computer_reservations,
+                user_reservations=user_reservations,
+                user_has_active_allocation=user_has_active_allocation,
             )
-            is_open = any(start <= current < end for start, end in windows)
-            can_start_now = is_open and (
-                status_now == Computer.OperationalState.AVAILABLE
-                or (status_now == RESERVED and reserved_by_user)
-            )
+            can_start_now = immediate_usage["can_start_now"]
 
         next_slot = None
         if selectable:
@@ -302,17 +388,26 @@ def get_computers_availability(
                 "operational_state": computer.operational_state,
                 "effective_status_now": status_now,
                 "can_start_now": can_start_now,
+                "immediate_usage": immediate_usage,
                 "available_slot_count": len(selectable),
                 "next_available_slot": next_slot,
             }
         )
 
+    room = room_status_payload(
+        target_date,
+        now=current,
+        operating_day=operating_day,
+    )
+    room.pop("date")
+    room.pop("is_open_now")
     return (
         {
             "date": target_date,
             "is_today": is_today,
             "slot_duration_minutes": duration,
             "generated_at": current,
+            "room": room,
             "computers": items,
         },
         slots_by_computer,
@@ -337,5 +432,7 @@ def get_computer_slots(
         "date": summary["date"],
         "is_today": summary["is_today"],
         "slot_duration_minutes": summary["slot_duration_minutes"],
+        "immediate_usage": summary["computers"][0]["immediate_usage"],
+        "room": summary["room"],
         "slots": slots_by_computer[computer.pk],
     }

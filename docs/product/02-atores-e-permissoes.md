@@ -15,6 +15,7 @@ Representa aluno, professor ou técnico-administrativo que utiliza os computador
 Pode:
 
 - consultar disponibilidade de hoje e amanhã;
+- consultar o funcionamento da sala e avisos ativos;
 - iniciar uso imediato hoje;
 - reservar para hoje ou amanhã, em horários válidos;
 - consultar e cancelar suas próprias reservas simuladas;
@@ -29,6 +30,7 @@ Não pode:
 - corrigir registros históricos;
 - consultar dados de outros usuários;
 - configurar turnos ou parâmetros;
+- alterar calendário operacional, exceções ou avisos;
 - acessar relatórios internos.
 
 ## Monitor da Sala
@@ -38,12 +40,14 @@ Representa o papel operacional da biblioteca.
 Pode:
 
 - acompanhar sessões ativas;
+- consultar calendário operacional e avisos ativos;
 - consultar disponibilidade e ocupação;
 - alterar estado operacional de computadores;
 - registrar e consultar ocorrências;
 - corrigir registros com justificativa;
 - consultar histórico de uso;
-- gerar e exportar relatórios operacionais.
+
+Não pode acessar indicadores, relatórios ou exportações.
 
 O Supervisor da Biblioteca herda todas estas capacidades.
 
@@ -54,7 +58,12 @@ Representa o papel gerencial.
 Pode executar **todas** as ações do Monitor da Sala e, adicionalmente:
 
 - cadastrar computadores;
-- configurar turnos;
+- configurar turnos analíticos;
+- cadastrar e versionar o horário semanal regular;
+- criar horário temporário com início e fim para recessos;
+- registrar fechamento excepcional ou horário especial;
+- visualizar reservas afetadas e confirmar seu cancelamento com justificativa;
+- publicar e desativar avisos internos;
 - configurar parâmetros de relatórios;
 - consultar indicadores gerenciais;
 - gerar relatórios consolidados.
@@ -73,6 +82,8 @@ Responsabilidades futuras:
 - consultar eventos de auditoria;
 - realizar manutenção administrativa.
 
+Na autorização simulada atual, o Administrador também pode executar as ações de configuração operacional disponíveis ao Supervisor. Isso não representa autenticação administrativa real.
+
 Seus casos de uso detalhados permanecem fora do escopo documental funcional atual, mas nenhum desenho técnico deve assumir que Supervisor é o maior papel possível.
 
 ## Perfis simulados
@@ -81,7 +92,7 @@ Sugestão de identificadores internos:
 
 ```text
 ROOM_USER
-INTERN
+ROOM_MONITOR
 LIBRARY_SUPERVISOR
 SYSTEM_ADMIN
 ```

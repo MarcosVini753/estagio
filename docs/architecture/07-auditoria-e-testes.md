@@ -9,8 +9,10 @@ Eventos mínimos:
 - alteração de estado operacional;
 - correção de sessão ou alocação;
 - cancelamento administrativo;
-- alteração de turno;
-- alteração de política de reserva;
+- realocação automática de reserva;
+- encerramento de sessão por computador indisponível;
+- criação (`SHIFT_CREATED`), edição/desativação (`SHIFT_UPDATED`) e substituição (`SHIFT_REPLACED`) de turno, com snapshots completos;
+- alteração de política de reserva (`BOOKING_POLICY_UPDATED`), com IDs e vigências das versões anterior e resultante;
 - alteração de parâmetros de relatório;
 - ações futuras de contas e permissões.
 
@@ -27,6 +29,8 @@ Cobrir:
 - rejeição de horários passados;
 - precedência do estado efetivo;
 - cálculo de slots;
+- cálculo do intervalo por `slot_count` e do máximo para uso imediato;
+- separação entre fim planejado, prazo de saída e término real;
 - classificação de turnos;
 - projeções de relatórios.
 
@@ -36,14 +40,18 @@ Cobrir:
 
 - criação de reserva;
 - conflito de reserva;
+- intervalos adjacentes e intervalos que atravessam reserva ou fechamento;
 - entrada imediata;
 - entrada com reserva;
+- check-in em `-3:00`, no início, em `+3:00` e antes ou depois da janela;
 - sessão duplicada;
 - alocação duplicada;
 - troca de computador;
-- saída;
+- troca pelo intervalo planejado restante e rejeição durante tolerância;
+- saída antecipada, no prazo e registro automático ao expirar;
+- reconciliação de cancelamento por check-in expirado e `TIME_LIMIT_REACHED`;
 - correção auditada;
-- alteração de estado operacional.
+- alteração de estado operacional com transferência/encerramento de sessão e realocação/cancelamento de reservas;
 - substituição transacional de turno e preservação da versão usada por sessão.
 
 ### Testes de API
@@ -55,7 +63,7 @@ Cobrir:
 - filtros e paginação;
 - acesso por perfil simulado;
 - serialização temporal;
-- endpoints versionados.
+- rotas e contratos documentados no OpenAPI.
 
 ### Testes de integração
 
@@ -64,7 +72,10 @@ Usar PostgreSQL para validar:
 - constraints condicionais;
 - bloqueios transacionais;
 - concorrência de reservas;
-- concorrência de entrada e troca;
+- concorrência entre reserva e entrada imediata;
+- concorrência entre reserva e troca;
+- concorrência entre manutenção e reserva ou entrada;
+- duas indisponibilizações disputando o mesmo destino;
 - consultas agregadas.
 
 ### Testes de interface
@@ -76,8 +87,12 @@ Cobrir os fluxos principais do protótipo:
 3. iniciar e encerrar sessão;
 4. trocar de computador;
 5. reservar amanhã;
-6. registrar ocorrência;
-7. acessar painel operacional e relatórios.
+6. selecionar vários slots consecutivos e conferir fim planejado e prazo;
+7. registrar ocorrência;
+8. acessar e operar o painel do Monitor;
+9. gerenciar inventário, funcionamento e avisos pelo Supervisor;
+10. pré-visualizar o impacto de calendário antes da confirmação;
+11. acessar o relatório mensal com parâmetros gerenciais.
 
 ## Invariantes que devem falhar no banco ou serviço
 
@@ -85,6 +100,12 @@ Cobrir os fluxos principais do protótipo:
 - mais de uma alocação ativa por computador;
 - mais de uma alocação ativa na mesma sessão;
 - reserva sobreposta válida;
+- reserva ou sessão planejada fora de uma janela operacional;
+- entrada anterior à tolerância de três minutos quando vinculada a reserva, ou anterior ao início planejado no uso imediato;
+- metadados de cancelamento incompatíveis com o estado da reserva;
+- metadados de saída incompatíveis com o estado da sessão;
+- alocação encerrada sem motivo ou ativa com motivo de encerramento;
+- sessão sem fim planejado ou prazo de saída;
 - intervalo com término anterior ao início;
 - uso imediato em data diferente de hoje;
 
@@ -97,6 +118,7 @@ Criar factories para:
 - turnos;
 - reservas;
 - sessões e alocações;
+- deadlines e reconciliação operacional;
 - ocorrências.
 
 Nenhum teste ou fixture inicial deve conter dados pessoais reais.

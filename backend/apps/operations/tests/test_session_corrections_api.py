@@ -8,14 +8,18 @@ from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.operations.models import ComputerAllocation, UseSession
 
+from .factories import create_reservation, create_use_session
+
 
 class SessionCorrectionAPITest(APITestCase):
     def setUp(self):
         self.today = timezone.localdate()
         self.computer = Computer.objects.create(code="PC-01")
-        self.session = UseSession.objects.create(
+        self.session = create_use_session(
             user_reference="aluno-si-001",
             started_at=self.aware(time(8, 0)),
+            planned_ends_at=self.aware(time(10)),
+            exit_deadline_at=self.aware(time(10, 3)),
             entry_recorded_by_profile="ROOM_USER",
         )
         self.allocation = ComputerAllocation.objects.create(
@@ -25,8 +29,8 @@ class SessionCorrectionAPITest(APITestCase):
             started_at=self.aware(time(8, 0)),
         )
         self.client.post(
-            "/api/v1/demo/select-profile/",
-            {"profile": "INTERN"},
+            "/api/demo/select-profile/",
+            {"profile": "ROOM_MONITOR"},
             format="json",
         )
 
@@ -38,7 +42,7 @@ class SessionCorrectionAPITest(APITestCase):
 
     def correct(self, payload):
         return self.client.post(
-            f"/api/v1/usage-sessions/{self.session.pk}/correct/",
+            f"/api/usage-sessions/{self.session.pk}/correct/",
             payload,
             format="json",
         )
@@ -69,7 +73,7 @@ class SessionCorrectionAPITest(APITestCase):
     def test_corrects_entry_and_synchronizes_first_allocation(self):
         response = self.correct(
             {
-                "started_at": self.aware(time(7, 45)).isoformat(),
+                "started_at": self.aware(time(8, 5)).isoformat(),
                 "reason": "Horário de entrada digitado incorretamente.",
             }
         )
@@ -77,8 +81,45 @@ class SessionCorrectionAPITest(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.session.refresh_from_db()
         self.allocation.refresh_from_db()
-        self.assertEqual(self.session.started_at, self.aware(time(7, 45)))
-        self.assertEqual(self.allocation.started_at, self.aware(time(7, 45)))
+        self.assertEqual(self.session.started_at, self.aware(time(8, 5)))
+        self.assertEqual(self.allocation.started_at, self.aware(time(8, 5)))
+
+    def test_corrects_entry_within_early_check_in_tolerance(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(time(8)),
+            ends_at=self.aware(time(10)),
+            status="USED",
+            created_by_profile="ROOM_USER",
+        )
+        self.session.reservation = reservation
+        self.session.save(update_fields=["reservation", "updated_at"])
+
+        response = self.correct(
+            {
+                "started_at": self.aware(time(7, 57)).isoformat(),
+                "reason": "Entrada registrada três minutos antes da reserva.",
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.session.refresh_from_db()
+        self.allocation.refresh_from_db()
+        self.assertEqual(self.session.started_at, self.aware(time(7, 57)))
+        self.assertEqual(self.allocation.started_at, self.aware(time(7, 57)))
+
+    def test_rejects_early_correction_for_immediate_entry(self):
+        response = self.correct(
+            {
+                "started_at": self.aware(time(7, 57)).isoformat(),
+                "reason": "Uso imediato não possui janela de check-in antecipado.",
+            }
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.session.refresh_from_db()
+        self.assertEqual(self.session.started_at, self.aware(time(8)))
 
     def test_corrects_last_interval_after_switch(self):
         self.allocation.ended_at = self.aware(time(9, 0))
@@ -137,7 +178,7 @@ class SessionCorrectionAPITest(APITestCase):
 
     def test_room_user_cannot_correct_session(self):
         self.client.post(
-            "/api/v1/demo/select-profile/",
+            "/api/demo/select-profile/",
             {
                 "profile": "ROOM_USER",
                 "user_reference": "aluno-si-001",
@@ -157,7 +198,7 @@ class SessionCorrectionAPITest(APITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_rejects_overlap_with_another_session(self):
-        other_session = UseSession.objects.create(
+        other_session = create_use_session(
             user_reference="aluno-si-002",
             started_at=self.aware(time(7, 0)),
             ended_at=self.aware(time(7, 45)),
@@ -170,6 +211,7 @@ class SessionCorrectionAPITest(APITestCase):
             sequence=1,
             started_at=self.aware(time(7, 0)),
             ended_at=self.aware(time(7, 45)),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
 
         response = self.correct(

@@ -28,6 +28,7 @@ CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
+    "django.contrib.messages",
     "django.contrib.postgres",
     "django.contrib.sessions",
     "django.contrib.staticfiles",
@@ -41,11 +42,13 @@ INSTALLED_APPS = [
     "apps.occurrences",
     "apps.reports",
     "apps.audit",
+    "apps.web",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -61,6 +64,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
@@ -108,7 +112,18 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "API da Sala de Informática da Biblioteca da UFAC",
-    "DESCRIPTION": "API v1 do sistema de controle de uso da sala de informática.",
+    "DESCRIPTION": "API do sistema de controle de uso da sala de informática.",
     "VERSION": "0.2.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "DemoProfileEnum": "apps.core.enums.DemoProfile",
+        "EffectiveComputerStatusEnum": (
+            "apps.computers.api.serializers.EFFECTIVE_STATUS_CHOICES"
+        ),
+        "RoomStatusEnum": "apps.configuration.calendar.ROOM_STATUS_CHOICES",
+        "CalendarSourceEnum": "apps.configuration.calendar.CALENDAR_SOURCE_CHOICES",
+        "ReservationStatusEnum": "apps.operations.models.Reservation.Status",
+        "UseSessionStatusEnum": "apps.operations.models.UseSession.Status",
+        "OccurrenceStatusEnum": "apps.occurrences.models.Occurrence.Status",
+    },
 }

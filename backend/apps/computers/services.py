@@ -1,19 +1,14 @@
-from django.db import transaction
-
 from apps.core.api.errors import ComputerStateUnchanged, StateChangeReasonRequired
 
 from .models import Computer, ComputerOperationalStateChange
 
 
-@transaction.atomic
-def change_operational_state(
+def validate_operational_state_change(
     *,
-    computer_id: int,
+    computer: Computer,
     new_state: str,
-    actor_profile: str,
     reason: str = "",
-) -> Computer:
-    computer = Computer.objects.select_for_update().get(pk=computer_id)
+) -> str:
     normalized_reason = reason.strip()
 
     if computer.operational_state == new_state:
@@ -28,6 +23,21 @@ def change_operational_state(
         and not normalized_reason
     ):
         raise StateChangeReasonRequired()
+    return normalized_reason
+
+
+def record_operational_state_change(
+    *,
+    computer: Computer,
+    new_state: str,
+    actor_profile: str,
+    reason: str = "",
+) -> Computer:
+    normalized_reason = validate_operational_state_change(
+        computer=computer,
+        new_state=new_state,
+        reason=reason,
+    )
 
     previous_state = computer.operational_state
     computer.operational_state = new_state

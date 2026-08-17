@@ -19,17 +19,13 @@ O Administrador do Sistema existe arquiteturalmente, mas seus casos de uso detal
 - [05 — Usuário informa problema](atividades/05-usuario-informar-problema.puml)
 - [06 — Monitor altera status de computador](atividades/06-monitor-alterar-status-computador.puml)
 - [07 — Monitor corrige registro](atividades/07-monitor-corrigir-registro.puml)
-- [08 — Monitor gera e exporta relatório operacional](atividades/08-monitor-gerar-exportar-relatorio.puml)
 - [09 — Supervisor configura o sistema](atividades/09-supervisor-configuracoes.puml)
 - [10 — Supervisor analisa indicadores](atividades/10-supervisor-analisar-indicadores.puml)
 - [11 — Supervisor gera relatório consolidado](atividades/11-supervisor-gerar-relatorio-consolidado.puml)
+- [12 — Supervisor configura calendário operacional](atividades/12-supervisor-configurar-calendario.puml)
 
-## Decisões posteriores aos diagramas
+## Regras de manutenção
 
-- fila de espera foi removida do escopo;
-- reserva antecipada pode ser criada para horários futuros de hoje ou amanhã;
-- hoje permite uso imediato em horários ainda não passados;
-- `OCCUPIED` e `RESERVED` são estados calculados;
-- autenticação real foi substituída, no MVP, por seleção de perfil de teste.
-
-Ao encontrar divergência, consulte `docs/product/`, `docs/architecture/` e os ADRs.
+- Os diagramas devem refletir as regras atuais de `docs/product/` e `docs/architecture/`.
+- Ao encontrar divergência, atualize o diagrama ou registre a decisão em um ADR.
+- O Monitor da Sala não acessa relatórios; relatórios e exportações pertencem ao Supervisor e Administrador.

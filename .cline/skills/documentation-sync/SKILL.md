@@ -24,7 +24,7 @@ Verifique, conforme aplicável:
 - `docs/architecture/` para estrutura corrente;
 - `docs/adr/` para decisões e consequências;
 - `docs/diagrams/` para fluxos e modelos visuais;
-- OpenAPI e `docs/architecture/04-api-v1.md` para endpoints;
+- OpenAPI e `docs/architecture/04-api.md` para endpoints;
 - `README.md` para instalação e execução;
 - `prototipos/` apenas como referência visual.
 

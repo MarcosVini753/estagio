@@ -1,0 +1,24 @@
+<section class="staff-page-heading">
+  <div><p class="section-kicker">Administração operacional</p><h2>{{ section_title }}</h2></div>
+  <a class="button button-primary" href="{% url 'web:monitor-dashboard' %}">Abrir painel operacional</a>
+</section>
+
+<section class="metric-grid" aria-label="Resumo gerencial">
+  <article class="metric-card"><span>Computadores</span><strong>{{ computer_count }}</strong><small>{{ inactive_computer_count }} indisponível(is)</small></article>
+  <article class="metric-card"><span>Sessões ativas</span><strong>{{ active_session_count }}</strong><small>Agora</small></article>
+  <article class="metric-card"><span>Ocorrências pendentes</span><strong>{{ pending_occurrence_count }}</strong><small>Aberta ou em análise</small></article>
+  <article class="metric-card"><span>Avisos ativos</span><strong>{{ active_notice_count }}</strong><small>{{ active_schedule_count }} calendário(s) ativo(s)</small></article>
+</section>
+
+{% if operating_day %}
+  <section class="staff-card operating-summary">
+    <div><p class="section-kicker">Funcionamento de hoje</p><h3>{% if operating_day.status == "OPEN" %}Sala aberta{% elif operating_day.status == "SPECIAL_HOURS" %}Horário especial{% else %}Sala fechada{% endif %}</h3>{% if operating_day.reason %}<p>{{ operating_day.reason }}</p>{% endif %}</div>
+    <div class="room-windows">{% for window in operating_day.windows %}<span>{{ window.opens_at|time:"H:i" }}–{{ window.closes_at|time:"H:i" }}</span>{% empty %}<span>Sem funcionamento</span>{% endfor %}</div>
+  </section>
+{% endif %}
+
+<section class="management-shortcuts">
+  <a class="shortcut-card" href="{% url 'web:supervisor-computers' %}"><span class="nav-icon">{% include "components/icon.html" with name="inventory" %}</span><div><strong>Gerenciar inventário</strong><small>Cadastrar e editar computadores.</small></div></a>
+  <a class="shortcut-card" href="{% url 'web:supervisor-configuration' %}?section=schedules"><span class="nav-icon">{% include "components/icon.html" with name="calendar" %}</span><div><strong>Configurar funcionamento</strong><small>Calendários, turnos, exceções e avisos.</small></div></a>
+  <a class="shortcut-card" href="{% url 'web:supervisor-reports' %}"><span class="nav-icon">{% include "components/icon.html" with name="reports" %}</span><div><strong>Analisar o mês</strong><small>Projeção mensal baseada nos registros reais.</small></div></a>
+</section>

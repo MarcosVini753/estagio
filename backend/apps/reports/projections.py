@@ -4,7 +4,8 @@ from zoneinfo import ZoneInfo
 
 from django.utils import timezone
 
-from apps.operations.models import UseSession
+from apps.configuration.calendar import operating_minutes
+from apps.operations.models import Reservation, UseSession
 
 REPORT_TIME_ZONE = ZoneInfo("America/Rio_Branco")
 NOT_INFORMED = "NOT_INFORMED"
@@ -44,7 +45,7 @@ def build_monthly_report(
     reservations,
     occurrences,
     shifts,
-    calendar_exceptions,
+    operating_days,
     now=None,
 ):
     period_start, period_end = month_bounds(year, month)
@@ -76,15 +77,18 @@ def build_monthly_report(
     )
     column_keys = [item["series_key"] for item in columns] + [NOT_INFORMED]
 
-    exceptions = {item.date: item.exception_type for item in calendar_exceptions}
+    operating_days = {item.date: item for item in operating_days}
     days = []
     day_rows = {}
     for day_number in range(1, monthrange(year, month)[1] + 1):
         current_date = date(year, month, day_number)
+        operating_day = operating_days[current_date]
         row = {
             "date": current_date.isoformat(),
             "day": day_number,
-            "calendar_status": exceptions.get(current_date, "OPEN"),
+            "calendar_status": operating_day.status,
+            "calendar_source": operating_day.source,
+            "operating_minutes": operating_minutes(operating_day),
             "visits_by_shift": dict.fromkeys(column_keys, 0),
             "total": 0,
         }
@@ -136,6 +140,12 @@ def build_monthly_report(
         else 0
     )
 
+    reservations = list(reservations)
+    reservations_by_status = {
+        status: sum(reservation.status == status for reservation in reservations)
+        for status in Reservation.Status.values
+    }
+
     return {
         "period": {
             "year": year,
@@ -150,12 +160,14 @@ def build_monthly_report(
             "visits": len(sessions),
             "distinct_users": len({session.user_reference for session in sessions}),
             "reservations": len(reservations),
+            "reservations_by_status": reservations_by_status,
             "occurrences": len(occurrences),
             "computers_used": len(
                 {allocation.computer_id for allocation in allocations}
             ),
             "allocated_minutes": allocated_minutes,
             "average_stay_minutes": average_stay_minutes,
+            "operating_minutes": sum(day["operating_minutes"] for day in days),
         },
         "warnings": {
             "active_session_ids": active_session_ids,

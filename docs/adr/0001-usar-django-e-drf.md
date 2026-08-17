@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita
+Aceita. A parte referente ao versionamento da API foi substituída pela ADR 0018.
 
 ## Contexto
 

@@ -10,17 +10,20 @@ start
 
 if (Existe sessao ativa?) then (Sim)
   :Exibe dados da sessao;
-  :Exibe computador utilizado e hora de entrada;
+  :Exibe computador, fim planejado e prazo de saida;
 
   |Usuario da Sala|
   :Confirma encerramento do uso;
 
   |Sistema|
-  :Registra hora de saida;
-  :Calcula tempo de permanencia;
-  :Encerra alocacao atual;
-  :Encerra sessao de uso;
-  :Exibe confirmacao de saida;
+  if (Prazo de saida ultrapassado?) then (Sim)
+    :Registra automaticamente a saida e encerra no prazo;
+    :Marca alocacao como TIME_LIMIT_REACHED;
+  else (Nao)
+    :Registra horario real da saida antecipada ou no prazo;
+    :Encerra alocacao atual e sessao;
+  endif
+  :Exibe confirmacao de saida e tempo real;
   stop
 
 else (Nao)

@@ -6,7 +6,7 @@ Aluno, professor ou técnico-administrativo autorizado a utilizar a Sala de Info
 
 ## Monitor da Sala
 
-Papel operacional responsável por acompanhar a sala, corrigir registros, tratar ocorrências e gerar relatórios operacionais.
+Papel operacional responsável por acompanhar a sala, corrigir registros e tratar ocorrências. Não acessa relatórios.
 
 ## Supervisor da Biblioteca
 
@@ -30,11 +30,31 @@ Situação calculada para um instante ou intervalo: pode resultar em `AVAILABLE`
 
 ## Reserva
 
-Bloqueio antecipado de um computador em intervalo específico. No MVP, pode ser criada para hoje (futuro do dia corrente) ou amanhã.
+Bloqueio antecipado de um computador por uma quantidade de slots consecutivos de 15 minutos. Pode estar confirmada, cancelada ou utilizada e referencia a política vigente em sua criação.
+
+## Política de reserva
+
+Versão temporal das regras de cancelamento e limite de reservas, delimitada por `valid_from` e `valid_until`. Reservas existentes continuam vinculadas à versão originalmente aplicada.
 
 ## Sessão de uso
 
-Registro da visita real de um usuário, iniciado na entrada e encerrado na saída.
+Registro da visita de um usuário. Mantém o intervalo planejado solicitado e, separadamente, os horários reais de entrada e saída.
+
+## Slot
+
+Unidade fixa de 15 minutos usada para compor a duração consecutiva de reservas e usos imediatos.
+
+## Intervalo planejado
+
+Compromisso semiaberto `[início, fim)` usado para validar reservas, sessões, trocas e fechamento. A tolerância operacional não o amplia.
+
+## Prazo de saída
+
+Instante três minutos após o fim planejado. Até ele a saída pode ser registrada; ao atingi-lo a sessão pode ser encerrada logicamente.
+
+## Tolerância operacional
+
+Exceção de três minutos para check-in antecipado ou atrasado e para saída atrasada. Não desloca o intervalo planejado nem participa do cálculo de conflitos futuros.
 
 ## Alocação de computador
 
@@ -42,19 +62,39 @@ Intervalo em que determinado computador foi utilizado dentro de uma sessão. Uma
 
 ## Uso imediato
 
-Início de sessão hoje, em computador disponível e horário ainda não passado. Não cria reserva para hoje.
+Início de sessão hoje, em computador disponível, com quantidade de slots escolhida antes da entrada. Não cria reserva para hoje.
 
 ## Turno
 
-Faixa de horário configurável usada para classificação e consolidação dos registros.
+Faixa de horário configurável usada somente para classificação e consolidação analítica dos registros. Não define abertura da sala.
+
+## Calendário operacional
+
+Configuração versionada que determina, para cada dia da semana, se a sala abre e em quais janelas.
+
+## Horário regular
+
+Calendário semanal permanente usado quando não há exceção nem horário temporário aplicável.
+
+## Horário temporário
+
+Calendário com início e fim, usado para recessos ou períodos equivalentes. Depois do término, o horário regular volta a valer automaticamente.
+
+## Janela de funcionamento
+
+Intervalo contínuo de abertura dentro de um dia. Um dia aberto pode possuir uma ou mais janelas sem sobreposição.
+
+## Exceção de calendário
+
+Fechamento ou horário especial para uma data específica, com precedência sobre horários temporários e regulares.
+
+## Aviso da sala
+
+Comunicação interna de transmissão geral, exibida enquanto ativa e dentro do período de visibilidade configurado.
 
 ## Ocorrência
 
 Registro de problema técnico ou operacional associado opcionalmente a computador, sessão e alocação.
-
-## Relatório operacional
-
-Projeção voltada ao acompanhamento cotidiano pelo Monitor da Sala.
 
 ## Relatório consolidado
 

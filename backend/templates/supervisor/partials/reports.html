@@ -1,0 +1,15 @@
+<section class="staff-page-heading">
+  <div><p class="section-kicker">Projeção derivada dos registros</p><h2>Relatório mensal</h2></div>
+</section>
+
+<form class="report-filter staff-card" method="get" action="{% url 'web:supervisor-reports' %}">
+  <label class="field"><span>Mês</span><select name="month">{% for value, label in month_choices %}<option value="{{ value }}" {% if report_month == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label class="field"><span>Ano</span><input type="number" min="1" max="9998" name="year" value="{{ report_year }}" required></label><button class="button button-primary" type="submit">Gerar análise</button>
+</form>
+
+<div class="notice" role="note"><strong>Formatos disponíveis nesta etapa</strong><span>A visualização mensal HTML está implementada. Relatórios diário e anual e os exportadores serão entregues nas etapas próprias. Preferência de exportação: {{ report_configuration.get_default_format_display }}.</span></div>
+
+{% if report %}
+  <section class="metric-grid report-metrics"><article class="metric-card"><span>Visitas</span><strong>{{ report.summary.visits }}</strong></article><article class="metric-card"><span>Pessoas distintas</span><strong>{{ report.summary.distinct_users }}</strong></article><article class="metric-card"><span>Reservas</span><strong>{{ report.summary.reservations }}</strong></article>{% if report_configuration.include_occurrences %}<article class="metric-card"><span>Ocorrências</span><strong>{{ report.summary.occurrences }}</strong></article>{% endif %}<article class="metric-card"><span>Computadores usados</span><strong>{{ report.summary.computers_used }}</strong></article><article class="metric-card"><span>Minutos alocados</span><strong>{{ report.summary.allocated_minutes }}</strong></article><article class="metric-card"><span>Permanência média</span><strong>{{ report.summary.average_stay_minutes }} min</strong></article><article class="metric-card"><span>Minutos operacionais</span><strong>{{ report.summary.operating_minutes }}</strong></article></section>
+  <div class="report-table-wrapper"><table class="report-table"><caption>Dias de {{ report_month|stringformat:"02d" }}/{{ report_year }}</caption><thead><tr><th>Dia</th><th>Calendário</th>{% if report_configuration.group_by_shift %}{% for shift in report.shifts %}<th>{{ shift.name }}</th>{% endfor %}<th>Não informado</th>{% endif %}<th>Total</th></tr></thead><tbody>{% for day in report.days %}<tr><th>{{ day.day|stringformat:"02d" }}</th><td>{{ day.calendar_status }}<small>{{ day.calendar_source }}</small></td>{% if report_configuration.group_by_shift %}{% for key, value in day.visits_by_shift.items %}<td>{{ value }}</td>{% endfor %}{% endif %}<td><strong>{{ day.total }}</strong></td></tr>{% endfor %}</tbody></table></div>
+  {% if report.warnings.active_session_ids or report.warnings.sessions_without_shift %}<div class="flash flash-warning" role="status">Atenção: o relatório contém {{ report.warnings.active_session_ids|length }} sessão(ões) ainda ativa(s) e {{ report.warnings.sessions_without_shift|length }} sem turno identificado.</div>{% endif %}
+{% endif %}

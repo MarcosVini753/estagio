@@ -1,0 +1,17 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0c4ca4">
+  <title>{% block title %}Sala de Informática — Biblioteca UFAC{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'dist/app.css' %}">
+  <script defer src="{% static 'vendor/htmx.min.js' %}"></script>
+  <script defer src="{% static 'js/app.js' %}"></script>
+  <script defer src="{% static 'vendor/alpine.min.js' %}"></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% block body %}{% endblock %}
+</body>
+</html>

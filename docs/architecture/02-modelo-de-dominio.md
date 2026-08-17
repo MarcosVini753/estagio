@@ -21,15 +21,49 @@ Constraints: início anterior ao fim e validade final não anterior à inicial.
 Turnos usados por `UseSession.start_shift` preservam seus horários e vigência. A substituição cria uma nova versão futura, mantendo a referência histórica da sessão na versão anterior.
 Versões do mesmo turno lógico compartilham `series_key`, usado para agrupamento analítico.
 
+`Shift` é uma dimensão analítica. Não é fonte de abertura, slots ou tempo operacional disponível.
+
+### `OperatingSchedule`
+
+`series_key`, `name`, `schedule_type`, `valid_from`, `valid_until`, `reason`, `is_active`, `created_by_profile`.
+
+Tipos: `REGULAR` e `TEMPORARY`. Validade final não antecede a inicial e horário temporário exige final. Uma exclusion constraint PostgreSQL impede sobreposição entre calendários ativos do mesmo tipo; temporário pode sobrepor regular por possuir precedência. Versões preservadas compartilham `series_key`.
+
+### `OperatingScheduleDay`
+
+`schedule`, `weekday`, `is_open`.
+
+Existe exatamente um registro para cada dia de segunda a domingo em um calendário válido. A constraint `unique_weekday_per_operating_schedule` impede repetição.
+
+### `OperatingWindow`
+
+`schedule_day`, `opens_at`, `closes_at`, `display_order`.
+
+Abertura antecede fechamento. Serviços validam que dia aberto tenha ao menos uma janela, dia fechado não tenha janelas e janelas do mesmo dia não se sobreponham.
+
 ### `CalendarException`
 
 `date`, `exception_type`, `opens_at`, `closes_at`, `description`.
 
-Tipos: `CLOSED`, `SPECIAL_HOURS`, `OPTIONAL_HOLIDAY`.
+Tipos: `CLOSED` e `SPECIAL_HOURS`. Ponto facultativo é um motivo de fechamento, não um terceiro comportamento do calendário.
+
+A exceção de uma data prevalece sobre calendários temporário e regular.
+
+Os serviços administrativos permitem criar ou alterar exceções somente para hoje ou datas futuras. Exceções passadas são históricas e imutáveis pela API e pelo frontend; migrations, fixtures e seeds ainda podem registrar histórico diretamente.
+
+### `RoomNotice`
+
+`notice_type`, `title`, `message`, `effective_from`, `effective_until`, `visible_from`, `visible_until`, `is_active`, `created_by_profile` e vínculos opcionais com `OperatingSchedule` ou `CalendarException`.
+
+Tipos: `CLOSURE`, `SCHEDULE_CHANGE`, `SPECIAL_HOURS`. Períodos efetivo e visível são validados por constraints. Excluir ou substituir a configuração vinculada não apaga o aviso; os vínculos usam `SET_NULL`.
 
 ### `BookingPolicy`
 
-`slot_duration_minutes`, `check_in_tolerance_minutes`, `cancellation_limit_minutes`, `max_future_reservations_per_user`, `is_active`, `valid_from`.
+`cancellation_limit_minutes`, `max_future_reservations_per_user`, `valid_from`, `valid_until`.
+
+Uma exclusion constraint impede vigências sobrepostas. O selector resolve a versão cuja vigência contém a data consultada; versões anteriores não são desativadas nem apagadas. Uma versão ligada a reservas não é alterada, preservando as regras aplicadas a cada compromisso.
+
+A duração de 15 minutos e as tolerâncias de três minutos são regras fixas em `operations/rules.py`, não políticas administrativas.
 
 ### `ReportConfiguration`
 
@@ -51,27 +85,31 @@ Estado persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`. Não criar campos de 
 
 ### `Reservation`
 
-`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `computer`, `starts_at`, `ends_at`, `status`, perfis de criação/cancelamento e dados de cancelamento.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `computer`, `booking_policy`, `starts_at`, `ends_at`, `check_in_deadline_at`, `exit_deadline_at`, `status`, perfis de criação/cancelamento e dados de cancelamento.
 
-Estados: `CONFIRMED`, `CANCELLED`, `USED`, `NO_SHOW`, `INVALIDATED`.
+Estados: `CONFIRMED`, `CANCELLED`, `USED`.
 
-Constraints PostgreSQL impedem sobreposição de reservas confirmadas por computador e por usuário com intervalos `[)`. O serviço bloqueia computador e referência de usuário para validar slots, limite e disponibilidade antes da criação.
+`slot_count` é derivado de `(ends_at - starts_at) / 15 minutos`. Constraints PostgreSQL exigem início anterior ao fim, deadlines não anteriores aos respectivos horários e impedem sobreposição de reservas confirmadas por computador e por usuário com intervalos `[)`. O serviço bloqueia referência de usuário e computador para validar o intervalo completo, limite e disponibilidade antes da criação.
+
+`booking_policy` protege a regra histórica aplicada na criação. Uma reserva `CANCELLED` sempre possui instante e perfil de cancelamento; o motivo pode ficar vazio apenas no cancelamento pelo próprio usuário. Outros estados não possuem metadados de cancelamento.
 
 ### `UseSession`
 
-`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `reservation`, `started_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
+`user_reference`, snapshots de `affiliation_type` e `institutional_unit`, `reservation`, `started_at`, `planned_starts_at`, `planned_ends_at`, `exit_deadline_at`, `ended_at`, `status`, `start_shift` e perfis de entrada/saída.
 
 Os snapshots preservam vínculo e unidade no momento da reserva ou entrada. Registros legados usam `NOT_INFORMED` e unidade vazia.
 
 Estados: `ACTIVE`, `FINISHED`, `CANCELLED`.
 
-Constraint: uma sessão ativa por referência de usuário.
+O intervalo planejado representa a duração solicitada; `started_at` e `ended_at` representam uso real. Em sessão de reserva, o intervalo e o prazo são copiados da reserva. Em uso imediato, o início planejado é a entrada e o fim soma a quantidade solicitada de slots de 15 minutos.
+
+Constraints exigem uma sessão ativa por referência de usuário, início planejado anterior ao fim e prazo não anterior ao fim planejado. Sessão `ACTIVE` não possui saída nem perfil de saída; `FINISHED` e `CANCELLED` possuem ambos. Uso imediato não pode começar antes do início planejado; sessão vinculada a reserva pode começar até três minutos antes dele. O serviço limita o check-in de uma reserva até `check_in_deadline_at`.
 
 ### `ComputerAllocation`
 
-`session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`.
+`session`, `computer`, `sequence`, `started_at`, `ended_at`, `end_reason`, `switch_reason`. `TIME_LIMIT_REACHED` identifica o encerramento lógico automático no prazo; `COMPUTER_UNAVAILABLE` distingue o encerramento da alocação causado por indisponibilidade, com ou sem transferência da sessão. `SWITCH` permanece reservado à troca normal.
 
-Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início; intervalos históricos do mesmo computador sem sobreposição.
+Constraints: sequência única; uma alocação ativa por computador; uma alocação ativa por sessão; término não anterior ao início; intervalos históricos do mesmo computador sem sobreposição. Alocação ativa não possui `end_reason`; alocação encerrada possui `ended_at` e `end_reason`.
 
 ## Ocorrências
 
