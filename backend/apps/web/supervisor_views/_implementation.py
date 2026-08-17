@@ -576,7 +576,7 @@ def shifts(request):
 @require_POST
 def update_shift(request, pk):
     shift = get_object_or_404(Shift, pk=pk)
-    if shift.use_sessions.exists() and "is_active" not in request.POST:
+    if shift.use_sessions.exists():
         payload = {"is_active": False}
     else:
         payload = {

@@ -278,6 +278,52 @@ class LibrarySupervisorWebTest(TestCase):
         shift.refresh_from_db()
         self.assertFalse(shift.is_active)
 
+    def test_stale_form_cannot_edit_a_used_shift(self):
+        self.select_supervisor()
+        shift = Shift.objects.create(
+            name="Noite histórica",
+            start_time=time(18),
+            end_time=time(22),
+            display_order=3,
+            valid_from=self.today - timedelta(days=5),
+        )
+        create_use_session(
+            user_reference="aluno-turno-stale",
+            start_shift=shift,
+            started_at=self.aware(self.today, time(18)),
+            planned_starts_at=self.aware(self.today, time(18)),
+            planned_ends_at=self.aware(self.today, time(19)),
+            exit_deadline_at=self.aware(self.today, time(19, 3)),
+            ended_at=self.aware(self.today, time(19)),
+            status="FINISHED",
+            entry_recorded_by_profile="ROOM_MONITOR",
+            exit_recorded_by_profile="ROOM_MONITOR",
+        )
+
+        response = self.client.post(
+            f"/supervisor/turnos/{shift.pk}/editar/",
+            {
+                "name": "Nome adulterado",
+                "start_time": "08:00",
+                "end_time": "12:00",
+                "display_order": 1,
+                "valid_from": self.today.isoformat(),
+                "is_active": "on",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            "/supervisor/funcionamento/?section=shifts",
+        )
+        shift.refresh_from_db()
+        self.assertEqual(shift.name, "Noite histórica")
+        self.assertEqual(shift.start_time, time(18))
+        self.assertEqual(shift.end_time, time(22))
+        self.assertEqual(shift.display_order, 3)
+        self.assertEqual(shift.valid_from, self.today - timedelta(days=5))
+        self.assertFalse(shift.is_active)
+
     def test_exception_preview_and_confirmation_cancel_affected_booking(self):
         self.select_supervisor()
         reservation = create_reservation(
