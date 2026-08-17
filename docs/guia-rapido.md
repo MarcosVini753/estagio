@@ -10,7 +10,7 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 2. Consulta a disponibilidade de **hoje** ou **amanhã**.
 3. **Hoje**: pode iniciar uso imediato em um computador livre, escolhendo a duração em slots de 15 minutos.
 4. **Amanhã (ou horário futuro de hoje)**: pode reservar um ou mais slots consecutivos.
-5. Ao entrar, o sistema registra a sessão com um **fim planejado** e um **prazo de saída** (3 minutos após o fim).
+5. Em uma reserva, a entrada pode ser registrada de 3 minutos antes até 3 minutos depois do início. O sistema registra a sessão com um **fim planejado** e um **prazo de saída** (3 minutos após o fim).
 6. Durante a sessão, o usuário pode **trocar de computador** sem perder o histórico.
 7. Ao sair, a sessão é encerrada. Se o usuário não sair até o prazo, o sistema encerra logicamente.
 8. O Monitor acompanha a sala, corrige registros e trata ocorrências. O Supervisor configura horários e gera relatórios.

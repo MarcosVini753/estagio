@@ -133,7 +133,7 @@ class OperationConstraintTest(TestCase):
                 created_by_profile="ROOM_USER",
             )
 
-    def test_session_enforces_planned_interval_and_no_early_entry(self):
+    def test_session_enforces_planned_interval_and_early_check_in_limit(self):
         starts_at = timezone.now()
 
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -146,12 +146,31 @@ class OperationConstraintTest(TestCase):
                 entry_recorded_by_profile="ROOM_USER",
             )
 
+        reservation = create_reservation(
+            user_reference="allowed-early-entry",
+            computer=self.computer,
+            starts_at=starts_at + timedelta(minutes=3),
+            ends_at=starts_at + timedelta(minutes=18),
+            created_by_profile="ROOM_USER",
+        )
+        allowed_early_session = create_use_session(
+            user_reference="allowed-early-entry",
+            reservation=reservation,
+            started_at=starts_at,
+            planned_starts_at=reservation.starts_at,
+            planned_ends_at=reservation.ends_at,
+            exit_deadline_at=reservation.exit_deadline_at,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+
+        self.assertEqual(allowed_early_session.started_at, starts_at)
+
         with self.assertRaises(IntegrityError), transaction.atomic():
             create_use_session(
-                user_reference="early-entry",
+                user_reference="immediate-entry-before-start",
                 started_at=starts_at,
-                planned_starts_at=starts_at + timedelta(minutes=1),
-                planned_ends_at=starts_at + timedelta(minutes=16),
-                exit_deadline_at=starts_at + timedelta(minutes=19),
+                planned_starts_at=starts_at + timedelta(minutes=3),
+                planned_ends_at=starts_at + timedelta(minutes=18),
+                exit_deadline_at=starts_at + timedelta(minutes=21),
                 entry_recorded_by_profile="ROOM_USER",
             )

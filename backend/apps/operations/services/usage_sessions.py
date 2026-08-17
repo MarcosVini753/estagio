@@ -24,7 +24,10 @@ from apps.core.api.errors import (
 )
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
-from apps.operations.rules import LATE_CHECK_OUT_TOLERANCE_MINUTES
+from apps.operations.rules import (
+    EARLY_CHECK_IN_TOLERANCE_MINUTES,
+    LATE_CHECK_OUT_TOLERANCE_MINUTES,
+)
 from apps.operations.services.deadlines import (
     expire_locked_session,
     reconcile_computer_deadlines,
@@ -225,7 +228,12 @@ def _start_usage_session(
                 actor_profile == DemoProfile.ROOM_USER
                 and actor_reference != reservation.user_reference
             )
-            or not reservation.starts_at <= current <= reservation.check_in_deadline_at
+            or not (
+                reservation.starts_at
+                - timedelta(minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES)
+                <= current
+                <= reservation.check_in_deadline_at
+            )
         ):
             raise ReservationCheckInUnavailable()
         user_reference = reservation.user_reference

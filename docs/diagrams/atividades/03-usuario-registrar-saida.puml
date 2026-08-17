@@ -17,7 +17,7 @@ if (Existe sessao ativa?) then (Sim)
 
   |Sistema|
   if (Prazo de saida ultrapassado?) then (Sim)
-    :Encerra logicamente no prazo;
+    :Registra automaticamente a saida e encerra no prazo;
     :Marca alocacao como TIME_LIMIT_REACHED;
   else (Nao)
     :Registra horario real da saida antecipada ou no prazo;

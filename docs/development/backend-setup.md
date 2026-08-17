@@ -31,6 +31,14 @@ O comando `make seed` é idempotente e cria oito computadores fictícios, os tr�
 
 `make install` instala as dependências Python e npm e gera os assets locais. O CSS compilado e as cópias de HTMX e Alpine.js são versionados, portanto a imagem Docker não precisa de Node.js em produção.
 
+## Reconciliação de prazos
+
+Em ambiente em execução, agende o comando abaixo a cada minuto. Ele cancela reservas cujo check-in venceu e registra automaticamente a saída de sessões que chegaram ao prazo máximo:
+
+```bash
+cd backend && python manage.py reconcile_operational_deadlines
+```
+
 ## Execução integral com Docker
 
 ```bash

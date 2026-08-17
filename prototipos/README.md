@@ -17,6 +17,7 @@ Os dados são fictícios e persistidos em `localStorage`. Não há backend, aute
 - consulta para hoje e amanhã;
 - uso imediato somente hoje, com duração escolhida em slots de 15 minutos;
 - reserva de slots consecutivos para horário futuro de hoje ou para amanhã;
+- entrada por reserva de três minutos antes até três minutos depois do início;
 - apresentação de fim planejado e prazo de saída três minutos depois;
 - horários passados indisponíveis;
 - sem fila de espera;

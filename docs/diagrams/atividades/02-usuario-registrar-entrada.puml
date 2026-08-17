@@ -17,8 +17,8 @@ if (Usuario ja possui sessao ativa?) then (Sim)
   stop
 else (Nao)
   if (Entrada vinculada a reserva?) then (Sim)
-    :Valida entrada entre inicio e prazo de check-in;
-    if (Dentro do prazo e sem antecipacao?) then (Sim)
+    :Valida entrada de tres minutos antes do inicio ate o prazo de check-in;
+    if (Dentro da janela de check-in?) then (Sim)
       :Copia intervalo planejado e prazo da reserva;
       :Marca reserva como utilizada;
     else (Nao)

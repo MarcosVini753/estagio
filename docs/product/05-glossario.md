@@ -54,7 +54,7 @@ Instante três minutos após o fim planejado. Até ele a saída pode ser registr
 
 ## Tolerância operacional
 
-Exceção de três minutos para check-in atrasado e saída atrasada. Não desloca o fim planejado nem participa do cálculo de conflitos.
+Exceção de três minutos para check-in antecipado ou atrasado e para saída atrasada. Não desloca o intervalo planejado nem participa do cálculo de conflitos futuros.
 
 ## Alocação de computador
 

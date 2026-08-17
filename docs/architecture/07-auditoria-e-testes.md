@@ -43,12 +43,12 @@ Cobrir:
 - intervalos adjacentes e intervalos que atravessam reserva ou fechamento;
 - entrada imediata;
 - entrada com reserva;
-- check-in sem antecipação, em `+3:00` e após o prazo;
+- check-in em `-3:00`, no início, em `+3:00` e antes ou depois da janela;
 - sessão duplicada;
 - alocação duplicada;
 - troca de computador;
 - troca pelo intervalo planejado restante e rejeição durante tolerância;
-- saída antecipada, no prazo e expiração lógica;
+- saída antecipada, no prazo e registro automático ao expirar;
 - reconciliação de cancelamento por check-in expirado e `TIME_LIMIT_REACHED`;
 - correção auditada;
 - alteração de estado operacional com transferência/encerramento de sessão e realocação/cancelamento de reservas;

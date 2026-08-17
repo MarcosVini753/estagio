@@ -26,7 +26,7 @@
           <span class="badge {% if reservation.status == 'CONFIRMED' %}badge-warning{% elif reservation.status == 'USED' %}badge-success{% else %}badge-neutral{% endif %}">{{ reservation.status_label }}</span>
         </div>
         <p>{{ reservation.starts_at|date:"d/m/Y" }} · {{ reservation.starts_at|time:"H:i" }}–{{ reservation.ends_at|time:"H:i" }}</p>
-        <small>Entrada até {{ reservation.check_in_deadline_at|time:"H:i" }} · saída até {{ reservation.exit_deadline_at|time:"H:i" }}</small>
+        <small>Entrada de {{ reservation.check_in_starts_at|time:"H:i" }} até {{ reservation.check_in_deadline_at|time:"H:i" }} · saída até {{ reservation.exit_deadline_at|time:"H:i" }}</small>
         {% if reservation.cancellation_reason %}<small class="cancellation-reason">Motivo: {{ reservation.cancellation_reason }}</small>{% endif %}
         {% if reservation.can_check_in_ui or reservation.can_cancel_ui %}
           <div class="card-actions">

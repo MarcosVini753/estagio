@@ -263,7 +263,7 @@ class RoomUserWebTest(TestCase):
 
         with patch(
             "apps.web.views.timezone.now",
-            return_value=self.aware(self.today, time(8, 59)),
+            return_value=self.aware(self.today, time(8, 56, 59)),
         ):
             before_window = self.client.get("/sala/agenda/")
 
@@ -273,7 +273,7 @@ class RoomUserWebTest(TestCase):
 
         with patch(
             "apps.web.views.timezone.now",
-            return_value=self.aware(self.today, time(9, 1)),
+            return_value=self.aware(self.today, time(8, 57)),
         ):
             refreshed = self.client.get(
                 "/sala/agenda/",
@@ -283,6 +283,7 @@ class RoomUserWebTest(TestCase):
 
         self.assertContains(refreshed, 'id="agenda-content"', count=1)
         self.assertNotContains(refreshed, "<!doctype html>")
+        self.assertContains(refreshed, "Entrada de 08:57 até 09:03")
         self.assertContains(refreshed, "Registrar entrada")
 
     def test_immediate_session_switch_and_finish_flow(self):
@@ -402,14 +403,16 @@ class RoomUserWebTest(TestCase):
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
-            return_value=self.aware(self.today, time(9, 2)),
+            return_value=self.aware(self.today, time(8, 57)),
         ):
             response = self.client.post(f"/sala/reservas/{reservation.pk}/entrada/")
 
         self.assertRedirects(response, "/sala/sessao/")
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, Reservation.Status.USED)
-        self.assertEqual(UseSession.objects.get().reservation, reservation)
+        session = UseSession.objects.get()
+        self.assertEqual(session.reservation, reservation)
+        self.assertEqual(session.started_at, self.aware(self.today, time(8, 57)))
 
     def test_problem_is_linked_to_matching_active_allocation(self):
         self.select_room_user()

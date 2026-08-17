@@ -38,6 +38,7 @@ A migração é incremental. Os fluxos do Usuário da Sala, Monitor da Sala e Su
 - usar Monitor da Sala, não Servidor da Biblioteca;
 - separar estado operacional de estado efetivo;
 - permitir reserva de slots consecutivos para horário futuro de hoje ou para amanhã;
+- informar a janela de entrada por reserva, de três minutos antes do início até três minutos depois;
 - permitir uso imediato somente hoje, com duração escolhida antes da entrada;
 - exibir fim planejado e prazo de saída três minutos depois;
 - impedir intervalo que atravesse reserva ou fechamento;

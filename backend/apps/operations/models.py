@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib.postgres.constraints import ExclusionConstraint
 from django.contrib.postgres.fields import DateTimeRangeField, RangeOperators
 from django.db import models
@@ -9,7 +11,7 @@ from apps.configuration.models import BookingPolicy, Shift
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.core.models import TimeStampedModel
 
-from .rules import SLOT_DURATION_MINUTES
+from .rules import EARLY_CHECK_IN_TOLERANCE_MINUTES, SLOT_DURATION_MINUTES
 
 
 class Reservation(TimeStampedModel):
@@ -182,8 +184,20 @@ class UseSession(TimeStampedModel):
                 name="session_exit_after_planned_end",
             ),
             models.CheckConstraint(
-                condition=Q(started_at__gte=F("planned_starts_at")),
-                name="session_start_not_early",
+                condition=(
+                    Q(
+                        reservation__isnull=True,
+                        started_at__gte=F("planned_starts_at"),
+                    )
+                    | Q(
+                        reservation__isnull=False,
+                        started_at__gte=(
+                            F("planned_starts_at")
+                            - timedelta(minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES)
+                        ),
+                    )
+                ),
+                name="session_start_within_check_in_window",
             ),
             models.CheckConstraint(
                 condition=Q(started_at__lte=F("exit_deadline_at")),

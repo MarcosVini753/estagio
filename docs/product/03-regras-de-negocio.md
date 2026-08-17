@@ -60,7 +60,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - Todo o intervalo `[starts_at, ends_at)` deve caber em uma única janela de funcionamento e não pode sobrepor reserva confirmada nem sessão planejada do computador ou do usuário.
 - Intervalos adjacentes são permitidos: uma reserva que termina às 09h não conflita com outra que começa às 09h.
 - `check_in_deadline_at` é três minutos após o início e `exit_deadline_at` é três minutos após o fim.
-- Entrada antecipada não é permitida. A entrada é aceita do início até o `check_in_deadline_at`, inclusive, e não desloca o fim planejado.
+- A entrada vinculada a reserva é aceita de três minutos antes de `starts_at` até `check_in_deadline_at`, inclusive, respeitados o funcionamento da sala e o estado do computador. Ela registra o horário real sem deslocar o início, fim ou prazo planejados.
 - Depois de ultrapassado o prazo de check-in, uma reserva confirmada passa a `CANCELLED`, com perfil `SYSTEM_ADMIN` e motivo “Prazo de check-in expirado.”
 - Somente o proprietário ou perfil operacional pode cancelar antes do início e do limite da política.
 - Cancelamento realizado por perfil operacional em nome de terceiro exige justificativa e auditoria.
@@ -82,7 +82,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - A hora de saída não pode ser anterior à hora de entrada.
 - O turno principal da visita é calculado a partir do horário de entrada.
 - Correções administrativas exigem justificativa e auditoria.
-- A saída antecipada é permitida. A sessão vencida é encerrada logicamente no prazo de saída, com motivo `TIME_LIMIT_REACHED`.
+- A saída antecipada é permitida. A sessão vencida tem a saída registrada automaticamente pela reconciliação no prazo de saída, com motivo `TIME_LIMIT_REACHED`.
 - Não existe extensão de sessão neste P0.
 
 ## Alocações e troca de computador

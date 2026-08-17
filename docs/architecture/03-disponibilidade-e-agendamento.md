@@ -117,6 +117,10 @@ Operação transacional:
 5. verificar reservas e sessões planejadas do computador e do usuário;
 6. vincular a versão de `BookingPolicy` vigente e criar `Reservation` com deadlines de três minutos e estado `CONFIRMED`.
 
+## Entrada com reserva
+
+A entrada vinculada a uma reserva confirmada é aceita no intervalo fechado `[starts_at - 3 minutos, check_in_deadline_at]`, desde que a sala e o computador estejam aptos ao uso. O serviço copia o intervalo planejado e o prazo de saída da reserva, registra o horário real de entrada e não desloca `planned_starts_at`, `planned_ends_at` nem `exit_deadline_at`.
+
 ## Troca de computador
 
 Operação transacional:
@@ -139,11 +143,11 @@ Operação transacional:
 3. encerrar alocação atual e sessão com o horário real;
 4. produzir evento de auditoria se a saída for administrativa.
 
-Quando `now >= exit_deadline_at`, a reconciliação encerra logicamente sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `CANCELLED` com autor sistêmico e motivo explícito. O comando `reconcile_operational_deadlines` executa ambas as rotinas, deve ser agendado externamente a cada minuto e as entradas/trocas reconciliam oportunisticamente os computadores envolvidos.
+Quando `now >= exit_deadline_at`, a reconciliação registra automaticamente a saída e encerra sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `CANCELLED` com autor sistêmico e motivo explícito. O comando `reconcile_operational_deadlines` executa ambas as rotinas, deve ser agendado externamente a cada minuto e as entradas/trocas reconciliam oportunisticamente os computadores envolvidos.
 
 ## Planejado, atual e histórico
 
-- conflitos futuros usam `planned_ends_at` e ignoram os três minutos de tolerância;
+- conflitos futuros usam o intervalo planejado e ignoram os três minutos de tolerância de entrada e saída;
 - o estado atual usa `exit_deadline_at` enquanto a alocação não foi encerrada;
 - o histórico usa `ComputerAllocation.started_at` e `ended_at` reais;
 - por isso uma sessão planejada até 09h libera os slots a partir de 09h, embora possa aparecer ocupada no instante atual até 09h03.

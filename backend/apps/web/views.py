@@ -34,6 +34,7 @@ from apps.operations.api.serializers import (
 )
 from apps.operations.availability import get_computers_availability
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
+from apps.operations.rules import EARLY_CHECK_IN_TOLERANCE_MINUTES
 from apps.operations.services import (
     cancel_reservation,
     create_reservation,
@@ -525,13 +526,18 @@ def _agenda_context(request, *, screen_error=""):
     visible = []
     for reservation in reservations:
         reservation.status_label = reservation.get_status_display()
+        reservation.check_in_starts_at = reservation.starts_at - timedelta(
+            minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES
+        )
         reservation.can_cancel_ui = (
             reservation.status == Reservation.Status.CONFIRMED
             and now < reservation.starts_at
         )
         reservation.can_check_in_ui = (
             reservation.status == Reservation.Status.CONFIRMED
-            and reservation.starts_at <= now <= reservation.check_in_deadline_at
+            and reservation.check_in_starts_at
+            <= now
+            <= reservation.check_in_deadline_at
         )
         searchable = normalize_search(
             " ".join(

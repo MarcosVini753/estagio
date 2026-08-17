@@ -26,7 +26,7 @@ Fluxos críticos:
 5. saída;
 6. comunicação de problema.
 
-Na reserva, o usuário seleciona um início alinhado e uma quantidade positiva de slots consecutivos. Na entrada imediata, escolhe a duração antes de confirmar. O sistema apresenta o fim planejado e o prazo de saída. Entrada com reserva só ocorre entre o início e três minutos depois; a troca considera todo o intervalo restante e não ocorre durante a tolerância.
+Na reserva, o usuário seleciona um início alinhado e uma quantidade positiva de slots consecutivos. Na entrada imediata, escolhe a duração antes de confirmar. O sistema apresenta o fim planejado e o prazo de saída. Entrada com reserva ocorre de três minutos antes do início até três minutos depois; ela não desloca o intervalo planejado. A troca considera todo o intervalo restante e não ocorre durante a tolerância de saída.
 
 ## Monitor da Sala
 

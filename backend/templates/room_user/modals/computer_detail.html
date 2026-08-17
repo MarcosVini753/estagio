@@ -71,7 +71,7 @@
             <input type="hidden" name="starts_at" value="{{ selected_starts_at }}">
             <label class="field"><span>Duração consecutiva</span>
               <select name="slot_count" required>
-                {% for option in reservation_options %}<option value="{{ option.slot_count }}">{{ option.minutes }} min · {{ option.starts_label }}–{{ option.ends_label }} · saída até {{ option.exit_deadline_label }}</option>{% endfor %}
+                {% for option in reservation_options %}<option value="{{ option.slot_count }}">{{ option.minutes }} min · {{ option.starts_label }}–{{ option.ends_label }} · entrada de {{ option.check_in_starts_label }} até {{ option.check_in_deadline_label }} · saída até {{ option.exit_deadline_label }}</option>{% endfor %}
               </select>
             </label>
             <button class="button button-primary button-full" type="submit">Confirmar reserva</button>

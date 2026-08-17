@@ -214,6 +214,52 @@ class UsageSessionAPITest(APITestCase):
             response.data["planned_ends_at"], self.aware(time(10)).isoformat()
         )
 
+    def test_reserved_entry_accepts_exact_early_check_in_tolerance(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(time(9)),
+            ends_at=self.aware(time(10)),
+            created_by_profile="ROOM_USER",
+        )
+        early_check_in = self.aware(time(8, 57))
+
+        response = self.start(
+            {
+                "computer_id": self.computer.pk,
+                "reservation_id": reservation.pk,
+            },
+            current=early_check_in,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        session = UseSession.objects.get()
+        self.assertEqual(session.started_at, early_check_in)
+        self.assertEqual(session.planned_starts_at, reservation.starts_at)
+        self.assertEqual(session.allocations.get().started_at, early_check_in)
+
+    def test_reserved_entry_before_early_check_in_tolerance_is_rejected(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(time(9)),
+            ends_at=self.aware(time(10)),
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.start(
+            {
+                "computer_id": self.computer.pk,
+                "reservation_id": reservation.pk,
+            },
+            current=self.aware(time(8, 56, 59)),
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "RESERVATION_CHECK_IN_UNAVAILABLE")
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.CONFIRMED)
+
     def test_reserved_entry_after_deadline_is_rejected_and_cancelled(self):
         reservation = create_reservation(
             user_reference="aluno-si-001",
@@ -237,26 +283,6 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
         self.assertEqual(reservation.cancelled_at, current)
         self.assertEqual(reservation.cancelled_by_profile, "SYSTEM_ADMIN")
-
-    def test_reserved_entry_rejects_outside_tolerance(self):
-        reservation = create_reservation(
-            user_reference="aluno-si-001",
-            computer=self.computer,
-            starts_at=self.aware(time(9, 0)),
-            ends_at=self.aware(time(10, 0)),
-            created_by_profile="ROOM_USER",
-        )
-
-        response = self.start(
-            {
-                "computer_id": self.computer.pk,
-                "reservation_id": reservation.pk,
-            },
-            current=self.aware(time(8, 44)),
-        )
-
-        self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.data["code"], "RESERVATION_CHECK_IN_UNAVAILABLE")
 
     def test_cancelled_reservation_cannot_be_used_for_check_in(self):
         reservation = create_reservation(

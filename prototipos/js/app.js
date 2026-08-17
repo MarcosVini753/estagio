@@ -464,7 +464,7 @@ function openBookingModal(bookingId) {
     <section class="summary-card">
       <p class="summary-title">Computador ${computer?.number || '--'}</p>
       <p class="summary-subtitle">${todayLabel(booking.dateKey)} · ${booking.slot}</p>
-      <p class="helper-text">Entrada entre ${booking.startsAt || slotStart(booking.slot)} e ${booking.checkInDeadlineAt || addMinutes(slotStart(booking.slot), DEADLINE_TOLERANCE_MINUTES)}. Saída até ${booking.exitDeadlineAt || addMinutes(slotEnd(booking.slot), DEADLINE_TOLERANCE_MINUTES)}.</p>
+      <p class="helper-text">Entrada de ${addMinutes(booking.startsAt || slotStart(booking.slot), -DEADLINE_TOLERANCE_MINUTES)} até ${booking.checkInDeadlineAt || addMinutes(slotStart(booking.slot), DEADLINE_TOLERANCE_MINUTES)}. Saída até ${booking.exitDeadlineAt || addMinutes(slotEnd(booking.slot), DEADLINE_TOLERANCE_MINUTES)}.</p>
     </section>
     <button class="btn danger full" onclick="cancelBooking(${booking.id})">Cancelar agendamento</button>
   `);

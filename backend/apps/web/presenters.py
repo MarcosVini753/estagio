@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from apps.computers.models import Computer
 from apps.operations.rules import (
+    EARLY_CHECK_IN_TOLERANCE_MINUTES,
     LATE_CHECK_IN_TOLERANCE_MINUTES,
     LATE_CHECK_OUT_TOLERANCE_MINUTES,
     SLOT_DURATION_MINUTES,
@@ -155,6 +156,9 @@ def reservation_duration_options(
                 "ends_at": ends_at,
                 "starts_label": timezone.localtime(starts_at).strftime("%H:%M"),
                 "ends_label": timezone.localtime(ends_at).strftime("%H:%M"),
+                "check_in_starts_label": timezone.localtime(
+                    starts_at - timedelta(minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES)
+                ).strftime("%H:%M"),
                 "check_in_deadline_label": timezone.localtime(
                     starts_at + timedelta(minutes=LATE_CHECK_IN_TOLERANCE_MINUTES)
                 ).strftime("%H:%M"),

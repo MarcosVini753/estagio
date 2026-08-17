@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import transaction
 from django.db.models import Q
@@ -9,6 +9,7 @@ from apps.core.api.errors import (
     SessionCorrectionReasonRequired,
 )
 from apps.operations.models import ComputerAllocation, UseSession
+from apps.operations.rules import EARLY_CHECK_IN_TOLERANCE_MINUTES
 
 
 def _serialize(session, first, last):
@@ -43,10 +44,13 @@ def _overlaps_other_session(allocation, *, started_at, ended_at):
 
 
 def _validate_timeline(session, allocations):
+    earliest_start = session.planned_starts_at
+    if session.reservation_id:
+        earliest_start -= timedelta(minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES)
     if (
         session.planned_starts_at >= session.planned_ends_at
         or session.planned_ends_at > session.exit_deadline_at
-        or session.started_at < session.planned_starts_at
+        or session.started_at < earliest_start
         or session.started_at > session.exit_deadline_at
     ):
         raise SessionCorrectionInvalid()
