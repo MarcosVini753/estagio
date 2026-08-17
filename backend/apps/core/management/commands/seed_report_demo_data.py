@@ -246,6 +246,27 @@ class Command(BaseCommand):
                 continue
             duration = rng.choice([60, 90, 120, 150])
             ended_at = min(started_at + timedelta(minutes=duration), window_end)
+            existing_session = UseSession.objects.filter(
+                user_reference=reference,
+                started_at=started_at,
+            ).first()
+            if existing_session is not None and existing_session.allocations.exists():
+                sessions.append(existing_session)
+                continue
+
+            first_computer_index = (
+                target_date.toordinal() * len(SHIFTS) + shift_index
+            ) % len(computers)
+            available_computers = self._find_available_computers(
+                computers=computers,
+                preferred_index=first_computer_index,
+                started_at=started_at,
+                ended_at=ended_at,
+            )
+            if not available_computers:
+                continue
+            should_switch = (target_date.toordinal() + shift_index) % 5 == 0
+
             session, _ = UseSession.objects.get_or_create(
                 user_reference=reference,
                 started_at=started_at,
@@ -263,40 +284,55 @@ class Command(BaseCommand):
                     "exit_recorded_by_profile": DemoProfile.ROOM_USER,
                 },
             )
-            if not session.allocations.exists():
-                first_computer_index = (
-                    target_date.toordinal() * len(SHIFTS) + shift_index
-                ) % len(computers)
-                if (target_date.toordinal() + shift_index) % 5 == 0:
-                    switched_at = started_at + (ended_at - started_at) / 2
+            if should_switch and len(available_computers) > 1:
+                switched_at = started_at + (ended_at - started_at) / 2
+                for sequence, computer in enumerate(available_computers[:2], start=1):
                     ComputerAllocation.objects.create(
                         session=session,
-                        computer=computers[first_computer_index],
-                        sequence=1,
-                        started_at=started_at,
-                        ended_at=switched_at,
-                        end_reason=ComputerAllocation.EndReason.SWITCH,
-                        switch_reason=f"{DEMO_PREFIX}troca planejada",
+                        computer=computer,
+                        sequence=sequence,
+                        started_at=started_at if sequence == 1 else switched_at,
+                        ended_at=switched_at if sequence == 1 else ended_at,
+                        end_reason=(
+                            ComputerAllocation.EndReason.SWITCH
+                            if sequence == 1
+                            else ComputerAllocation.EndReason.SESSION_FINISHED
+                        ),
+                        switch_reason=(
+                            f"{DEMO_PREFIX}troca planejada" if sequence == 1 else ""
+                        ),
                     )
-                    ComputerAllocation.objects.create(
-                        session=session,
-                        computer=computers[(first_computer_index + 1) % len(computers)],
-                        sequence=2,
-                        started_at=switched_at,
-                        ended_at=ended_at,
-                        end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
-                    )
-                else:
-                    ComputerAllocation.objects.create(
-                        session=session,
-                        computer=computers[first_computer_index],
-                        sequence=1,
-                        started_at=started_at,
-                        ended_at=ended_at,
-                        end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
-                    )
+            else:
+                ComputerAllocation.objects.create(
+                    session=session,
+                    computer=available_computers[0],
+                    sequence=1,
+                    started_at=started_at,
+                    ended_at=ended_at,
+                    end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
+                )
             sessions.append(session)
         return sessions
+
+    def _find_available_computers(
+        self,
+        *,
+        computers,
+        preferred_index,
+        started_at,
+        ended_at,
+    ):
+        occupied_ids = set(
+            ComputerAllocation.objects.filter(
+                computer__in=computers,
+                started_at__lt=ended_at,
+            )
+            .filter(Q(ended_at__isnull=True) | Q(ended_at__gt=started_at))
+            .values_list("computer_id", flat=True)
+        )
+        normalized_index = preferred_index % len(computers)
+        candidates = computers[normalized_index:] + computers[:normalized_index]
+        return [computer for computer in candidates if computer.pk not in occupied_ids]
 
     def _create_reservation(
         self,

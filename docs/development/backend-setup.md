@@ -22,6 +22,11 @@ make run
 
 A aplicação ficará em `http://localhost:8000/` e a documentação OpenAPI em `http://localhost:8000/api/docs/`.
 
+O Compose e os comandos `make` carregam as variáveis do `.env` da raiz. Se a
+porta `5432` já estiver em uso, altere `POSTGRES_PORT` nesse arquivo para uma
+porta livre, como `5433`, antes de subir o banco. O PostgreSQL continua ouvindo
+em `5432` dentro da rede do Compose.
+
 O comando `make seed` é idempotente e cria oito computadores fictícios, os três turnos iniciais, uma política de reservas e a configuração padrão de relatórios.
 
 `make install` instala as dependências Python e npm e gera os assets locais. O CSS compilado e as cópias de HTMX e Alpine.js são versionados, portanto a imagem Docker não precisa de Node.js em produção.

@@ -2,6 +2,13 @@ PYTHON ?= python
 NPM ?= npm
 MANAGE := cd backend && $(PYTHON) manage.py
 
+ifneq ($(wildcard .env),)
+include .env
+export DJANGO_SETTINGS_MODULE DJANGO_SECRET_KEY DJANGO_DEBUG
+export DJANGO_ALLOWED_HOSTS DJANGO_CSRF_TRUSTED_ORIGINS
+export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT
+endif
+
 .PHONY: install db-up db-down migrate migrations seed seed-reports run check test lint format-check frontend-build frontend-check frontend-e2e
 
 install:

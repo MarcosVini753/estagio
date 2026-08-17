@@ -37,6 +37,10 @@ make run
 
 A aplicação fica em `http://localhost:8000/`.
 
+O Compose e os comandos `make` usam o mesmo arquivo `.env`. Se a porta `5432`
+já estiver ocupada, defina outra porta livre, por exemplo
+`POSTGRES_PORT=5433`, antes de executar `docker compose up -d db`.
+
 - [Guia rápido](docs/guia-rapido.md)
 - [Índice da documentação](docs/README.md)
 - [Visão geral do produto](docs/product/00-visao-geral.md)

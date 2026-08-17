@@ -54,3 +54,6 @@ make migrate && make seed && make run
 ```
 
 A aplicação fica em `http://localhost:8000/` e a documentação da API em `http://localhost:8000/api/docs/`.
+
+Se a porta `5432` já estiver ocupada, ajuste `POSTGRES_PORT` no `.env` para uma
+porta livre, como `5433`. O Compose e os comandos `make` usarão o mesmo valor.
