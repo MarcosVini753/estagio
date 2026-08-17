@@ -313,6 +313,28 @@ class LibrarySupervisorWebTest(TestCase):
         self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
         self.assertTrue(CalendarException.objects.filter(date=self.tomorrow).exists())
 
+    def test_exception_preview_rejects_past_date(self):
+        self.select_supervisor()
+        past_date = self.today - timedelta(days=1)
+
+        response = self.client.post(
+            "/supervisor/excecoes/",
+            {
+                "date": past_date.isoformat(),
+                "exception_type": CalendarException.ExceptionType.CLOSED,
+                "description": "Tentativa retroativa",
+                "intent": "preview",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(
+            response,
+            "Exceções de calendário só podem ser criadas ou alteradas para hoje",
+            status_code=400,
+        )
+        self.assertFalse(CalendarException.objects.filter(date=past_date).exists())
+
     def test_supervisor_publishes_and_deactivates_notices(self):
         self.select_supervisor()
         visible_from = timezone.localtime().replace(second=0, microsecond=0)

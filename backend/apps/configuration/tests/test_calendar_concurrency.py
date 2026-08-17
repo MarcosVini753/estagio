@@ -57,7 +57,7 @@ class CalendarChangeConcurrencyTest(TransactionTestCase):
             close_old_connections()
             try:
                 with patch(
-                    "apps.configuration.services.AuditEvent.objects.create",
+                    "apps.configuration.services._implementation.AuditEvent.objects.create",
                     side_effect=hold_before_commit,
                 ):
                     create_operating_schedule(

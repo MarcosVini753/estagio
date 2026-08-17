@@ -2074,6 +2074,33 @@ a.staff-list-row:hover {
   }
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+}
+
+.pagination a,
+.pagination > span {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+}
+
+.pagination a {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.pagination [aria-disabled="true"] {
+  color: var(--muted);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

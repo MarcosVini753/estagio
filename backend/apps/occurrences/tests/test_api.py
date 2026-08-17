@@ -124,12 +124,36 @@ class OccurrenceAPITest(APITestCase):
         self.select_operational_profile()
         operational_list = self.client.get("/api/occurrences/")
 
-        self.assertEqual([item["id"] for item in list_response.data], [own.pk])
+        self.assertEqual(
+            [item["id"] for item in list_response.data["results"]], [own.pk]
+        )
         self.assertEqual(hidden_detail.status_code, 404)
         self.assertCountEqual(
-            [item["id"] for item in operational_list.data],
+            [item["id"] for item in operational_list.data["results"]],
             [own.pk, other.pk],
         )
+
+    def test_occurrences_are_paginated_and_keep_profile_visibility(self):
+        own = [
+            Occurrence.objects.create(
+                reported_by_reference="aluno-si-001",
+                description=f"Ocorrência própria {index}",
+            )
+            for index in range(26)
+        ]
+        Occurrence.objects.create(
+            reported_by_reference="aluno-si-002",
+            description="Ocorrência de outra pessoa",
+        )
+
+        first_page = self.client.get("/api/occurrences/")
+        second_page = self.client.get("/api/occurrences/?page=2")
+
+        self.assertEqual(first_page.data["count"], 26)
+        self.assertEqual(len(first_page.data["results"]), 25)
+        self.assertEqual(first_page.data["results"][0]["id"], own[-1].pk)
+        self.assertEqual(len(second_page.data["results"]), 1)
+        self.assertNotContains(second_page, "Ocorrência de outra pessoa")
 
     def test_operational_profile_moves_occurrence_to_review_and_resolves_it(self):
         occurrence = Occurrence.objects.create(

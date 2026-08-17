@@ -4,7 +4,6 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.db.models import Prefetch, Q
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -43,6 +42,16 @@ from apps.operations.services import (
     switch_computer,
 )
 
+from .http import (
+    is_htmx as _is_htmx,
+)
+from .http import (
+    redirect_response as _redirect_response,
+)
+from .http import (
+    service_error_message as _exception_message,
+)
+from .pagination import paginate
 from .presenters import (
     computer_rows,
     flatten_serializer_errors,
@@ -81,10 +90,6 @@ SCREEN_META = {
         "search_placeholder": "Pesquisar problema ou computador…",
     },
 }
-
-
-def _is_htmx(request) -> bool:
-    return request.headers.get("HX-Request") == "true"
 
 
 def _room_user_required(view):
@@ -137,24 +142,6 @@ def _day_and_date(request):
         day = "today"
     today = timezone.localdate()
     return day, today if day == "today" else today + timedelta(days=1)
-
-
-def _exception_message(error: APIException) -> str:
-    detail = error.detail
-    if isinstance(detail, dict):
-        detail = detail.get("detail", detail)
-    if isinstance(detail, (list, tuple)):
-        return " ".join(str(item) for item in detail)
-    return str(detail)
-
-
-def _redirect_response(request, url_name: str, **kwargs):
-    url = reverse(url_name, kwargs=kwargs or None)
-    if _is_htmx(request):
-        response = HttpResponse(status=204)
-        response["HX-Redirect"] = url
-        return response
-    return redirect(url_name, **kwargs)
 
 
 def _screen_base_context(request, *, screen: str, query: str = ""):
@@ -518,13 +505,29 @@ def _agenda_context(request, *, screen_error=""):
     query = request.GET.get("q", "").strip()
     normalized_query = normalize_search(query)
     now = timezone.now()
-    reservations = list(
-        Reservation.objects.filter(user_reference=get_demo_user_reference(request))
-        .select_related("computer", "booking_policy")
-        .order_by("-starts_at")
+    reservations = Reservation.objects.filter(
+        user_reference=get_demo_user_reference(request)
+    ).select_related("computer", "booking_policy")
+    confirmed_count = reservations.filter(status=Reservation.Status.CONFIRMED).count()
+    if query:
+        matching_statuses = [
+            value
+            for value, label in Reservation.Status.choices
+            if normalized_query in normalize_search(label)
+            or normalized_query in normalize_search(value)
+        ]
+        reservations = reservations.filter(
+            Q(computer__code__icontains=query)
+            | Q(computer__description__icontains=query)
+            | Q(cancellation_reason__icontains=query)
+            | Q(status__in=matching_statuses)
+        )
+    page = paginate(
+        request,
+        reservations.order_by("-starts_at", "-pk"),
     )
-    visible = []
-    for reservation in reservations:
+    visible = list(page.object_list)
+    for reservation in visible:
         reservation.status_label = reservation.get_status_display()
         reservation.check_in_starts_at = reservation.starts_at - timedelta(
             minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES
@@ -539,27 +542,13 @@ def _agenda_context(request, *, screen_error=""):
             <= now
             <= reservation.check_in_deadline_at
         )
-        searchable = normalize_search(
-            " ".join(
-                [
-                    reservation.computer.code,
-                    reservation.computer.description,
-                    reservation.status,
-                    reservation.status_label,
-                    reservation.cancellation_reason,
-                ]
-            )
-        )
-        if not normalized_query or normalized_query in searchable:
-            visible.append(reservation)
     context = _screen_base_context(request, screen="agenda", query=query)
     context.update(
         {
             "reservations": visible,
-            "confirmed_count": sum(
-                reservation.status == Reservation.Status.CONFIRMED
-                for reservation in reservations
-            ),
+            "confirmed_count": confirmed_count,
+            "page_obj": page,
+            "pagination_target": "#agenda-content",
             "screen_error": screen_error,
         }
     )
@@ -735,7 +724,8 @@ def _problems_context(request, *, form_error="", form_data=None):
             | Q(computer__code__icontains=query)
             | Q(status__icontains=query)
         )
-    occurrence_list = list(occurrences)
+    page = paginate(request, occurrences.order_by("-created_at", "-pk"))
+    occurrence_list = list(page.object_list)
     for occurrence in occurrence_list:
         occurrence.status_label = occurrence.get_status_display()
     active_session = _active_session(request)
@@ -749,6 +739,8 @@ def _problems_context(request, *, form_error="", form_data=None):
     context.update(
         {
             "occurrences": occurrence_list,
+            "page_obj": page,
+            "pagination_target": "#screen-content",
             "computer_choices": Computer.objects.all(),
             "selected_computer_id": str(selected_computer_id),
             "form_error": form_error,

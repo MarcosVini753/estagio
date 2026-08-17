@@ -43,6 +43,7 @@ from apps.configuration.services import (
     apply_calendar_exception,
     create_operating_schedule,
     create_room_notice,
+    create_shift,
     preview_calendar_exception_impact,
     preview_operating_schedule_impact,
     replace_operating_schedule,
@@ -50,6 +51,9 @@ from apps.configuration.services import (
     update_current_booking_policy,
     update_report_configuration,
     update_room_notice,
+)
+from apps.configuration.services import (
+    update_shift as update_shift_service,
 )
 from apps.core.api.errors import ScheduleChangeAffectsReservations
 from apps.core.enums import DemoProfile
@@ -66,8 +70,9 @@ from apps.reports.selectors import (
     get_shifts_for_period,
 )
 
-from .presenters import flatten_serializer_errors
-from .views import _exception_message, _is_htmx
+from ..http import is_htmx as _is_htmx
+from ..http import service_error_message as _exception_message
+from ..presenters import flatten_serializer_errors
 
 MANAGEMENT_PROFILES = {
     DemoProfile.LIBRARY_SUPERVISOR,
@@ -550,7 +555,19 @@ def shifts(request):
             status=400,
             form_kind="shift-create",
         )
-    serializer.save()
+    try:
+        create_shift(
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
+    except APIException as error:
+        return _configuration_error(
+            request,
+            section="shifts",
+            error=_exception_message(error),
+            status=error.status_code,
+            form_kind="shift-create",
+        )
     messages.success(request, "Turno criado sem alterar o calendário operacional.")
     return _configuration_redirect(request, "shifts")
 
@@ -580,7 +597,20 @@ def update_shift(request, pk):
             status=400,
             form_kind=f"shift-edit-{shift.pk}",
         )
-    serializer.save()
+    try:
+        update_shift_service(
+            shift_id=shift.pk,
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
+    except APIException as error:
+        return _configuration_error(
+            request,
+            section="shifts",
+            error=_exception_message(error),
+            status=error.status_code,
+            form_kind=f"shift-edit-{shift.pk}",
+        )
     messages.success(request, "Turno atualizado.")
     return _configuration_redirect(request, "shifts")
 
@@ -917,7 +947,16 @@ def exceptions(request):
     key = f"exception:{instance.pk if instance else 'new'}"
     fingerprint = _fingerprint(key, values)
     if request.POST.get("intent", "preview") == "preview":
-        impact = preview_calendar_exception_impact(values=values)
+        try:
+            impact = preview_calendar_exception_impact(values=values)
+        except APIException as error:
+            return _configuration_error(
+                request,
+                section="exceptions",
+                error=_exception_message(error),
+                status=error.status_code,
+                form_kind="exception",
+            )
         request.session[EXCEPTION_PREVIEW_SESSION_KEY] = {
             "key": key,
             "fingerprint": fingerprint,
@@ -1103,7 +1142,10 @@ def configurations(request):
             form_kind=f"{kind}-configuration",
         )
     if kind == "booking":
-        update_current_booking_policy(values=serializer.validated_data)
+        update_current_booking_policy(
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
     else:
         update_report_configuration(
             values=serializer.validated_data,

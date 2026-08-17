@@ -114,6 +114,7 @@ class SeedReportDemoDataTest(TestCase):
             sequence=1,
             started_at="2026-01-01T08:00:00-05:00",
             ended_at="2026-01-01T09:00:00-05:00",
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         self.run_seed(days=10, seed=12345)
 

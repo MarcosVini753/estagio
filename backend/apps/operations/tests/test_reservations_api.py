@@ -118,6 +118,40 @@ class ReservationAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_my_reservations_are_paginated_and_ordered_from_newest(self):
+        created = []
+        for index in range(26):
+            starts_at = timezone.now() - timedelta(days=index + 1)
+            created.append(
+                create_reservation(
+                    user_reference="aluno-si-001",
+                    computer=self.computer,
+                    starts_at=starts_at,
+                    ends_at=starts_at + timedelta(minutes=15),
+                    status=Reservation.Status.CANCELLED,
+                    cancelled_by_profile="ROOM_USER",
+                    cancelled_at=starts_at - timedelta(hours=1),
+                    created_by_profile="ROOM_USER",
+                )
+            )
+
+        first_page = self.client.get("/api/reservations/mine/")
+        second_page = self.client.get("/api/reservations/mine/?page=2")
+        invalid_page = self.client.get("/api/reservations/mine/?page=999")
+        ignored_page_size = self.client.get("/api/reservations/mine/?page_size=1")
+
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual(first_page.data["count"], 26)
+        self.assertEqual(len(first_page.data["results"]), 25)
+        self.assertIsNotNone(first_page.data["next"])
+        self.assertIsNone(first_page.data["previous"])
+        self.assertEqual(first_page.data["results"][0]["id"], created[0].pk)
+        self.assertEqual(len(second_page.data["results"]), 1)
+        self.assertIsNone(second_page.data["next"])
+        self.assertIsNotNone(second_page.data["previous"])
+        self.assertEqual(invalid_page.status_code, 404)
+        self.assertEqual(len(ignored_page_size.data["results"]), 25)
+
     def test_rejects_computer_conflict(self):
         create_reservation(
             user_reference="another-user",
@@ -257,10 +291,19 @@ class ReservationAPITest(APITestCase):
 
         computer_session.status = "FINISHED"
         computer_session.ended_at = self.aware(self.today, time(8, 15))
-        computer_session.save(update_fields=["status", "ended_at", "updated_at"])
+        computer_session.exit_recorded_by_profile = "ROOM_USER"
+        computer_session.save(
+            update_fields=[
+                "status",
+                "ended_at",
+                "exit_recorded_by_profile",
+                "updated_at",
+            ]
+        )
         allocation = computer_session.allocations.get()
         allocation.ended_at = self.aware(self.today, time(8, 15))
-        allocation.save(update_fields=["ended_at", "updated_at"])
+        allocation.end_reason = ComputerAllocation.EndReason.SESSION_FINISHED
+        allocation.save(update_fields=["ended_at", "end_reason", "updated_at"])
         user_session = create_use_session(
             user_reference="aluno-si-001",
             started_at=fixed_now,
@@ -404,7 +447,7 @@ class ReservationAPITest(APITestCase):
         self.assertEqual(cancel_response.status_code, 200)
         self.assertEqual(cancel_response.data["status"], "CANCELLED")
         self.assertEqual(list_response.status_code, 200)
-        self.assertEqual(list_response.data[0]["status"], "CANCELLED")
+        self.assertEqual(list_response.data["results"][0]["status"], "CANCELLED")
 
         replacement_response = self.client.post(
             "/api/reservations/",
@@ -439,9 +482,9 @@ class ReservationAPITest(APITestCase):
             if item["starts_at"] == self.aware(self.tomorrow, time(8)).isoformat()
         )
         self.assertTrue(slot["selectable"])
-        self.assertEqual(mine_response.data[0]["status"], "CANCELLED")
+        self.assertEqual(mine_response.data["results"][0]["status"], "CANCELLED")
         self.assertEqual(
-            mine_response.data[0]["cancellation_reason"],
+            mine_response.data["results"][0]["cancellation_reason"],
             "Horário reduzido durante o recesso.",
         )
 

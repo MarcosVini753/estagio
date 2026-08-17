@@ -736,9 +736,32 @@ class UsageSessionAPITest(APITestCase):
         operational_history = self.client.get("/api/usage-sessions/history/")
 
         self.assertEqual(room_active.status_code, 403)
-        self.assertEqual(room_history.data, [])
+        self.assertEqual(room_history.data["results"], [])
         self.assertEqual(operational_active.data[0]["id"], own_session.pk)
-        self.assertEqual(operational_history.data[0]["id"], other_session.pk)
+        self.assertEqual(operational_history.data["results"][0]["id"], other_session.pk)
+
+    def test_history_is_paginated_and_ordered_from_newest(self):
+        sessions = []
+        for index in range(26):
+            started_at = self.current - timedelta(days=index + 1)
+            sessions.append(
+                create_use_session(
+                    user_reference="aluno-si-001",
+                    started_at=started_at,
+                    ended_at=started_at + timedelta(minutes=15),
+                    status=UseSession.Status.FINISHED,
+                    entry_recorded_by_profile="ROOM_USER",
+                    exit_recorded_by_profile="ROOM_USER",
+                )
+            )
+
+        first_page = self.client.get("/api/usage-sessions/history/")
+        second_page = self.client.get("/api/usage-sessions/history/?page=2")
+
+        self.assertEqual(first_page.data["count"], 26)
+        self.assertEqual(len(first_page.data["results"]), 25)
+        self.assertEqual(first_page.data["results"][0]["id"], sessions[0].pk)
+        self.assertEqual(len(second_page.data["results"]), 1)
 
     def test_entry_rolls_back_when_allocation_creation_fails(self):
         reservation = create_reservation(

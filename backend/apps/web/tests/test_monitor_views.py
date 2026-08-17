@@ -178,6 +178,35 @@ class RoomMonitorWebTest(TestCase):
         self.assertContains(page, "Teclado com tecla solta")
         self.assertContains(page, "Em análise")
 
+    def test_occurrences_and_history_are_paginated_and_searchable(self):
+        self.select_monitor()
+        for index in range(26):
+            started_at = self.aware(time(8)) - timedelta(days=index + 1)
+            create_use_session(
+                user_reference=f"aluno-historico-{index:02d}",
+                started_at=started_at,
+                ended_at=started_at + timedelta(minutes=15),
+                status=UseSession.Status.FINISHED,
+                entry_recorded_by_profile="ROOM_MONITOR",
+                exit_recorded_by_profile="ROOM_MONITOR",
+            )
+            Occurrence.objects.create(
+                reported_by_reference=f"aluno-ocorrencia-{index:02d}",
+                computer=self.computer,
+                description=f"Ocorrência paginada {index}",
+            )
+
+        history = self.client.get("/monitor/historico/?page=2")
+        history_search = self.client.get("/monitor/historico/?q=historico-00")
+        occurrences = self.client.get("/monitor/ocorrencias/?page=2")
+
+        self.assertContains(history, 'aria-label="Paginação"')
+        self.assertContains(history, "Página 2 de 2")
+        self.assertContains(history_search, "aluno-historico-00")
+        self.assertNotContains(history_search, "aluno-historico-01")
+        self.assertContains(occurrences, 'aria-label="Paginação"')
+        self.assertContains(occurrences, "Página 2 de 2")
+
     def test_monitor_corrects_allowed_history_fields_with_reason(self):
         session = self.create_session(active=False)
         self.select_monitor()

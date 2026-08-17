@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -12,6 +13,7 @@ from apps.access.services import (
     get_demo_user_reference,
 )
 from apps.computers.models import Computer
+from apps.core.api.pagination import StandardPageNumberPagination
 from apps.core.enums import DemoProfile
 from apps.operations.models import Reservation, UseSession
 from apps.operations.services import (
@@ -41,8 +43,10 @@ OPERATIONAL_PROFILES = [
 ]
 
 
-class ReservationListCreateAPIView(APIView):
+class ReservationListCreateAPIView(GenericAPIView):
     permission_classes = [HasDemoProfile]
+    serializer_class = ReservationSerializer
+    pagination_class = StandardPageNumberPagination
 
     def get_permissions(self):
         self.allowed_demo_profiles = (
@@ -56,9 +60,9 @@ class ReservationListCreateAPIView(APIView):
         responses={200: ReservationSerializer(many=True)}, tags=["reservations"]
     )
     def get(self, request):
-        return Response(
-            ReservationSerializer(Reservation.objects.all(), many=True).data
-        )
+        reservations = Reservation.objects.order_by("-starts_at", "-pk")
+        page = self.paginate_queryset(reservations)
+        return self.get_paginated_response(ReservationSerializer(page, many=True).data)
 
     @extend_schema(
         request=ReservationCreateSerializer,
@@ -81,9 +85,11 @@ class ReservationListCreateAPIView(APIView):
         )
 
 
-class MyReservationListAPIView(APIView):
+class MyReservationListAPIView(GenericAPIView):
     permission_classes = [HasDemoProfile]
     allowed_demo_profiles = [DemoProfile.ROOM_USER]
+    serializer_class = ReservationSerializer
+    pagination_class = StandardPageNumberPagination
 
     @extend_schema(
         responses={200: ReservationSerializer(many=True)}, tags=["reservations"]
@@ -91,8 +97,9 @@ class MyReservationListAPIView(APIView):
     def get(self, request):
         reservations = Reservation.objects.filter(
             user_reference=get_demo_user_reference(request)
-        )
-        return Response(ReservationSerializer(reservations, many=True).data)
+        ).order_by("-starts_at", "-pk")
+        page = self.paginate_queryset(reservations)
+        return self.get_paginated_response(ReservationSerializer(page, many=True).data)
 
 
 class ReservationCancelAPIView(APIView):
@@ -148,9 +155,11 @@ class ActiveUsageSessionListAPIView(APIView):
         return Response(UseSessionSerializer(sessions, many=True).data)
 
 
-class UsageSessionHistoryAPIView(APIView):
+class UsageSessionHistoryAPIView(GenericAPIView):
     permission_classes = [HasDemoProfile]
     allowed_demo_profiles = DemoProfile.values
+    serializer_class = UseSessionSerializer
+    pagination_class = StandardPageNumberPagination
 
     @extend_schema(
         responses={200: UseSessionSerializer(many=True)}, tags=["usage-sessions"]
@@ -159,12 +168,11 @@ class UsageSessionHistoryAPIView(APIView):
         sessions = UseSession.objects.exclude(status=UseSession.Status.ACTIVE)
         if get_demo_profile(request) == DemoProfile.ROOM_USER:
             sessions = sessions.filter(user_reference=get_demo_user_reference(request))
-        return Response(
-            UseSessionSerializer(
-                sessions.prefetch_related("allocations"),
-                many=True,
-            ).data
+        sessions = sessions.prefetch_related("allocations").order_by(
+            "-started_at", "-pk"
         )
+        page = self.paginate_queryset(sessions)
+        return self.get_paginated_response(UseSessionSerializer(page, many=True).data)
 
 
 class UsageSessionStartAPIView(APIView):

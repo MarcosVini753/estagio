@@ -2,7 +2,9 @@ from datetime import datetime, time, timedelta
 from importlib import import_module
 
 from django.apps import apps as django_apps
-from django.test import TestCase
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
 from apps.computers.models import Computer
@@ -13,6 +15,9 @@ from .factories import create_use_session
 backfill_model_c_deadlines = import_module(
     "apps.operations.migrations.0007_backfill_model_c_deadlines"
 ).backfill_model_c_deadlines
+validate_operation_state_metadata = import_module(
+    "apps.operations.migrations.0011_enforce_operation_state_metadata"
+).validate_operation_state_metadata
 
 
 class ModelCMigrationTest(TestCase):
@@ -75,3 +80,35 @@ class ModelCMigrationTest(TestCase):
         self.assertEqual(session.planned_starts_at, instant)
         self.assertEqual(session.planned_ends_at, instant + timedelta.resolution)
         self.assertEqual(session.exit_deadline_at, instant + timedelta(minutes=3))
+
+
+class OperationStatePreflightMigrationTest(TransactionTestCase):
+    migrate_from = ("operations", "0010_allow_early_reservation_check_in")
+
+    def test_preflight_reports_model_and_inconsistent_ids(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate([self.migrate_from])
+        old_apps = executor.loader.project_state([self.migrate_from]).apps
+        session_model = old_apps.get_model("operations", "UseSession")
+        instant = timezone.now()
+        session = session_model.objects.create(
+            user_reference="legacy-inconsistent",
+            started_at=instant,
+            planned_starts_at=instant,
+            planned_ends_at=instant + timedelta(minutes=15),
+            exit_deadline_at=instant + timedelta(minutes=18),
+            ended_at=None,
+            status="FINISHED",
+            entry_recorded_by_profile="ROOM_USER",
+            exit_recorded_by_profile="",
+        )
+
+        with self.assertRaisesMessage(
+            RuntimeError,
+            f"UseSession: IDs [{session.pk}]",
+        ):
+            validate_operation_state_metadata(old_apps, None)
+
+        session.delete()
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())

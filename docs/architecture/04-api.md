@@ -200,6 +200,8 @@ PATCH /api/booking-policy/
 
 Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política encerra a versão anterior e cria outra; uma versão iniciada hoje e já ligada a reservas é preservada, e a nova começa amanhã. Versões de hoje ou futuras ainda sem reservas podem ser ajustadas. A política expõe somente limite de cancelamento e máximo de reservas futuras; duração de 15 minutos e tolerâncias de três minutos são regras fixas.
 
+Criação, preview e edição de `CalendarException` aceitam somente hoje ou datas futuras. Tentativas históricas retornam HTTP 400 com `CALENDAR_EXCEPTION_DATE_INVALID`; consultas históricas continuam permitidas.
+
 Calendários recebem exatamente sete dias. A API aceita `weekday` pelos nomes `MONDAY` a `SUNDAY`. Exemplo de criação temporária:
 
 ```json
@@ -303,6 +305,8 @@ POST /api/reservations/{id}/cancel/
 
 O início deve estar alinhado à grade da janela operacional. Para uma reserva iniciada às 09:00, o backend calcula `ends_at=10:00`, `check_in_deadline_at=09:03` e `exit_deadline_at=10:03`; a entrada é aceita de 08:57 a 09:03, inclusive. A resposta inclui esses campos, `booking_policy_id` e o `slot_count` derivado. `mine/` lista apenas as reservas do contexto atual. A listagem geral e o cancelamento de terceiros são operacionais; reservas canceladas deixam de bloquear o intervalo.
 Cancelamento de terceiro exige justificativa e gera evento de auditoria.
+
+As listagens `reservations/`, `reservations/mine/`, `usage-sessions/history/` e `occurrences/` usam páginas fixas de 25 itens e aceitam somente o parâmetro `page`. A resposta segue `{count, next, previous, results}`. Reservas e sessões são ordenadas do início mais recente para o mais antigo; ocorrências, da criação mais recente para a mais antiga; todas usam `id` decrescente como desempate estável.
 
 O ciclo de vida possui somente `CONFIRMED`, `CANCELLED` e `USED`. Respeitados o funcionamento da sala e o estado do computador, a entrada é aceita entre três minutos antes de `starts_at` e `check_in_deadline_at`, inclusive; depois disso a reconciliação cancela a reserva com `cancelled_by_profile=SYSTEM_ADMIN` e motivo “Prazo de check-in expirado.” Alterações operacionais usam os mesmos campos de cancelamento.
 

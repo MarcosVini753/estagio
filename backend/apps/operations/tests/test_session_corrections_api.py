@@ -211,6 +211,7 @@ class SessionCorrectionAPITest(APITestCase):
             sequence=1,
             started_at=self.aware(time(7, 0)),
             ended_at=self.aware(time(7, 45)),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
 
         response = self.correct(

@@ -28,8 +28,10 @@ from apps.operations.services.computer_state import (
     change_computer_operational_state,
 )
 
+from .http import is_htmx as _is_htmx
+from .http import service_error_message as _exception_message
+from .pagination import paginate
 from .presenters import computer_rows, flatten_serializer_errors, normalize_search
-from .views import _exception_message, _is_htmx
 
 OPERATIONAL_PROFILES = {
     DemoProfile.ROOM_MONITOR,
@@ -323,7 +325,8 @@ def _occurrences_context(request, *, form_error="", form_data=None):
             | Q(reported_by_reference__icontains=query)
             | Q(computer__code__icontains=query)
         )
-    occurrence_list = list(occurrences)
+    page = paginate(request, occurrences.order_by("-created_at", "-pk"))
+    occurrence_list = list(page.object_list)
     for occurrence in occurrence_list:
         occurrence.status_label = occurrence.get_status_display()
         if occurrence.status == Occurrence.Status.OPEN:
@@ -347,6 +350,8 @@ def _occurrences_context(request, *, form_error="", form_data=None):
     context.update(
         {
             "occurrences": occurrence_list,
+            "page_obj": page,
+            "pagination_target": "#staff-content",
             "computer_choices": Computer.objects.all(),
             "status_choices": Occurrence.Status.choices,
             "status_filter": status_filter,
@@ -458,25 +463,22 @@ def _history_context(request):
     sessions = _sessions_queryset().exclude(status=UseSession.Status.ACTIVE)
     if query:
         normalized = normalize_search(query)
-        sessions = [
-            session
-            for session in sessions
-            if normalized
-            in normalize_search(
-                " ".join(
-                    [
-                        str(session.pk),
-                        session.user_reference,
-                        session.status,
-                        " ".join(
-                            allocation.computer.code
-                            for allocation in session.allocations.all()
-                        ),
-                    ]
-                )
-            )
+        matching_statuses = [
+            value
+            for value, label in UseSession.Status.choices
+            if normalized in normalize_search(label)
+            or normalized in normalize_search(value)
         ]
-    sessions = _decorate_sessions(sessions)
+        filters = (
+            Q(user_reference__icontains=query)
+            | Q(status__in=matching_statuses)
+            | Q(allocations__computer__code__icontains=query)
+        )
+        if query.isdigit():
+            filters |= Q(pk=int(query))
+        sessions = sessions.filter(filters).distinct()
+    page = paginate(request, sessions.order_by("-started_at", "-pk"))
+    sessions = _decorate_sessions(page.object_list)
     context = _screen_context(
         request,
         screen="history",
@@ -484,6 +486,8 @@ def _history_context(request):
         search_url_name="web:monitor-history",
     )
     context["sessions"] = sessions
+    context["page_obj"] = page
+    context["pagination_target"] = "#staff-content"
     return context
 
 

@@ -153,6 +153,8 @@ def correct_usage_session(
         last.end_reason = ComputerAllocation.EndReason.ADMIN_CORRECTION
     elif last_allocation_ended_at is not None:
         last.ended_at = last_allocation_ended_at
+        if not last.end_reason:
+            last.end_reason = ComputerAllocation.EndReason.ADMIN_CORRECTION
 
     _validate_timeline(session, allocations)
 

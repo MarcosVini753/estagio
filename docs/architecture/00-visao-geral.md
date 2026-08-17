@@ -88,4 +88,4 @@ A interface deve ser mobile-first e preparada para evolução posterior para PWA
 
 O scaffold, apps, modelos, migrations, Compose, CI, health check e contexto de demonstração estão implementados. Os serviços operacionais e endpoints de domínio também já existem: reservas, sessões, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal.
 
-O app de apresentação `web` entrega o seletor dos quatro perfis e a área completa do Usuário da Sala com Django Templates, HTMX, Alpine.js e Tailwind CSS. As interfaces funcionais do Monitor, Supervisor e Administrador permanecem como evolução futura. Consulte `08-estado-implementacao.md` para o detalhamento.
+O app de apresentação `web` entrega o seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca com Django Templates, HTMX, Alpine.js e Tailwind CSS. Somente a interface própria do Administrador permanece como evolução futura. Consulte `08-estado-implementacao.md` para o detalhamento.

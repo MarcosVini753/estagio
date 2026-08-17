@@ -1,6 +1,6 @@
 <div
   id="agenda-content"
-  hx-get="{% url 'web:agenda' %}?q={{ query|urlencode }}"
+  hx-get="{% url 'web:agenda' %}{% querystring %}"
   hx-trigger="every 15s"
   hx-target="#agenda-content"
   hx-swap="outerHTML">
@@ -48,4 +48,5 @@
     <div class="empty-state"><strong>Nenhuma reserva encontrada</strong><p>Escolha hoje ou amanhã para consultar horários disponíveis.</p></div>
   {% endfor %}
 </section>
+{% include "components/pagination.html" %}
 </div>

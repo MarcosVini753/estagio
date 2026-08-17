@@ -128,6 +128,9 @@
 - configuração auditada da apresentação de relatórios e visualização do relatório mensal disponível;
 - busca server-side, páginas completas sem HTMX e shell compartilhado mobile-first com sidebar no desktop;
 - testes Django dos fluxos críticos e E2E real ampliado para Monitor e Supervisor.
+- paginação fixa de 25 itens nas listagens extensas da API e das interfaces, com busca da Agenda e do Histórico executada no banco;
+- constraints de coerência entre estados e metadados de cancelamento, saída e encerramento, precedidas por migration de validação explícita do legado;
+- serviços de configuração e views do Supervisor expostos em módulos coesos, preservando imports públicos, URLs e regras transacionais.
 
 ## Não implementado
 

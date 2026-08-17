@@ -11,6 +11,7 @@
 - O funcionamento aplicável a uma data segue a precedência: exceção específica, horário temporário, horário semanal regular e, por último, erro de configuração se o calendário regular não existir.
 - Um horário temporário deve ter início e fim. Ao terminar sua vigência, o horário regular volta a valer automaticamente.
 - Uma exceção pontual pode fechar a sala ou substituir as janelas de uma única data e sempre prevalece sobre horário temporário e regular.
+- Exceções passadas são históricas e não podem ser criadas nem alteradas pelos fluxos administrativos; hoje e datas futuras permanecem editáveis.
 - Cada calendário configura exatamente os sete dias. Dia aberto tem ao menos uma janela; dia fechado não tem janelas; janelas do mesmo dia não se sobrepõem.
 - Reservas, entrada imediata, slots e tempo operacional disponível devem respeitar o calendário aplicável, independentemente dos turnos.
 - Cada slot possui duração fixa de 15 minutos. Novas reservas e usos imediatos solicitam uma quantidade inteira positiva de slots consecutivos.

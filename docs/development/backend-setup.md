@@ -71,4 +71,8 @@ make test
 - indisponibilidade de computador com transferência/realocação atômica;
 - relatório mensal JSON.
 
+## Seeds de demonstração
+
+`seed_demo_data` é incremental e não destrutivo: cria computadores canônicos ausentes, cria os três turnos somente quando não existe nenhum turno e cria o calendário regular somente quando não existe nenhuma versão regular. Reexecuções nunca restauram descrições, notas, estados operacionais, turnos editados/desativados nem versões encerradas. O reset explícito de `seed_report_demo_data --reset` mantém seu comportamento próprio e deve ser usado apenas em banco descartável de desenvolvimento.
+
 Consulte [../architecture/08-estado-implementacao.md](../architecture/08-estado-implementacao.md) para o detalhamento do que já foi entregue.

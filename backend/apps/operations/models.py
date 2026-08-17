@@ -74,6 +74,19 @@ class Reservation(TimeStampedModel):
                 condition=Q(ends_at__lte=F("exit_deadline_at")),
                 name="reservation_exit_after_end",
             ),
+            models.CheckConstraint(
+                condition=(
+                    Q(status="CANCELLED", cancelled_at__isnull=False)
+                    & ~Q(cancelled_by_profile="")
+                    | ~Q(status="CANCELLED")
+                    & Q(
+                        cancelled_at__isnull=True,
+                        cancelled_by_profile="",
+                        cancellation_reason="",
+                    )
+                ),
+                name="reservation_cancellation_metadata_matches_status",
+            ),
             ExclusionConstraint(
                 name="reservation_computer_no_overlap",
                 expressions=[
@@ -203,6 +216,19 @@ class UseSession(TimeStampedModel):
                 condition=Q(started_at__lte=F("exit_deadline_at")),
                 name="session_start_before_exit_deadline",
             ),
+            models.CheckConstraint(
+                condition=(
+                    Q(
+                        status="ACTIVE",
+                        ended_at__isnull=True,
+                        exit_recorded_by_profile="",
+                    )
+                    | ~Q(status="ACTIVE")
+                    & Q(ended_at__isnull=False)
+                    & ~Q(exit_recorded_by_profile="")
+                ),
+                name="session_exit_metadata_matches_status",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -259,6 +285,13 @@ class ComputerAllocation(TimeStampedModel):
             models.CheckConstraint(
                 condition=Q(ended_at__isnull=True) | Q(ended_at__gte=F("started_at")),
                 name="allocation_end_not_before_start",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(ended_at__isnull=True, end_reason="")
+                    | Q(ended_at__isnull=False) & ~Q(end_reason="")
+                ),
+                name="allocation_end_reason_matches_end",
             ),
             ExclusionConstraint(
                 name="allocation_computer_no_overlap",

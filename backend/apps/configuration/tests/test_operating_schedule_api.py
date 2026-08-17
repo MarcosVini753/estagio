@@ -2,11 +2,18 @@ from datetime import date, datetime, time, timedelta
 from unittest.mock import patch
 
 from django.utils import timezone
+from rest_framework.exceptions import APIException
 from rest_framework.test import APITestCase
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
-from apps.configuration.models import OperatingSchedule, RoomNotice, Weekday
+from apps.configuration.models import (
+    CalendarException,
+    OperatingSchedule,
+    RoomNotice,
+    Weekday,
+)
+from apps.configuration.services import preview_calendar_exception_impact
 from apps.operations.models import Reservation
 from apps.operations.tests.factories import create_reservation
 
@@ -89,6 +96,74 @@ class OperatingScheduleAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["code"], "OPERATING_DAY_CONFIGURATION_INVALID")
+
+    def test_calendar_exception_rejects_past_date_without_side_effects(self):
+        past_date = timezone.localdate() - timedelta(days=1)
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            "/api/calendar-exceptions/",
+            {
+                "date": past_date.isoformat(),
+                "exception_type": CalendarException.ExceptionType.CLOSED,
+                "description": "Fechamento retroativo.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "CALENDAR_EXCEPTION_DATE_INVALID")
+        self.assertFalse(CalendarException.objects.filter(date=past_date).exists())
+        self.assertFalse(
+            AuditEvent.objects.filter(action__startswith="CALENDAR_EXCEPTION_").exists()
+        )
+
+    def test_calendar_exception_rejects_preview_and_update_for_past_date(self):
+        past_date = timezone.localdate() - timedelta(days=1)
+        exception = CalendarException.objects.create(
+            date=past_date,
+            exception_type=CalendarException.ExceptionType.CLOSED,
+            description="Registro histórico.",
+        )
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        with self.assertRaisesMessage(
+            APIException,
+            "Exceções de calendário só podem ser criadas ou alteradas para hoje",
+        ):
+            preview_calendar_exception_impact(
+                values={
+                    "date": past_date,
+                    "exception_type": CalendarException.ExceptionType.CLOSED,
+                }
+            )
+        response = self.client.patch(
+            f"/api/calendar-exceptions/{exception.pk}/",
+            {"description": "Tentativa de alteração."},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "CALENDAR_EXCEPTION_DATE_INVALID")
+        exception.refresh_from_db()
+        self.assertEqual(exception.description, "Registro histórico.")
+
+    def test_calendar_exception_accepts_today(self):
+        today = timezone.localdate()
+        self.select_profile("LIBRARY_SUPERVISOR")
+
+        response = self.client.post(
+            "/api/calendar-exceptions/",
+            {
+                "date": today.isoformat(),
+                "exception_type": CalendarException.ExceptionType.CLOSED,
+                "description": "Emergência no dia atual.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(CalendarException.objects.filter(date=today).exists())
 
     def test_create_rejects_schedule_starting_today(self):
         today = timezone.localdate()
@@ -285,7 +360,7 @@ class OperatingScheduleAPITest(APITestCase):
 
         with (
             patch(
-                "apps.configuration.services.create_room_notice",
+                "apps.configuration.services._implementation.create_room_notice",
                 side_effect=RuntimeError("notice unavailable"),
             ),
             self.assertRaises(RuntimeError),

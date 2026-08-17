@@ -151,6 +151,42 @@ class RoomUserWebTest(TestCase):
         self.assertContains(detail, "15 min")
         self.assertContains(detail, "30 min")
 
+    def test_agenda_and_problems_paginate_without_losing_search(self):
+        self.select_room_user()
+        reservations = []
+        for index in range(26):
+            starts_at = self.fixed_now - timedelta(days=index + 1)
+            reservations.append(
+                create_reservation(
+                    user_reference="aluno-si-001",
+                    computer=self.computer,
+                    starts_at=starts_at,
+                    ends_at=starts_at + timedelta(minutes=15),
+                    status=Reservation.Status.CANCELLED,
+                    cancelled_by_profile="ROOM_USER",
+                    cancelled_at=starts_at - timedelta(hours=1),
+                    cancellation_reason=f"Cancelamento pesquisável {index}",
+                    created_by_profile="ROOM_USER",
+                )
+            )
+            Occurrence.objects.create(
+                reported_by_reference="aluno-si-001",
+                computer=self.computer,
+                description=f"Problema paginado {index}",
+            )
+
+        agenda = self.client.get("/sala/agenda/?page=2")
+        agenda_search = self.client.get("/sala/agenda/?q=pesquisável+0")
+        problems = self.client.get("/sala/problemas/?page=2")
+
+        self.assertContains(agenda, 'aria-label="Paginação"')
+        self.assertContains(agenda, "Página 2 de 2")
+        self.assertContains(agenda, reservations[-1].computer.description)
+        self.assertContains(agenda_search, "Cancelamento pesquisável 0")
+        self.assertNotContains(agenda_search, "Cancelamento pesquisável 1")
+        self.assertContains(problems, 'aria-label="Paginação"')
+        self.assertContains(problems, "Página 2 de 2")
+
     def test_computers_present_closed_room(self):
         self.select_room_user()
         OperatingSchedule.objects.all().delete()

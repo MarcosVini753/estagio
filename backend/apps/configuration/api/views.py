@@ -22,12 +22,14 @@ from apps.configuration.services import (
     apply_calendar_exception,
     create_operating_schedule,
     create_room_notice,
+    create_shift,
     preview_operating_schedule_impact,
     replace_operating_schedule,
     replace_shift,
     update_current_booking_policy,
     update_future_operating_schedule,
     update_room_notice,
+    update_shift,
 )
 from apps.core.api.errors import ConfigurationRequired
 from apps.core.enums import DemoProfile
@@ -69,6 +71,15 @@ class ShiftListCreateAPIView(generics.ListCreateAPIView):
         )
         return super().get_permissions()
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        shift = create_shift(
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
+        return Response(ShiftSerializer(shift).data, status=status.HTTP_201_CREATED)
+
 
 class ShiftDetailAPIView(generics.RetrieveUpdateAPIView):
     queryset = Shift.objects.all()
@@ -81,6 +92,21 @@ class ShiftDetailAPIView(generics.RetrieveUpdateAPIView):
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=kwargs.pop("partial", False),
+        )
+        serializer.is_valid(raise_exception=True)
+        shift = update_shift(
+            shift_id=instance.pk,
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
+        return Response(ShiftSerializer(shift).data)
 
 
 class ShiftReplaceAPIView(APIView):
@@ -416,5 +442,8 @@ class BookingPolicyAPIView(APIView):
     def patch(self, request):
         serializer = BookingPolicyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        policy = update_current_booking_policy(values=serializer.validated_data)
+        policy = update_current_booking_policy(
+            values=serializer.validated_data,
+            actor_profile=get_demo_profile(request),
+        )
         return Response(BookingPolicySerializer(policy).data)

@@ -88,6 +88,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(2, 10, 8),
             ended_at=report_datetime(2, 10, 9),
+            end_reason=ComputerAllocation.EndReason.SWITCH,
         )
         ComputerAllocation.objects.create(
             session=first,
@@ -95,6 +96,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=2,
             started_at=report_datetime(2, 10, 9),
             ended_at=report_datetime(2, 10, 10),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         second = self.create_session(
             reference="demo-report-user-a",
@@ -108,6 +110,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(2, 11, 13),
             ended_at=report_datetime(2, 11, 14),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         active = self.create_session(
             reference="demo-report-user-b",
@@ -133,6 +136,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(2, 13, 10),
             ended_at=report_datetime(2, 13, 10, 30),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         cancelled = self.create_session(
             reference="demo-report-cancelled",
@@ -147,6 +151,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(2, 14, 10),
             ended_at=report_datetime(2, 14, 11),
+            end_reason=ComputerAllocation.EndReason.CANCELLED,
         )
 
         create_reservation(
@@ -283,6 +288,7 @@ class MonthlyReportAPITest(APITestCase):
             sequence=1,
             started_at=report_datetime(1, 31, 23, 30),
             ended_at=report_datetime(2, 1, 0, 30),
+            end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
         self.create_session(
             reference="demo-report-start",
