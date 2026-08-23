@@ -48,6 +48,11 @@ Valida a interface Django real em um ambiente efêmero:
 7. testa swipe entre hoje e amanhã, swipe da navegação inferior e distinção de rolagem vertical;
 8. falha caso existam erros JavaScript não tratados no navegador.
 
+O job possui limite de 15 minutos. Em `ubuntu-latest`, ele baixa somente o
+binário Chromium compatível com a versão bloqueada do Playwright; não executa
+`--with-deps` nem instala pacotes do sistema via `apt`. Isso evita que a
+infraestrutura de pacotes do runner domine o tempo do teste E2E.
+
 ## Deploy não é CI
 
 `.github/workflows/static.yml` continua responsável somente pelo deploy do protótipo no GitHub Pages e permanece restrito à `main`.
