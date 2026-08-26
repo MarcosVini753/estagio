@@ -1,15 +1,9 @@
 import unicodedata
-from datetime import timedelta
 
 from django.utils import timezone
 
 from apps.computers.models import Computer
-from apps.operations.rules import (
-    EARLY_CHECK_IN_TOLERANCE_MINUTES,
-    LATE_CHECK_IN_TOLERANCE_MINUTES,
-    LATE_CHECK_OUT_TOLERANCE_MINUTES,
-    SLOT_DURATION_MINUTES,
-)
+from apps.operations.rules import SLOT_DURATION_MINUTES
 
 STATUS_META = {
     Computer.OperationalState.AVAILABLE: {
@@ -156,41 +150,22 @@ def reservation_duration_options(
                 "ends_at": ends_at,
                 "starts_label": timezone.localtime(starts_at).strftime("%H:%M"),
                 "ends_label": timezone.localtime(ends_at).strftime("%H:%M"),
-                "check_in_starts_label": timezone.localtime(
-                    starts_at - timedelta(minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES)
-                ).strftime("%H:%M"),
-                "check_in_deadline_label": timezone.localtime(
-                    starts_at + timedelta(minutes=LATE_CHECK_IN_TOLERANCE_MINUTES)
-                ).strftime("%H:%M"),
-                "exit_deadline_label": timezone.localtime(
-                    ends_at + timedelta(minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES)
-                ).strftime("%H:%M"),
             }
         )
         previous_end = slot["ends_at"]
     return options
 
 
-def immediate_duration_options(immediate_usage: dict, *, now=None) -> list[dict]:
-    current = now or timezone.now()
+def immediate_end_options(
+    immediate_usage: dict, *, selected_planned_ends_at: str = ""
+) -> list[dict]:
     return [
         {
-            "slot_count": slot_count,
-            "minutes": slot_count * SLOT_DURATION_MINUTES,
-            "planned_ends_label": timezone.localtime(
-                current + timedelta(minutes=slot_count * SLOT_DURATION_MINUTES)
-            ).strftime("%H:%M"),
-            "exit_deadline_label": timezone.localtime(
-                current
-                + timedelta(
-                    minutes=(
-                        slot_count * SLOT_DURATION_MINUTES
-                        + LATE_CHECK_OUT_TOLERANCE_MINUTES
-                    )
-                )
-            ).strftime("%H:%M"),
+            "value": planned_ends_at.isoformat(),
+            "planned_ends_label": timezone.localtime(planned_ends_at).strftime("%H:%M"),
+            "selected": planned_ends_at.isoformat() == selected_planned_ends_at,
         }
-        for slot_count in range(1, immediate_usage["max_slot_count"] + 1)
+        for planned_ends_at in immediate_usage.get("planned_end_options", [])
     ]
 
 

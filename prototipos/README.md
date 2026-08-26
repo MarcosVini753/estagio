@@ -15,10 +15,10 @@ Os dados são fictícios e persistidos em `localStorage`. Não há backend, aute
 - perfis: Usuário da Sala, Monitor da Sala, Supervisor e Administrador;
 - seleção de perfil apenas simulada;
 - consulta para hoje e amanhã;
-- uso imediato somente hoje, com duração escolhida em slots de 15 minutos;
+- uso imediato somente hoje, com saída planejada escolhida na grade fixa de 15 minutos;
 - reserva de slots consecutivos para horário futuro de hoje ou para amanhã;
 - entrada por reserva de três minutos antes até três minutos depois do início;
-- apresentação de fim planejado e prazo de saída três minutos depois;
+- apresentação de fim planejado; tolerâncias de três minutos são operacionais e não aparecem para o Usuário da Sala;
 - horários passados indisponíveis;
 - sem fila de espera;
 - estado operacional persistido: `AVAILABLE`, `MAINTENANCE`, `INACTIVE`;

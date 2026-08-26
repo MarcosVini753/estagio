@@ -7,7 +7,6 @@ from django.utils import timezone
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.calendar import (
-    interval_is_within_operating_day,
     is_open_at,
     lock_operating_date,
     resolve_operating_day,
@@ -33,7 +32,7 @@ from apps.operations.services.deadlines import (
     reconcile_computer_deadlines,
 )
 from apps.operations.services.reservations import lock_user_reference
-from apps.operations.slotting import calculate_interval
+from apps.operations.slotting import validate_immediate_planned_end
 
 OPERATIONAL_PROFILES = {
     DemoProfile.ROOM_MONITOR,
@@ -131,7 +130,7 @@ def start_usage_session(
     actor_profile: str,
     actor_reference: str,
     reservation_id: int | None = None,
-    slot_count: int | None = None,
+    planned_ends_at: datetime | None = None,
     user_reference: str | None = None,
     affiliation_type: str | None = None,
     institutional_unit: str | None = None,
@@ -171,7 +170,7 @@ def start_usage_session(
         actor_profile=actor_profile,
         actor_reference=actor_reference,
         reservation_id=reservation_id,
-        slot_count=slot_count,
+        planned_ends_at=planned_ends_at,
         user_reference=user_reference,
         affiliation_type=affiliation_type,
         institutional_unit=institutional_unit,
@@ -186,7 +185,7 @@ def _start_usage_session(
     actor_profile: str,
     actor_reference: str,
     reservation_id: int | None,
-    slot_count: int | None,
+    planned_ends_at: datetime | None,
     user_reference: str | None,
     affiliation_type: str | None,
     institutional_unit: str | None,
@@ -195,10 +194,10 @@ def _start_usage_session(
     lock_operating_date(timezone.localdate(current))
     reservation = None
 
-    if reservation_id is not None and slot_count is not None:
-        raise UsageSessionConflict("A duração é definida pela reserva informada.")
-    if reservation_id is None and slot_count is None:
-        raise UsageSessionConflict("Informe a duração do uso imediato.")
+    if reservation_id is not None and planned_ends_at is not None:
+        raise UsageSessionConflict("O fim é definido pela reserva informada.")
+    if reservation_id is None and planned_ends_at is None:
+        raise UsageSessionConflict("Informe o horário planejado de saída.")
 
     if reservation_id is not None:
         reservation_preview = Reservation.objects.get(pk=reservation_id)
@@ -245,16 +244,14 @@ def _start_usage_session(
     else:
         try:
             planned_starts_at = current
-            planned_ends_at = calculate_interval(current, slot_count)
-        except ValueError as error:
-            raise UsageSessionConflict("A duração solicitada é inválida.") from error
-        if not interval_is_within_operating_day(
-            operating_day,
-            planned_starts_at,
-            planned_ends_at,
-        ):
+            validate_immediate_planned_end(
+                starts_at=planned_starts_at,
+                planned_ends_at=planned_ends_at,
+                operating_day=operating_day,
+            )
+        except ValueError:
             raise UsageSessionConflict(
-                "O uso planejado ultrapassa o fechamento da sala."
+                "O horário planejado de saída não está disponível."
             )
         exit_deadline_at = planned_ends_at + timedelta(
             minutes=LATE_CHECK_OUT_TOLERANCE_MINUTES

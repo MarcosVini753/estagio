@@ -198,10 +198,11 @@ class AvailabilityAPITest(APITestCase):
 
         immediate = response.data["computers"][0]["immediate_usage"]
         self.assertTrue(immediate["can_start_now"])
-        self.assertEqual(immediate["max_slot_count"], 2)
+        self.assertNotIn("max_slot_count", immediate)
+        self.assertNotIn("planned_end_options", immediate)
         self.assertEqual(
             immediate["max_planned_ends_at"],
-            self.aware(self.today, time(8, 51)).isoformat(),
+            self.aware(self.today, time(9)).isoformat(),
         )
         self.assertEqual(immediate["limited_by"], "NEXT_RESERVATION")
 
@@ -218,12 +219,40 @@ class AvailabilityAPITest(APITestCase):
             )
 
         immediate = response.data["computers"][0]["immediate_usage"]
-        self.assertEqual(immediate["max_slot_count"], 2)
         self.assertEqual(
             immediate["max_planned_ends_at"],
-            self.aware(self.today, time(9, 51)).isoformat(),
+            self.aware(self.today, time(10)).isoformat(),
         )
         self.assertEqual(immediate["limited_by"], "ROOM_CLOSING")
+
+    def test_computer_detail_returns_server_calculated_planned_end_options(self):
+        fixed_now = self.aware(self.today, time(8, 21))
+        create_reservation(
+            user_reference="another-user",
+            computer=self.computer,
+            starts_at=self.aware(self.today, time(9)),
+            ends_at=self.aware(self.today, time(10)),
+            created_by_profile="ROOM_USER",
+        )
+
+        with patch(
+            "apps.operations.availability.timezone.now",
+            return_value=fixed_now,
+        ):
+            response = self.client.get(
+                f"/api/computers/{self.computer.pk}/slots/",
+                {"date": self.today.isoformat()},
+            )
+
+        immediate = response.data["immediate_usage"]
+        self.assertEqual(
+            immediate["planned_end_options"],
+            [
+                self.aware(self.today, time(8, 30)).isoformat(),
+                self.aware(self.today, time(8, 45)).isoformat(),
+                self.aware(self.today, time(9)).isoformat(),
+            ],
+        )
 
     def test_immediate_usage_reports_unavailable_computer(self):
         self.computer.operational_state = Computer.OperationalState.INACTIVE
@@ -241,7 +270,7 @@ class AvailabilityAPITest(APITestCase):
 
         immediate = response.data["computers"][0]["immediate_usage"]
         self.assertFalse(immediate["can_start_now"])
-        self.assertEqual(immediate["max_slot_count"], 0)
+        self.assertIsNone(immediate["max_planned_ends_at"])
         self.assertEqual(immediate["limited_by"], "COMPUTER_UNAVAILABLE")
 
     def test_effective_status_now_does_not_anticipate_upcoming_reservation(self):
@@ -293,7 +322,10 @@ class AvailabilityAPITest(APITestCase):
             for computer in response.data["computers"]
             if computer["id"] == self.computer.pk
         )
-        self.assertEqual(item["immediate_usage"]["max_slot_count"], 2)
+        self.assertEqual(
+            item["immediate_usage"]["max_planned_ends_at"],
+            self.aware(self.today, time(9)).isoformat(),
+        )
         self.assertEqual(item["immediate_usage"]["limited_by"], "USER_RESERVATION")
 
     def test_immediate_usage_accounts_for_users_allocation_on_other_computer(self):

@@ -40,13 +40,15 @@ A imagem é construída apenas para validação. A CI não publica imagens e nã
 Valida a interface Django real em um ambiente efêmero:
 
 1. provisiona PostgreSQL, Python, Node.js, Playwright e Chromium;
-2. compila os assets, aplica migrations e executa `seed_demo_data`;
+2. compila os assets, aplica migrations, executa `seed_demo_data` e prepara os dados descartáveis de confirmação com `seed_frontend_e2e_data`;
 3. inicia o servidor Django real;
 4. seleciona o Usuário da Sala com identidade fictícia e valida layout, navegação e gestos em mobile e desktop;
 5. seleciona o Monitor da Sala em viewport mobile, acessa ocorrências e registra um problema real;
 6. seleciona o Supervisor da Biblioteca em desktop e percorre inventário, configurações e relatório mensal;
 7. testa swipe entre hoje e amanhã, swipe da navegação inferior e distinção de rolagem vertical;
-8. falha caso existam erros JavaScript não tratados no navegador.
+8. percorre o ciclo interligado de ocorrência entre Usuário da Sala, Monitor e Supervisor, confirmando o retorno do estado resolvido ao criador;
+9. confirma, sem envio prematuro, saída de sessão e cancelamento de reserva com `<dialog>` nativo;
+10. falha caso existam erros JavaScript não tratados no navegador.
 
 O job possui limite de 15 minutos. Em `ubuntu-latest`, ele baixa somente o
 binário Chromium compatível com a versão bloqueada do Playwright; não executa

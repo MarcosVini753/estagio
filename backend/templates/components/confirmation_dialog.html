@@ -1,0 +1,36 @@
+<dialog
+  id="{{ dialog_prefix }}-{{ object_id }}"
+  class="app-dialog confirmation-dialog"
+  aria-labelledby="{{ dialog_prefix }}-{{ object_id }}-title"
+  data-confirm-dialog>
+  <section class="dialog-card confirmation-card">
+    <header class="dialog-header">
+      <div>
+        <p class="section-kicker">Confirmação</p>
+        <h2 id="{{ dialog_prefix }}-{{ object_id }}-title">{{ title }}</h2>
+      </div>
+      <button class="icon-button icon-button-dark" type="button" data-confirm-cancel aria-label="Voltar">
+        {% include "components/icon.html" with name="close" %}
+      </button>
+    </header>
+    <div class="dialog-body">
+      <p>{{ message }}</p>
+      <div class="confirmation-actions">
+        <form method="dialog">
+          <button class="button button-ghost" type="submit" data-confirm-cancel>Voltar</button>
+        </form>
+        <form
+          method="post"
+          action="{{ action_url }}"
+          hx-post="{{ action_url }}"
+          hx-target="{{ target }}"
+          hx-swap="{{ swap }}"
+          hx-sync="this:drop"
+          hx-disabled-elt="find button[type='submit']">
+          {% csrf_token %}
+          <button class="button button-primary" type="submit" data-confirm-submit>{{ confirm_label }}</button>
+        </form>
+      </div>
+    </div>
+  </section>
+</dialog>

@@ -42,7 +42,7 @@ Registro da visita de um usuário. Mantém o intervalo planejado solicitado e, s
 
 ## Slot
 
-Unidade fixa de 15 minutos usada para compor a duração consecutiva de reservas e usos imediatos.
+Unidade fixa de 15 minutos usada para compor a duração consecutiva de reservas e a grade de fins planejados do uso imediato.
 
 ## Intervalo planejado
 

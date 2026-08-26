@@ -110,7 +110,6 @@ A data deve ser hoje ou amanhã. O primeiro endpoint devolve um resumo por compu
       "can_start_now": true,
       "immediate_usage": {
         "can_start_now": true,
-        "max_slot_count": 2,
         "max_planned_ends_at": "2026-07-14T10:00:00-05:00",
         "limited_by": "NEXT_RESERVATION"
       },
@@ -124,9 +123,9 @@ A data deve ser hoje ou amanhã. O primeiro endpoint devolve um resumo por compu
 }
 ```
 
-`effective_status_now` é preenchido somente para hoje. Para amanhã, seu valor é `null`; a disponibilidade deve ser consultada pelos slots. `immediate_usage.limited_by` pode ser `NEXT_RESERVATION`, `USER_RESERVATION`, `ROOM_CLOSING`, `ACTIVE_ALLOCATION` ou `COMPUTER_UNAVAILABLE`. O máximo considera slots inteiros de 15 minutos a partir do instante real.
+`effective_status_now` é preenchido somente para hoje. Para amanhã, seu valor é `null`; a disponibilidade deve ser consultada pelos slots. `immediate_usage.limited_by` pode ser `NEXT_RESERVATION`, `USER_RESERVATION`, `ROOM_CLOSING`, `ACTIVE_ALLOCATION` ou `COMPUTER_UNAVAILABLE`. O máximo é uma marca da grade fixa global `07:15 + N × 15 minutos`, posterior ao instante real; a listagem não inclui todas as opções.
 
-O endpoint de slots devolve intervalos derivados, não registros persistidos:
+O endpoint de slots devolve intervalos derivados, não registros persistidos. Para hoje, quando o uso imediato for possível, `immediate_usage` inclui também `planned_end_options` com os fins que o servidor aceita:
 
 ```json
 {
@@ -140,7 +139,6 @@ O endpoint de slots devolve intervalos derivados, não registros persistidos:
   "slot_duration_minutes": 15,
   "immediate_usage": {
     "can_start_now": false,
-    "max_slot_count": 0,
     "max_planned_ends_at": null,
     "limited_by": null
   },
@@ -321,18 +319,18 @@ POST /api/usage-sessions/{id}/switch-computer/
 POST /api/usage-sessions/{id}/finish/
 ```
 
-Uso imediato recebe computador e duração:
+Uso imediato recebe computador e fim planejado:
 
 ```json
 {
   "computer_id": 12,
-  "slot_count": 2
+  "planned_ends_at": "2026-08-07T08:30:00-05:00"
 }
 ```
 
-Se a entrada ocorrer às 08h21, a sessão responde com `planned_starts_at=08:21`, `planned_ends_at=08:51` e `exit_deadline_at=08:54`. O intervalo inteiro deve caber antes do fechamento e não pode invadir reserva confirmada ou sessão planejada.
+Se a entrada ocorrer às 08h21, a próxima opção pode ser 08h30. O início real e planejado são 08h21; o fim escolhido precisa estar na grade global `07:15 + N × 15 minutos`, ser posterior à entrada e caber na mesma janela operacional. O intervalo inteiro não pode invadir reserva confirmada ou sessão planejada. `slot_count` é rejeitado explicitamente neste endpoint.
 
-Entrada com reserva recebe `computer_id` e `reservation_id`; enviar também `slot_count` é erro 400. A sessão herda snapshots, intervalo e deadlines da reserva. A entrada pode ocorrer até três minutos antes ou depois do início, sem deslocar o fim planejado.
+Entrada com reserva recebe `computer_id` e `reservation_id`; enviar também `planned_ends_at` é erro 400. A sessão herda snapshots, intervalo e deadlines da reserva. A entrada pode ocorrer até três minutos antes ou depois do início, sem deslocar o fim planejado.
 
 Troca encerra a alocação atual e cria a próxima na mesma sessão depois de validar o destino até `planned_ends_at`; é rejeitada durante a tolerância de saída. Saída antecipada ou exatamente no prazo é aceita. Saída operacional de terceiro exige justificativa e auditoria. Sessões vencidas têm a saída registrada automaticamente em `exit_deadline_at` com alocação `TIME_LIMIT_REACHED`.
 

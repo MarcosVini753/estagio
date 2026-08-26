@@ -29,7 +29,7 @@ Cobrir:
 - rejeição de horários passados;
 - precedência do estado efetivo;
 - cálculo de slots;
-- cálculo do intervalo por `slot_count` e do máximo para uso imediato;
+- cálculo do intervalo por `slot_count` em reservas e escolha do fim na grade fixa para uso imediato;
 - separação entre fim planejado, prazo de saída e término real;
 - classificação de turnos;
 - projeções de relatórios.

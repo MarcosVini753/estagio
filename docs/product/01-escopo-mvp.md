@@ -17,13 +17,13 @@ A seleção controla menus e autorizações simuladas. Não existe autenticaçã
 - consultar o status e as janelas de funcionamento da sala;
 - visualizar avisos operacionais ativos antes e depois de escolher o perfil;
 - consultar computadores e horários;
-- iniciar uso imediato hoje escolhendo uma duração em slots de 15 minutos;
+- iniciar uso imediato hoje escolhendo a saída planejada na grade de 15 minutos;
 - reservar um ou mais slots consecutivos para horário futuro de hoje ou de amanhã;
 - consultar e cancelar suas reservas simuladas;
 - registrar entrada e saída;
 - visualizar sessão ativa;
 - trocar de computador preservando histórico;
-- visualizar horário planejado e prazo de saída da sessão;
+- visualizar horários reais e fim planejado da sessão;
 - informar problema.
 
 ## Monitor da Sala

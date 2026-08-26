@@ -94,9 +94,9 @@ De segunda a sexta o horário regular inicial é 07h15–21h; sábado é 07h15�
 
 Operação transacional:
 
-1. receber computador e `slot_count >= 1`;
+1. receber computador e `planned_ends_at`;
 2. reconciliar prazos vencidos no computador, nas sessões ativas do usuário e em suas reservas confirmadas já vencidas;
-3. calcular `[agora, agora + slot_count × 15 minutos)`;
+3. validar que o fim pertence à grade global `07:15 + N × 15 minutos`, é posterior a `agora` e forma `[agora, fim)` dentro da mesma janela operacional;
 4. validar que todo o intervalo cabe na janela operacional;
 5. bloquear referência de usuário e computador;
 6. verificar reservas do computador e do próprio usuário durante todo o intervalo;
@@ -104,7 +104,7 @@ Operação transacional:
 8. criar `UseSession` com fim planejado e prazo de saída três minutos depois;
 9. criar a primeira `ComputerAllocation`.
 
-A resposta de disponibilidade inclui `immediate_usage` com `can_start_now`, `max_slot_count`, `max_planned_ends_at` e `limited_by`. O limite pode ser próxima reserva, reserva do usuário, fechamento, alocação ativa ou estado operacional indisponível.
+A resposta resumida de disponibilidade inclui `immediate_usage` com `can_start_now`, `max_planned_ends_at` e `limited_by`. O detalhe de um computador inclui adicionalmente `planned_end_options`, calculado no servidor. O limite pode ser próxima reserva, reserva do usuário, fechamento, alocação ativa ou estado operacional indisponível.
 
 ## Reserva antecipada
 

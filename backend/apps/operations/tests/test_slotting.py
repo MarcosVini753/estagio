@@ -6,7 +6,8 @@ from django.utils import timezone
 from apps.configuration.calendar import OperatingDayResult, OperatingWindowResult
 from apps.operations.slotting import (
     calculate_interval,
-    calculate_max_immediate_slot_count,
+    immediate_planned_end_options,
+    validate_immediate_planned_end,
     validate_interval_inside_operating_window,
     validate_reservation_slot_start,
 )
@@ -62,8 +63,8 @@ class SlottingTest(SimpleTestCase):
                 self.operating_day,
             )
 
-    def test_maximum_immediate_slots_stop_before_earliest_limit(self):
-        slot_count, planned_end, limited_by = calculate_max_immediate_slot_count(
+    def test_immediate_end_options_start_at_the_next_fixed_grid_mark(self):
+        options, limited_by = immediate_planned_end_options(
             starts_at=self.starts_at + timedelta(minutes=6),
             operating_day=self.operating_day,
             limits=[
@@ -71,19 +72,70 @@ class SlottingTest(SimpleTestCase):
             ],
         )
 
-        self.assertEqual(slot_count, 3)
-        self.assertEqual(planned_end, self.starts_at + timedelta(minutes=51))
+        self.assertEqual(
+            options,
+            [
+                self.starts_at + timedelta(minutes=15),
+                self.starts_at + timedelta(minutes=30),
+                self.starts_at + timedelta(minutes=45),
+            ],
+        )
         self.assertEqual(limited_by, "NEXT_RESERVATION")
 
-    def test_maximum_immediate_slots_report_zero_when_limit_is_too_close(self):
-        slot_count, planned_end, limited_by = calculate_max_immediate_slot_count(
-            starts_at=self.starts_at,
+    def test_immediate_end_may_match_the_next_reservation_start(self):
+        options, limited_by = immediate_planned_end_options(
+            starts_at=self.starts_at + timedelta(minutes=6),
             operating_day=self.operating_day,
             limits=[
-                (self.starts_at + timedelta(minutes=10), "USER_RESERVATION"),
+                (self.starts_at + timedelta(minutes=30), "USER_RESERVATION"),
             ],
         )
 
-        self.assertEqual(slot_count, 0)
-        self.assertIsNone(planned_end)
+        self.assertEqual(
+            options,
+            [
+                self.starts_at + timedelta(minutes=15),
+                self.starts_at + timedelta(minutes=30),
+            ],
+        )
         self.assertEqual(limited_by, "USER_RESERVATION")
+
+    def test_immediate_end_requires_a_grid_mark_after_actual_start(self):
+        start = self.starts_at + timedelta(minutes=6)
+        validate_immediate_planned_end(
+            starts_at=start,
+            planned_ends_at=self.starts_at + timedelta(minutes=15),
+            operating_day=self.operating_day,
+        )
+
+        with self.assertRaises(ValueError):
+            validate_immediate_planned_end(
+                starts_at=start,
+                planned_ends_at=self.starts_at + timedelta(minutes=14),
+                operating_day=self.operating_day,
+            )
+
+    def test_immediate_end_must_stay_in_the_same_window_of_a_split_day(self):
+        split_day = OperatingDayResult(
+            date=self.starts_at.date(),
+            status="OPEN",
+            source="REGULAR_SCHEDULE",
+            reason="",
+            windows=(
+                OperatingWindowResult(time(7, 15), time(9)),
+                OperatingWindowResult(time(10), time(12)),
+            ),
+        )
+
+        options, _ = immediate_planned_end_options(
+            starts_at=self.starts_at + timedelta(minutes=51),
+            operating_day=split_day,
+        )
+
+        self.assertEqual(options, [self.starts_at + timedelta(hours=1)])
+        with self.assertRaises(ValueError):
+            validate_immediate_planned_end(
+                starts_at=self.starts_at + timedelta(minutes=51),
+                planned_ends_at=self.starts_at + timedelta(hours=2),
+                operating_day=split_day,
+            )

@@ -68,14 +68,27 @@ class UsageSessionAPITest(APITestCase):
             format="json",
         )
 
+    def immediate_end(self, current, marks=4):
+        duration = timedelta(minutes=15)
+        anchor = self.aware(time(7, 15), current.date())
+        first_end = anchor + ((current - anchor) // duration + 1) * duration
+        return first_end + (marks - 1) * duration
+
     def start(self, payload=None, current=None):
+        current = current or self.current
         if payload is None:
-            payload = {"computer_id": self.computer.pk, "slot_count": 4}
-        elif "reservation_id" not in payload and "slot_count" not in payload:
-            payload = {**payload, "slot_count": 4}
+            payload = {
+                "computer_id": self.computer.pk,
+                "planned_ends_at": self.immediate_end(current).isoformat(),
+            }
+        elif "reservation_id" not in payload and "planned_ends_at" not in payload:
+            payload = {
+                **payload,
+                "planned_ends_at": self.immediate_end(current).isoformat(),
+            }
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
-            return_value=current or self.current,
+            return_value=current,
         ):
             return self.client.post(
                 "/api/usage-sessions/start/",
@@ -100,25 +113,28 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(current_response.data["id"], session.pk)
         self.assertEqual(len(current_response.data["allocations"]), 1)
 
-    def test_immediate_entry_uses_requested_duration_and_deadline(self):
+    def test_immediate_entry_uses_selected_grid_end_and_deadline(self):
         current = self.aware(time(8, 21))
 
         response = self.start(
-            {"computer_id": self.computer.pk, "slot_count": 2},
+            {
+                "computer_id": self.computer.pk,
+                "planned_ends_at": self.aware(time(8, 30)).isoformat(),
+            },
             current=current,
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["slot_count"], 2)
+        self.assertNotIn("slot_count", response.data)
         self.assertEqual(response.data["planned_starts_at"], current.isoformat())
         self.assertEqual(
-            response.data["planned_ends_at"], self.aware(time(8, 51)).isoformat()
+            response.data["planned_ends_at"], self.aware(time(8, 30)).isoformat()
         )
         self.assertEqual(
-            response.data["exit_deadline_at"], self.aware(time(8, 54)).isoformat()
+            response.data["exit_deadline_at"], self.aware(time(8, 33)).isoformat()
         )
 
-    def test_immediate_entry_requires_positive_slot_count(self):
+    def test_immediate_entry_requires_planned_end_and_rejects_legacy_slot_count(self):
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
             return_value=self.current,
@@ -128,14 +144,29 @@ class UsageSessionAPITest(APITestCase):
                 {"computer_id": self.computer.pk},
                 format="json",
             )
-            zero = self.client.post(
+            legacy = self.client.post(
                 "/api/usage-sessions/start/",
-                {"computer_id": self.computer.pk, "slot_count": 0},
+                {"computer_id": self.computer.pk, "slot_count": 1},
                 format="json",
             )
 
         self.assertEqual(missing.status_code, 400)
-        self.assertEqual(zero.status_code, 400)
+        self.assertEqual(legacy.status_code, 400)
+        self.assertFalse(UseSession.objects.exists())
+
+    def test_immediate_entry_rejects_end_outside_the_fixed_grid_without_persisting(
+        self,
+    ):
+        response = self.start(
+            {
+                "computer_id": self.computer.pk,
+                "planned_ends_at": self.aware(time(8, 31)).isoformat(),
+            },
+            current=self.aware(time(8, 21)),
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["code"], "USAGE_SESSION_CONFLICT")
         self.assertFalse(UseSession.objects.exists())
 
     def test_reserved_entry_uses_reservation_snapshots_and_marks_it_used(self):
@@ -172,7 +203,7 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(session.exit_deadline_at, reservation.exit_deadline_at)
         self.assertEqual(reservation.status, Reservation.Status.USED)
 
-    def test_reserved_entry_rejects_slot_count(self):
+    def test_reserved_entry_rejects_planned_end(self):
         reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
@@ -185,7 +216,7 @@ class UsageSessionAPITest(APITestCase):
             {
                 "computer_id": self.computer.pk,
                 "reservation_id": reservation.pk,
-                "slot_count": 4,
+                "planned_ends_at": self.aware(time(9, 30)).isoformat(),
             }
         )
 
@@ -394,7 +425,10 @@ class UsageSessionAPITest(APITestCase):
 
     def test_immediate_entry_may_use_checkout_tolerance_after_closing(self):
         response = self.start(
-            {"computer_id": self.computer.pk, "slot_count": 1},
+            {
+                "computer_id": self.computer.pk,
+                "planned_ends_at": self.aware(time(13)).isoformat(),
+            },
             current=self.aware(time(12, 45)),
         )
 
@@ -423,7 +457,10 @@ class UsageSessionAPITest(APITestCase):
         self.select_room_user("aluno-si-002")
 
         response = self.start(
-            {"computer_id": self.computer.pk, "slot_count": 1},
+            {
+                "computer_id": self.computer.pk,
+                "planned_ends_at": self.aware(time(8, 30)).isoformat(),
+            },
             current=self.aware(time(8, 18)),
         )
 
@@ -478,7 +515,10 @@ class UsageSessionAPITest(APITestCase):
         saturday_before_close = self.aware(time(12, 30), date(2026, 8, 8))
 
         allowed = self.start(
-            {"computer_id": self.computer.pk, "slot_count": 2},
+            {
+                "computer_id": self.computer.pk,
+                "planned_ends_at": self.aware(time(13), date(2026, 8, 8)).isoformat(),
+            },
             current=saturday_before_close,
         )
 
@@ -532,8 +572,15 @@ class UsageSessionAPITest(APITestCase):
         self.assertIsNone(UseSession.objects.get().start_shift)
 
     def test_switch_preserves_session_and_increments_allocation_sequence(self):
-        self.start()
+        planned_end = self.aware(time(9))
+        self.start(
+            {
+                "computer_id": self.computer.pk,
+                "planned_ends_at": planned_end.isoformat(),
+            }
+        )
         session = UseSession.objects.get()
+        exit_deadline = session.exit_deadline_at
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
@@ -551,6 +598,37 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(allocations[0].end_reason, ComputerAllocation.EndReason.SWITCH)
         self.assertEqual(allocations[1].computer, self.other_computer)
         self.assertEqual(allocations[1].sequence, 2)
+        session.refresh_from_db()
+        self.assertEqual(session.planned_ends_at, planned_end)
+        self.assertEqual(session.exit_deadline_at, exit_deadline)
+
+    def test_switch_preserves_the_interval_inherited_from_a_reservation(self):
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.current,
+            ends_at=self.aware(time(9)),
+            created_by_profile="ROOM_USER",
+        )
+        self.start({"computer_id": self.computer.pk, "reservation_id": reservation.pk})
+        session = UseSession.objects.get()
+        planned_end = session.planned_ends_at
+        exit_deadline = session.exit_deadline_at
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(8, 30)),
+        ):
+            response = self.client.post(
+                f"/api/usage-sessions/{session.pk}/switch-computer/",
+                {"computer_id": self.other_computer.pk},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        session.refresh_from_db()
+        self.assertEqual(session.planned_ends_at, planned_end)
+        self.assertEqual(session.exit_deadline_at, exit_deadline)
 
     def test_switch_rejects_occupied_destination(self):
         self.start()

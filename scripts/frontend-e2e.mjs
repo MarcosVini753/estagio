@@ -3,12 +3,12 @@ import { chromium } from "playwright";
 
 const baseURL = process.env.FRONTEND_BASE_URL || "http://127.0.0.1:8000";
 
-async function selectRoomUser(page, suffix) {
+async function selectRoomUser(page, suffix, reference = `e2e-user-${suffix}`) {
   await page.goto(baseURL, { waitUntil: "networkidle" });
   await page
     .locator("label.profile-option", { hasText: "Usuário da Sala" })
     .click();
-  await page.locator('input[name="user_reference"]').fill(`e2e-user-${suffix}`);
+  await page.locator('input[name="user_reference"]').fill(reference);
   await page.locator('select[name="affiliation_type"]').selectOption("STUDENT");
   await page
     .locator('input[name="institutional_unit"]')
@@ -177,6 +177,89 @@ try {
   assert.equal(await desktopPage.getByRole("heading", { name: "Sala de Informática" }).first().isVisible(), true);
   await desktop.close();
 
+  const confirmations = await browser.newContext({
+    viewport: { width: 420, height: 900 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const confirmationPage = await confirmations.newPage();
+  confirmationPage.on("pageerror", (error) => pageErrors.push(error.message));
+  await selectRoomUser(confirmationPage, "modal", "e2e-modal-user");
+  await confirmationPage.goto(`${baseURL}/sala/sessao/`, {
+    waitUntil: "networkidle",
+  });
+
+  let finishRequests = 0;
+  const countFinishRequest = (request) => {
+    if (request.url().includes("/sala/sessao/") && request.url().endsWith("/encerrar/")) {
+      finishRequests += 1;
+    }
+  };
+  confirmationPage.on("request", countFinishRequest);
+  await confirmationPage.getByRole("button", { name: "Registrar saída" }).click();
+  let confirmationDialog = confirmationPage.locator("dialog[data-confirm-dialog]", {
+    hasText: "Registrar saída?",
+  });
+  await assert.equal(await confirmationDialog.isVisible(), true);
+  await confirmationPage.waitForTimeout(100);
+  assert.equal(finishRequests, 0, "Abrir a confirmação não encerra a sessão");
+  await confirmationDialog.getByRole("button", { name: "Voltar" }).click();
+  await assert.equal(await confirmationDialog.isVisible(), false);
+  assert.equal(finishRequests, 0, "Voltar não encerra a sessão");
+  await confirmationPage.getByRole("button", { name: "Registrar saída" }).click();
+  await confirmationPage.keyboard.press("Escape");
+  await assert.equal(await confirmationDialog.isVisible(), false);
+  assert.equal(finishRequests, 0, "Esc não encerra a sessão");
+  await confirmationPage.getByRole("button", { name: "Registrar saída" }).click();
+  confirmationDialog = confirmationPage.locator("dialog[data-confirm-dialog]", {
+    hasText: "Registrar saída?",
+  });
+  await Promise.all([
+    confirmationPage.waitForResponse((response) =>
+      response.url().endsWith("/encerrar/") && response.request().method() === "POST",
+    ),
+    confirmationDialog.getByRole("button", { name: "Confirmar saída" }).dblclick(),
+  ]);
+  await confirmationPage.waitForURL("**/sala/computadores/**");
+  assert.equal(finishRequests, 1, "Confirmar envia a saída somente uma vez");
+  confirmationPage.off("request", countFinishRequest);
+
+  await confirmationPage.goto(`${baseURL}/sala/agenda/`, {
+    waitUntil: "networkidle",
+  });
+  let cancelRequests = 0;
+  const countCancelRequest = (request) => {
+    if (request.url().includes("/sala/reservas/") && request.url().endsWith("/cancelar/")) {
+      cancelRequests += 1;
+    }
+  };
+  confirmationPage.on("request", countCancelRequest);
+  await confirmationPage.getByRole("button", { name: "Cancelar" }).click();
+  confirmationDialog = confirmationPage.locator("dialog[data-confirm-dialog]", {
+    hasText: "Cancelar reserva?",
+  });
+  await assert.equal(await confirmationDialog.isVisible(), true);
+  await confirmationPage.waitForTimeout(100);
+  assert.equal(cancelRequests, 0, "Abrir o cancelamento não altera a reserva");
+  await confirmationDialog.getByRole("button", { name: "Voltar" }).click();
+  assert.equal(cancelRequests, 0, "Voltar não cancela a reserva");
+  await confirmationPage.getByRole("button", { name: "Cancelar" }).click();
+  confirmationDialog = confirmationPage.locator("dialog[data-confirm-dialog]", {
+    hasText: "Cancelar reserva?",
+  });
+  await Promise.all([
+    confirmationPage.waitForResponse((response) =>
+      response.url().endsWith("/cancelar/") && response.request().method() === "POST",
+    ),
+    confirmationDialog
+      .getByRole("button", { name: "Confirmar cancelamento" })
+      .dblclick(),
+  ]);
+  await confirmationPage.waitForLoadState("networkidle");
+  assert.equal(cancelRequests, 1, "Confirmar cancela a reserva somente uma vez");
+  confirmationPage.off("request", countCancelRequest);
+  await confirmations.close();
+
   const supervisorDesktop = await browser.newContext({
     viewport: { width: 1440, height: 900 },
   });
@@ -218,6 +301,76 @@ try {
     await supervisorPage.getByRole("heading", { name: "Relatório mensal" }).count(),
   );
   await supervisorDesktop.close();
+
+  const crossProfile = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+  });
+  const crossProfilePage = await crossProfile.newPage();
+  crossProfilePage.on("pageerror", (error) => pageErrors.push(error.message));
+  const occurrenceDescription = `Ocorrência interligada E2E ${Date.now()}`;
+
+  await selectRoomUser(crossProfilePage, "interlinked");
+  await crossProfilePage
+    .locator('.desktop-sidebar [data-nav-key="problems"]')
+    .click();
+  await crossProfilePage.waitForURL("**/sala/problemas/");
+  await crossProfilePage.locator('select[name="computer_id"]').selectOption({
+    index: 1,
+  });
+  await crossProfilePage
+    .locator('textarea[name="description"]')
+    .fill(occurrenceDescription);
+  await crossProfilePage.getByRole("button", { name: "Enviar ocorrência" }).click();
+  await crossProfilePage.waitForLoadState("networkidle");
+  assert.ok(await crossProfilePage.getByText(occurrenceDescription).count());
+
+  await selectProfile(crossProfilePage, "Monitor da Sala", "**/monitor/");
+  await crossProfilePage.goto(`${baseURL}/monitor/ocorrencias/`, {
+    waitUntil: "networkidle",
+  });
+  let occurrenceRow = crossProfilePage.locator(".staff-list-row", {
+    hasText: occurrenceDescription,
+  });
+  await occurrenceRow.locator('select[name="status"]').selectOption("IN_REVIEW");
+  await occurrenceRow.getByRole("button", { name: "Atualizar" }).click();
+  await crossProfilePage.waitForLoadState("networkidle");
+  occurrenceRow = crossProfilePage.locator(".staff-list-row", {
+    hasText: occurrenceDescription,
+  });
+  assert.ok(await occurrenceRow.getByText("Em análise").count());
+
+  await selectProfile(
+    crossProfilePage,
+    "Supervisor da Biblioteca",
+    "**/supervisor/",
+  );
+  await crossProfilePage.goto(`${baseURL}/monitor/ocorrencias/`, {
+    waitUntil: "networkidle",
+  });
+  occurrenceRow = crossProfilePage.locator(".staff-list-row", {
+    hasText: occurrenceDescription,
+  });
+  await occurrenceRow.locator('select[name="status"]').selectOption("RESOLVED");
+  await occurrenceRow
+    .locator('input[name="resolution_notes"]')
+    .fill("Ocorrência verificada e resolvida pelo Supervisor.");
+  await occurrenceRow.getByRole("button", { name: "Atualizar" }).click();
+  await crossProfilePage.waitForLoadState("networkidle");
+
+  await selectRoomUser(crossProfilePage, "interlinked");
+  await crossProfilePage.goto(`${baseURL}/sala/problemas/`, {
+    waitUntil: "networkidle",
+  });
+  const resolvedOccurrence = crossProfilePage.locator(".occurrence-card", {
+    hasText: occurrenceDescription,
+  });
+  assert.ok(await resolvedOccurrence.getByText("Resolvida").count());
+  assert.ok(
+    await resolvedOccurrence.getByText(
+      "Ocorrência verificada e resolvida pelo Supervisor.",
+    ).count(),
+  );
+  await crossProfile.close();
 
   const noScript = await browser.newContext({
     viewport: { width: 420, height: 900 },

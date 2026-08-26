@@ -26,7 +26,6 @@
           <span class="badge {% if reservation.status == 'CONFIRMED' %}badge-warning{% elif reservation.status == 'USED' %}badge-success{% else %}badge-neutral{% endif %}">{{ reservation.status_label }}</span>
         </div>
         <p>{{ reservation.starts_at|date:"d/m/Y" }} · {{ reservation.starts_at|time:"H:i" }}–{{ reservation.ends_at|time:"H:i" }}</p>
-        <small>Entrada de {{ reservation.check_in_starts_at|time:"H:i" }} até {{ reservation.check_in_deadline_at|time:"H:i" }} · saída até {{ reservation.exit_deadline_at|time:"H:i" }}</small>
         {% if reservation.cancellation_reason %}<small class="cancellation-reason">Motivo: {{ reservation.cancellation_reason }}</small>{% endif %}
         {% if reservation.can_check_in_ui or reservation.can_cancel_ui %}
           <div class="card-actions">
@@ -36,9 +35,11 @@
               </form>
             {% endif %}
             {% if reservation.can_cancel_ui %}
-              <form method="post" action="{% url 'web:booking-cancel' reservation.pk %}" hx-post="{% url 'web:booking-cancel' reservation.pk %}" hx-target="#room-user-app" hx-swap="outerHTML" x-data="{ confirmCancel: false }" x-on:submit="if (!confirmCancel) { $event.preventDefault(); confirmCancel = window.confirm('Cancelar esta reserva?'); if (confirmCancel) $el.requestSubmit(); }">
+              {% url 'web:booking-cancel' reservation.pk as booking_cancel_url %}
+              <form method="post" action="{{ booking_cancel_url }}" data-confirm-form data-confirm-dialog-id="booking-cancel-confirmation-{{ reservation.pk }}">
                 {% csrf_token %}<button class="button button-ghost button-small" type="submit">Cancelar</button>
               </form>
+              {% include "components/confirmation_dialog.html" with dialog_prefix="booking-cancel-confirmation" object_id=reservation.pk title="Cancelar reserva?" message="Esta reserva será cancelada e o horário voltará a ficar disponível." action_url=booking_cancel_url target="#room-user-app" swap="outerHTML" confirm_label="Confirmar cancelamento" %}
             {% endif %}
           </div>
         {% endif %}

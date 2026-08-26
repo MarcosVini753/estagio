@@ -39,8 +39,8 @@ A migração é incremental. Os fluxos do Usuário da Sala, Monitor da Sala e Su
 - separar estado operacional de estado efetivo;
 - permitir reserva de slots consecutivos para horário futuro de hoje ou para amanhã;
 - informar a janela de entrada por reserva, de três minutos antes do início até três minutos depois;
-- permitir uso imediato somente hoje, com duração escolhida antes da entrada;
-- exibir fim planejado e prazo de saída três minutos depois;
+- permitir uso imediato somente hoje, com saída planejada escolhida antes da entrada;
+- exibir fim planejado, sem expor o prazo operacional de saída;
 - impedir intervalo que atravesse reserva ou fechamento;
 - impedir horários passados;
 - substituir agregados simulados por sessões e alocações;

@@ -14,7 +14,7 @@
 - Exceções passadas são históricas e não podem ser criadas nem alteradas pelos fluxos administrativos; hoje e datas futuras permanecem editáveis.
 - Cada calendário configura exatamente os sete dias. Dia aberto tem ao menos uma janela; dia fechado não tem janelas; janelas do mesmo dia não se sobrepõem.
 - Reservas, entrada imediata, slots e tempo operacional disponível devem respeitar o calendário aplicável, independentemente dos turnos.
-- Cada slot possui duração fixa de 15 minutos. Novas reservas e usos imediatos solicitam uma quantidade inteira positiva de slots consecutivos.
+- Cada slot possui duração fixa de 15 minutos. Reservas solicitam uma quantidade inteira positiva de slots consecutivos; uso imediato escolhe o fim planejado na grade fixa.
 - Alterações em calendário já iniciado são feitas por nova versão futura. Para emergência no próprio dia, deve ser criada uma exceção pontual.
 - Uma alteração não pode sobrescrever retroativamente os horários que explicam sessões e relatórios históricos.
 - Antes de aplicar mudança que reduza funcionamento, o Supervisor visualiza as reservas confirmadas afetadas. A aplicação exige confirmação para cancelá-las administrativamente na mesma transação.
@@ -74,9 +74,10 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - Um usuário pode possuir no máximo uma sessão ativa.
 - A sessão registra entrada e saída reais.
 - A sessão registra também início planejado, fim planejado e prazo máximo de saída.
-- No uso imediato, o início planejado é a entrada real e o fim soma `slot_count × 15 minutos`.
+- No uso imediato, o início planejado é a entrada real. A pessoa escolhe `planned_ends_at` na grade global `07:15 + N × 15 minutos`, em marca estritamente posterior à entrada e dentro da mesma janela operacional.
 - O intervalo planejado não pode invadir reserva confirmada, outra sessão planejada ou o fechamento.
 - A tolerância de saída de três minutos não participa dos conflitos planejados. Ela pode avançar sobre a reserva seguinte ou o fechamento.
+- As tolerâncias são operacionais: orientam check-in, saída e reconciliação, mas não são exibidas à pessoa na área do Usuário da Sala.
 - O registro de entrada cria uma sessão ativa e sua primeira alocação.
 - O registro de saída encerra a alocação atual e a sessão.
 - Saída registrada por perfil operacional em nome de terceiro exige justificativa e auditoria.

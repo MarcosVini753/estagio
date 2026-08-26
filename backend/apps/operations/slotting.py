@@ -1,9 +1,12 @@
 from collections.abc import Iterable
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
+
+from django.utils import timezone
 
 from apps.configuration.calendar import (
     OperatingDayResult,
     as_datetime_windows,
+    aware_at,
     interval_is_within_operating_day,
 )
 
@@ -69,12 +72,12 @@ def validate_interval_inside_operating_window(
         raise ValueError("O intervalo deve caber em uma janela de funcionamento.")
 
 
-def calculate_max_immediate_slot_count(
+def immediate_planned_end_options(
     *,
     starts_at: datetime,
     operating_day: OperatingDayResult,
     limits: Iterable[tuple[datetime, str]] = (),
-) -> tuple[int, datetime | None, str]:
+) -> tuple[list[datetime], str]:
     containing_window = next(
         (
             (window_start, window_end)
@@ -84,16 +87,38 @@ def calculate_max_immediate_slot_count(
         None,
     )
     if containing_window is None:
-        return 0, None, ROOM_CLOSING
+        return [], ROOM_CLOSING
 
     candidates = [(containing_window[1], ROOM_CLOSING), *limits]
     limit_at, limited_by = min(
         candidates,
         key=lambda item: (item[0], _LIMIT_PRIORITY.get(item[1], 99)),
     )
-    available_seconds = max(0, (limit_at - starts_at).total_seconds())
-    slot_seconds = SLOT_DURATION_MINUTES * 60
-    slot_count = int(available_seconds // slot_seconds)
-    if slot_count == 0:
-        return 0, None, limited_by
-    return slot_count, calculate_interval(starts_at, slot_count), limited_by
+    duration = timedelta(minutes=SLOT_DURATION_MINUTES)
+    anchor = aware_at(timezone.localdate(starts_at), time(7, 15))
+    first_end = anchor + ((starts_at - anchor) // duration + 1) * duration
+    options = []
+    candidate = first_end
+    while candidate <= limit_at:
+        options.append(candidate)
+        candidate += duration
+    return options, limited_by
+
+
+def validate_immediate_planned_end(
+    *,
+    starts_at: datetime,
+    planned_ends_at: datetime,
+    operating_day: OperatingDayResult,
+) -> None:
+    duration = timedelta(minutes=SLOT_DURATION_MINUTES)
+    anchor = aware_at(timezone.localdate(starts_at), time(7, 15))
+    if planned_ends_at <= starts_at or (
+        planned_ends_at - anchor
+    ) % duration != timedelta(0):
+        raise ValueError("O fim deve estar na grade de 15 minutos posterior à entrada.")
+    validate_interval_inside_operating_window(
+        starts_at,
+        planned_ends_at,
+        operating_day,
+    )

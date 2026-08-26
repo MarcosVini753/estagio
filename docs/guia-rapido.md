@@ -8,9 +8,9 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 
 1. O usuário abre a aplicação e escolhe um perfil de teste (não há autenticação real no MVP).
 2. Consulta a disponibilidade de **hoje** ou **amanhã**.
-3. **Hoje**: pode iniciar uso imediato em um computador livre, escolhendo a duração em slots de 15 minutos.
+3. **Hoje**: pode iniciar uso imediato em um computador livre, escolhendo a saída planejada em uma grade de 15 minutos.
 4. **Amanhã (ou horário futuro de hoje)**: pode reservar um ou mais slots consecutivos.
-5. Em uma reserva, a entrada pode ser registrada de 3 minutos antes até 3 minutos depois do início. O sistema registra a sessão com um **fim planejado** e um **prazo de saída** (3 minutos após o fim).
+5. Em uma reserva, a entrada pode ser registrada de 3 minutos antes até 3 minutos depois do início. O sistema registra a sessão com um **fim planejado**; as tolerâncias operacionais não aparecem na área do usuário.
 6. Durante a sessão, o usuário pode **trocar de computador** sem perder o histórico.
 7. Ao sair, a sessão é encerrada. Se o usuário não sair até o prazo, o sistema encerra logicamente.
 8. O Monitor acompanha a sala, corrige registros e trata ocorrências. O Supervisor configura horários e gera relatórios.

@@ -63,20 +63,38 @@ function appDialog() {
   return document.getElementById("app-dialog");
 }
 
-function openAppDialog() {
-  const dialog = appDialog();
+function openDialog(dialog) {
   if (dialog && !dialog.open) dialog.showModal();
 }
 
-function closeAppDialog() {
-  const dialog = appDialog();
+function closeDialog(dialog) {
   if (dialog?.open) dialog.close();
 }
 
+function openAppDialog() {
+  openDialog(appDialog());
+}
+
+function closeAppDialog() {
+  closeDialog(appDialog());
+}
+
 document.addEventListener("click", (event) => {
-  if (event.target.closest("[data-dialog-close]")) closeAppDialog();
-  const dialog = appDialog();
-  if (dialog && event.target === dialog) closeAppDialog();
+  if (!(event.target instanceof Element)) return;
+  const closeButton = event.target.closest("[data-dialog-close], [data-confirm-cancel]");
+  if (closeButton) closeDialog(closeButton.closest("dialog"));
+  if (event.target instanceof HTMLDialogElement) closeDialog(event.target);
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement) || !form.matches("[data-confirm-form]")) {
+    return;
+  }
+  const dialog = document.getElementById(form.dataset.confirmDialogId);
+  if (!(dialog instanceof HTMLDialogElement)) return;
+  event.preventDefault();
+  openDialog(dialog);
 });
 
 document.body.addEventListener("htmx:beforeSwap", (event) => {
