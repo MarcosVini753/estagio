@@ -100,6 +100,35 @@ class SlottingTest(SimpleTestCase):
         )
         self.assertEqual(limited_by, "USER_RESERVATION")
 
+    def test_immediate_end_stops_at_previous_grid_mark_for_off_grid_limit(self):
+        options, limited_by = immediate_planned_end_options(
+            starts_at=self.starts_at + timedelta(minutes=51),
+            operating_day=self.operating_day,
+            limits=[
+                (self.starts_at + timedelta(minutes=70), "NEXT_RESERVATION"),
+            ],
+        )
+
+        self.assertEqual(options, [self.starts_at + timedelta(hours=1)])
+        self.assertEqual(limited_by, "NEXT_RESERVATION")
+
+    def test_immediate_end_stops_before_off_grid_room_closing(self):
+        operating_day = OperatingDayResult(
+            date=self.starts_at.date(),
+            status="OPEN",
+            source="SPECIAL_HOURS",
+            reason="",
+            windows=(OperatingWindowResult(time(7, 15), time(9, 10)),),
+        )
+
+        options, limited_by = immediate_planned_end_options(
+            starts_at=self.starts_at + timedelta(minutes=51),
+            operating_day=operating_day,
+        )
+
+        self.assertEqual(options, [self.starts_at + timedelta(hours=1)])
+        self.assertEqual(limited_by, "ROOM_CLOSING")
+
     def test_immediate_end_requires_a_grid_mark_after_actual_start(self):
         start = self.starts_at + timedelta(minutes=6)
         validate_immediate_planned_end(

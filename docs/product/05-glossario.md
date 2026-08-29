@@ -62,7 +62,7 @@ Intervalo em que determinado computador foi utilizado dentro de uma sessão. Uma
 
 ## Uso imediato
 
-Início de sessão hoje, em computador disponível, com quantidade de slots escolhida antes da entrada. Não cria reserva para hoje.
+Início de sessão hoje, em computador disponível, com fim planejado escolhido na grade fixa antes da entrada. O horário real de entrada não é arredondado e o fluxo não cria uma reserva.
 
 ## Turno
 

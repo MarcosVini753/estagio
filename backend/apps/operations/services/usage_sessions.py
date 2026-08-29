@@ -381,9 +381,7 @@ def _switch_computer(
     if current < allocation.started_at:
         raise UsageSessionConflict("A troca não pode anteceder a alocação atual.")
     if current >= session.planned_ends_at:
-        raise UsageSessionConflict(
-            "A troca exige tempo planejado restante e não ocorre na tolerância."
-        )
+        raise UsageSessionConflict("A troca exige tempo planejado restante.")
     destination = computers[computer_id]
     if (
         destination.pk == allocation.computer_id

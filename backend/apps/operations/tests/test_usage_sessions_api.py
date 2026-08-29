@@ -691,6 +691,8 @@ class UsageSessionAPITest(APITestCase):
             )
 
         self.assertEqual(response.status_code, 409)
+        self.assertIn("tempo planejado restante", response.data["detail"])
+        self.assertNotIn("tolerância", response.data["detail"].lower())
         self.assertEqual(session.allocations.count(), 1)
 
     def test_switch_reconciles_session_at_its_exit_deadline(self):

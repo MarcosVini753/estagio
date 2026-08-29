@@ -75,6 +75,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - A sessão registra entrada e saída reais.
 - A sessão registra também início planejado, fim planejado e prazo máximo de saída.
 - No uso imediato, o início planejado é a entrada real. A pessoa escolhe `planned_ends_at` na grade global `07:15 + N × 15 minutos`, em marca estritamente posterior à entrada e dentro da mesma janela operacional.
+- Se fechamento ou reserva começa fora da grade global, o último fim selecionável é a marca anterior; o limite exato só pode ser escolhido quando também pertence à grade.
 - O intervalo planejado não pode invadir reserva confirmada, outra sessão planejada ou o fechamento.
 - A tolerância de saída de três minutos não participa dos conflitos planejados. Ela pode avançar sobre a reserva seguinte ou o fechamento.
 - As tolerâncias são operacionais: orientam check-in, saída e reconciliação, mas não são exibidas à pessoa na área do Usuário da Sala.

@@ -125,7 +125,7 @@ A data deve ser hoje ou amanhã. O primeiro endpoint devolve um resumo por compu
 
 `effective_status_now` é preenchido somente para hoje. Para amanhã, seu valor é `null`; a disponibilidade deve ser consultada pelos slots. `immediate_usage.limited_by` pode ser `NEXT_RESERVATION`, `USER_RESERVATION`, `ROOM_CLOSING`, `ACTIVE_ALLOCATION` ou `COMPUTER_UNAVAILABLE`. O máximo é uma marca da grade fixa global `07:15 + N × 15 minutos`, posterior ao instante real; a listagem não inclui todas as opções.
 
-O endpoint de slots devolve intervalos derivados, não registros persistidos. Para hoje, quando o uso imediato for possível, `immediate_usage` inclui também `planned_end_options` com os fins que o servidor aceita:
+O endpoint de slots devolve intervalos derivados, não registros persistidos. Seu bloco `immediate_usage` sempre inclui `planned_end_options`: para hoje contém os fins aceitos pelo servidor e, quando o uso imediato não está disponível, contém uma lista vazia.
 
 ```json
 {
@@ -140,7 +140,8 @@ O endpoint de slots devolve intervalos derivados, não registros persistidos. Pa
   "immediate_usage": {
     "can_start_now": false,
     "max_planned_ends_at": null,
-    "limited_by": null
+    "limited_by": null,
+    "planned_end_options": []
   },
   "room": {
     "status": "OPEN",
@@ -328,7 +329,7 @@ Uso imediato recebe computador e fim planejado:
 }
 ```
 
-Se a entrada ocorrer às 08h21, a próxima opção pode ser 08h30. O início real e planejado são 08h21; o fim escolhido precisa estar na grade global `07:15 + N × 15 minutos`, ser posterior à entrada e caber na mesma janela operacional. O intervalo inteiro não pode invadir reserva confirmada ou sessão planejada. `slot_count` é rejeitado explicitamente neste endpoint.
+Se a entrada ocorrer às 08h21, a próxima opção pode ser 08h30. O início real e planejado são 08h21; o fim escolhido precisa estar na grade global `07:15 + N × 15 minutos`, ser posterior à entrada e caber na mesma janela operacional. Quando fechamento ou reserva começa fora da grade, o último fim disponível é a marca anterior. O intervalo inteiro não pode invadir reserva confirmada ou sessão planejada. `slot_count` é rejeitado explicitamente neste endpoint.
 
 Entrada com reserva recebe `computer_id` e `reservation_id`; enviar também `planned_ends_at` é erro 400. A sessão herda snapshots, intervalo e deadlines da reserva. A entrada pode ocorrer até três minutos antes ou depois do início, sem deslocar o fim planejado.
 

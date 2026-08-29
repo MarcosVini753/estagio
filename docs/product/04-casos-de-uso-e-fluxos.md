@@ -12,7 +12,7 @@ Casos de uso principais:
 - consultar horários disponíveis;
 - selecionar início e quantidade de slots consecutivos;
 - confirmar reserva com duração solicitada (hoje ou amanhã);
-- registrar entrada imediata escolhendo duração ou usar integralmente uma reserva;
+- registrar entrada imediata escolhendo o fim planejado ou usar integralmente uma reserva;
 - registrar saída;
 - trocar de computador durante sessão ativa;
 - informar problema.

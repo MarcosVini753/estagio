@@ -106,6 +106,8 @@ Operação transacional:
 
 A resposta resumida de disponibilidade inclui `immediate_usage` com `can_start_now`, `max_planned_ends_at` e `limited_by`. O detalhe de um computador inclui adicionalmente `planned_end_options`, calculado no servidor. O limite pode ser próxima reserva, reserva do usuário, fechamento, alocação ativa ou estado operacional indisponível.
 
+Quando uma reserva ou o fechamento ocorre fora da grade global, as opções terminam na última marca anterior. Assim, um fechamento às 13h10 oferece 13h00 como último fim planejado; o limite exato só é selecionável quando também pertence à grade.
+
 ## Reserva antecipada
 
 Operação transacional:

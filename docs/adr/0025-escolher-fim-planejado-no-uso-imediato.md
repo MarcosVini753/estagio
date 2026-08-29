@@ -21,7 +21,9 @@ leitura da agenda e permite que uma troca pareça alterar o compromisso inicial.
 Uso imediato recebe `planned_ends_at`, não `slot_count`. O início real e o
 início planejado são `now`; a pessoa escolhe um fim na grade global diária
 `07:15 + N × 15 minutos`, estritamente posterior à entrada, dentro da mesma
-janela operacional. O fim pode coincidir com fechamento ou início de reserva.
+janela operacional. O fim pode coincidir com fechamento ou início de reserva
+quando esse limite pertence à grade; diante de um limite irregular, como
+13h10, a última opção é a marca anterior, 13h00.
 
 O backend calcula as opções no detalhe do computador e revalida a escolha na
 transação. A lista de disponibilidade expõe apenas `can_start_now`,

@@ -407,6 +407,49 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(active_session.status, UseSession.Status.FINISHED)
         self.assertEqual(active_session.allocations.count(), 2)
 
+    def test_switch_after_planned_end_hides_operational_tolerance(self):
+        self.select_room_user()
+        planned_end = self.aware(self.today, time(8, 30))
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            self.client.post(
+                "/sala/sessao/iniciar/",
+                {
+                    "computer_id": self.computer.pk,
+                    "planned_ends_at": planned_end.isoformat(),
+                },
+            )
+        active_session = UseSession.objects.get()
+
+        with (
+            patch(
+                "apps.operations.services.usage_sessions.timezone.now",
+                return_value=planned_end,
+            ),
+            patch(
+                "apps.operations.availability.timezone.now",
+                return_value=planned_end,
+            ),
+        ):
+            response = self.client.post(
+                f"/sala/sessao/{active_session.pk}/trocar/",
+                {"computer_id": self.other_computer.pk},
+                HTTP_HX_REQUEST="true",
+                HTTP_HX_TARGET="app-dialog-content",
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertContains(
+            response,
+            "tempo planejado restante",
+            status_code=409,
+        )
+        self.assertNotContains(response, "tolerância", status_code=409)
+        self.assertNotContains(response, "08:33", status_code=409)
+        self.assertEqual(active_session.allocations.count(), 1)
+
     def test_confirmation_forms_keep_their_non_javascript_post_fallback(self):
         self.select_room_user()
         reservation = create_reservation(
@@ -425,6 +468,37 @@ class RoomUserWebTest(TestCase):
         self.assertRedirects(response, "/sala/agenda/")
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            self.client.post(
+                "/sala/sessao/iniciar/",
+                {
+                    "computer_id": self.computer.pk,
+                    "planned_ends_at": self.aware(
+                        self.today,
+                        time(9),
+                    ).isoformat(),
+                },
+            )
+        active_session = UseSession.objects.get(status=UseSession.Status.ACTIVE)
+        session_page = self.client.get("/sala/sessao/")
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.fixed_now + timedelta(minutes=5),
+        ):
+            finish_response = self.client.post(
+                f"/sala/sessao/{active_session.pk}/encerrar/"
+            )
+
+        self.assertContains(session_page, "data-confirm-form")
+        self.assertContains(session_page, "data-confirm-dialog")
+        self.assertRedirects(finish_response, "/sala/computadores/")
+        active_session.refresh_from_db()
+        self.assertEqual(active_session.status, UseSession.Status.FINISHED)
 
     def test_concurrent_immediate_start_refreshes_modal_with_error(self):
         self.select_room_user()

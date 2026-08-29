@@ -203,13 +203,19 @@ try {
   await assert.equal(await confirmationDialog.isVisible(), true);
   await confirmationPage.waitForTimeout(100);
   assert.equal(finishRequests, 0, "Abrir a confirmação não encerra a sessão");
-  await confirmationDialog.getByRole("button", { name: "Voltar" }).click();
+  await confirmationDialog
+    .locator('form[method="dialog"] button[data-confirm-cancel]')
+    .click();
   await assert.equal(await confirmationDialog.isVisible(), false);
   assert.equal(finishRequests, 0, "Voltar não encerra a sessão");
   await confirmationPage.getByRole("button", { name: "Registrar saída" }).click();
   await confirmationPage.keyboard.press("Escape");
   await assert.equal(await confirmationDialog.isVisible(), false);
   assert.equal(finishRequests, 0, "Esc não encerra a sessão");
+  await confirmationPage.getByRole("button", { name: "Registrar saída" }).click();
+  await confirmationPage.mouse.click(8, 8);
+  await assert.equal(await confirmationDialog.isVisible(), false);
+  assert.equal(finishRequests, 0, "Clicar no fundo não encerra a sessão");
   await confirmationPage.getByRole("button", { name: "Registrar saída" }).click();
   confirmationDialog = confirmationPage.locator("dialog[data-confirm-dialog]", {
     hasText: "Registrar saída?",
@@ -241,7 +247,9 @@ try {
   await assert.equal(await confirmationDialog.isVisible(), true);
   await confirmationPage.waitForTimeout(100);
   assert.equal(cancelRequests, 0, "Abrir o cancelamento não altera a reserva");
-  await confirmationDialog.getByRole("button", { name: "Voltar" }).click();
+  await confirmationDialog
+    .locator('form[method="dialog"] button[data-confirm-cancel]')
+    .click();
   assert.equal(cancelRequests, 0, "Voltar não cancela a reserva");
   await confirmationPage.getByRole("button", { name: "Cancelar" }).click();
   confirmationDialog = confirmationPage.locator("dialog[data-confirm-dialog]", {

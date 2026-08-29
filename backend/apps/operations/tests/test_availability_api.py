@@ -71,6 +71,10 @@ class AvailabilityAPITest(APITestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["immediate_usage"]["planned_end_options"],
+            [],
+        )
         self.assertEqual(len(response.data["slots"]), 12)
         self.assertEqual(
             [slot["effective_status"] for slot in response.data["slots"]],
