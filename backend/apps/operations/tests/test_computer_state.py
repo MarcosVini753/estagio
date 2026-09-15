@@ -372,7 +372,7 @@ class ComputerOperationalStateConcurrencyTest(TransactionTestCase):
                 session_started.set()
                 start_usage_session(
                     computer_id=source.pk,
-                    slot_count=4,
+                    planned_ends_at=self.current + timedelta(hours=1),
                     actor_profile="ROOM_USER",
                     actor_reference="aluno-concorrente",
                     affiliation_type="STUDENT",

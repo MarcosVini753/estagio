@@ -74,14 +74,14 @@
 
 ## Concluído na entrega do Modelo C
 
-- reservas e usos imediatos com `slot_count` consecutivo e intervalo planejado;
+- reservas com `slot_count` consecutivo e usos imediatos com fim planejado em grade fixa;
 - duração fixa de 15 minutos e tolerâncias fixas de três minutos fora de `BookingPolicy`;
 - deadlines de check-in e saída e motivo `TIME_LIMIT_REACHED`;
 - janela de check-in de três minutos antes a três minutos depois, sem deslocar o fim da reserva;
 - conflitos por todo o intervalo planejado contra reservas, sessões e fechamento;
 - troca validada até o fim planejado e bloqueada durante a tolerância;
 - disponibilidade futura limitada por `planned_ends_at` e estado atual por `exit_deadline_at`;
-- resposta `immediate_usage` com máximo de slots e fator limitante;
+- resposta `immediate_usage` resumida e opções de fim planejado no detalhe do computador;
 - reconciliação oportunista e comando periódico que registra saídas automáticas e cancelamentos por check-in expirado;
 - migração em três fases com bloqueio explícito de sessões legadas ativas;
 - testes de constraints, APIs, deadlines, backfill e corridas entre reserva, entrada e troca;
@@ -101,7 +101,7 @@
 ## Concluído na entrega do frontend do Usuário da Sala
 
 - app de apresentação `web`, sem models, com páginas completas e partials HTMX;
-- seletor visual dos quatro perfis e identidade fictícia obrigatória para o Usuário da Sala;
+- seletor visual dos quatro perfis e identificação obrigatória para o Usuário da Sala;
 - proteção de todas as rotas `/sala/` pelo perfil armazenado na sessão;
 - interface mobile-first de computadores, agenda, sessão e problemas;
 - disponibilidade real de hoje e amanhã, busca server-side e avisos operacionais;

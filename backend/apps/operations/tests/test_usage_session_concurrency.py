@@ -58,7 +58,7 @@ class UsageSessionConcurrencyTest(TransactionTestCase):
                 barrier.wait()
                 start_usage_session(
                     computer_id=self.computer.pk,
-                    slot_count=4,
+                    planned_ends_at=self.current + timedelta(hours=1),
                     actor_profile="ROOM_USER",
                     actor_reference=user_reference,
                     affiliation_type="STUDENT",
@@ -116,7 +116,7 @@ class UsageSessionConcurrencyTest(TransactionTestCase):
                 barrier.wait()
                 start_usage_session(
                     computer_id=self.computer.pk,
-                    slot_count=4,
+                    planned_ends_at=self.current + timedelta(hours=1),
                     actor_profile="ROOM_USER",
                     actor_reference="immediate-user",
                     affiliation_type="STUDENT",

@@ -26,7 +26,7 @@ else (Nao)
       stop
     endif
   else (Nao)
-    :Calcula intervalo a partir de agora e slot_count;
+    :Valida fim escolhido na grade fixa posterior a agora;
     :Valida fechamento, reservas do computador e do usuario;
   endif
 
@@ -35,7 +35,7 @@ else (Nao)
     :Registra horario real de entrada;
     :Cria sessao com intervalo planejado e prazo de saida;
     :Cria primeira alocacao do computador;
-    :Exibe fim planejado e prazo;
+    :Exibe fim planejado;
     stop
   else (Nao)
     :Informa conflito no intervalo solicitado;

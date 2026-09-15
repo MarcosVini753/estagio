@@ -234,13 +234,6 @@ class UseSession(TimeStampedModel):
     def __str__(self) -> str:
         return f"Sessão {self.pk} - {self.user_reference}"
 
-    @property
-    def slot_count(self) -> int:
-        return int(
-            (self.planned_ends_at - self.planned_starts_at).total_seconds()
-            // (SLOT_DURATION_MINUTES * 60)
-        )
-
 
 class ComputerAllocation(TimeStampedModel):
     class EndReason(models.TextChoices):

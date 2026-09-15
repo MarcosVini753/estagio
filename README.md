@@ -4,7 +4,7 @@ Repositório de documentação, diagramas, protótipo navegável e implementaç�
 
 ## Estado atual
 
-O sistema já implementa reservas, sessões de uso, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca possuem interfaces funcionais e responsivas; o Administrador continua selecionável no ambiente de demonstração, mas sua interface própria ainda não foi migrada. Consulte [docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md) para o detalhamento.
+O sistema já implementa reservas, sessões de uso, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca possuem interfaces funcionais e responsivas; o Administrador continua selecionável no MVP, mas sua interface própria ainda não está disponível. Consulte [docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md) para o detalhamento.
 
 ## Regras centrais
 

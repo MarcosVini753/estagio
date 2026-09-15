@@ -20,7 +20,7 @@ from apps.operations.slotting import (
     COMPUTER_UNAVAILABLE,
     NEXT_RESERVATION,
     USER_RESERVATION,
-    calculate_max_immediate_slot_count,
+    immediate_planned_end_options,
 )
 
 OCCUPIED = "OCCUPIED"
@@ -226,14 +226,20 @@ def _immediate_usage_payload(
     reservations,
     user_reservations,
     user_has_active_allocation: bool,
+    include_planned_end_options: bool = False,
 ) -> dict:
-    if computer.operational_state != Computer.OperationalState.AVAILABLE:
-        return {
+    def unavailable(limited_by):
+        payload = {
             "can_start_now": False,
-            "max_slot_count": 0,
             "max_planned_ends_at": None,
-            "limited_by": COMPUTER_UNAVAILABLE,
+            "limited_by": limited_by,
         }
+        if include_planned_end_options:
+            payload["planned_end_options"] = []
+        return payload
+
+    if computer.operational_state != Computer.OperationalState.AVAILABLE:
+        return unavailable(COMPUTER_UNAVAILABLE)
 
     if any(
         _overlaps(
@@ -244,20 +250,10 @@ def _immediate_usage_payload(
         )
         for allocation in allocations
     ):
-        return {
-            "can_start_now": False,
-            "max_slot_count": 0,
-            "max_planned_ends_at": None,
-            "limited_by": ACTIVE_ALLOCATION,
-        }
+        return unavailable(ACTIVE_ALLOCATION)
 
     if user_has_active_allocation:
-        return {
-            "can_start_now": False,
-            "max_slot_count": 0,
-            "max_planned_ends_at": None,
-            "limited_by": ACTIVE_ALLOCATION,
-        }
+        return unavailable(ACTIVE_ALLOCATION)
 
     limits = [
         (reservation.starts_at, NEXT_RESERVATION)
@@ -269,19 +265,21 @@ def _immediate_usage_payload(
         for reservation in user_reservations
         if reservation.ends_at > current
     )
-    max_slot_count, max_planned_ends_at, limited_by = (
-        calculate_max_immediate_slot_count(
-            starts_at=current,
-            operating_day=operating_day,
-            limits=limits,
-        )
+    planned_end_options, limited_by = immediate_planned_end_options(
+        starts_at=current,
+        operating_day=operating_day,
+        limits=limits,
     )
-    return {
-        "can_start_now": max_slot_count > 0,
-        "max_slot_count": max_slot_count,
-        "max_planned_ends_at": max_planned_ends_at,
+    payload = {
+        "can_start_now": bool(planned_end_options),
+        "max_planned_ends_at": (
+            planned_end_options[-1] if planned_end_options else None
+        ),
         "limited_by": limited_by,
     }
+    if include_planned_end_options:
+        payload["planned_end_options"] = planned_end_options
+    return payload
 
 
 def get_computers_availability(
@@ -290,6 +288,7 @@ def get_computers_availability(
     computers,
     user_reference: str | None,
     now=None,
+    include_planned_end_options: bool = False,
 ):
     current = now or timezone.now()
     today = validate_target_date(target_date, now=current)
@@ -350,10 +349,11 @@ def get_computers_availability(
         can_start_now = False
         immediate_usage = {
             "can_start_now": False,
-            "max_slot_count": 0,
             "max_planned_ends_at": None,
             "limited_by": None,
         }
+        if include_planned_end_options:
+            immediate_usage["planned_end_options"] = []
         if is_today:
             status_now = _effective_status(
                 computer,
@@ -371,6 +371,7 @@ def get_computers_availability(
                 reservations=computer_reservations,
                 user_reservations=user_reservations,
                 user_has_active_allocation=user_has_active_allocation,
+                include_planned_end_options=include_planned_end_options,
             )
             can_start_now = immediate_usage["can_start_now"]
 
@@ -426,6 +427,7 @@ def get_computer_slots(
         computers=[computer],
         user_reference=user_reference,
         now=now,
+        include_planned_end_options=True,
     )
     return {
         "computer": computer,

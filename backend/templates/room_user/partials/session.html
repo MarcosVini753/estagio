@@ -9,17 +9,18 @@
     </div>
     <dl class="session-metrics">
       <div><dt>Entrada</dt><dd>{{ active_session.started_at|time:"H:i" }}</dd></div>
-      <div><dt>Uso planejado até</dt><dd>{{ active_session.planned_ends_at|time:"H:i" }}</dd></div>
-      <div><dt>Saída até</dt><dd>{{ active_session.exit_deadline_at|time:"H:i" }}</dd></div>
+      <div><dt>Saída planejada</dt><dd>{{ active_session.planned_ends_at|time:"H:i" }}</dd></div>
     </dl>
     <div class="card-actions">
-      <form method="post" action="{% url 'web:session-finish' active_session.pk %}" hx-post="{% url 'web:session-finish' active_session.pk %}" hx-target="#room-user-app" hx-swap="outerHTML" x-data="{ confirmExit: false }" x-on:submit="if (!confirmExit) { $event.preventDefault(); confirmExit = window.confirm('Registrar sua saída agora?'); if (confirmExit) $el.requestSubmit(); }">
+      {% url 'web:session-finish' active_session.pk as session_finish_url %}
+      <form method="post" action="{{ session_finish_url }}" data-confirm-form data-confirm-dialog-id="session-finish-confirmation-{{ active_session.pk }}">
         {% csrf_token %}<button class="button button-primary" type="submit">Registrar saída</button>
       </form>
       <a class="button button-ghost" href="{% url 'web:computers' %}?day=today" hx-get="{% url 'web:computers' %}?day=today" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Trocar computador</a>
       <a class="button button-warning" href="{% url 'web:problems' %}?computer_id={{ active_allocation.computer_id }}" hx-get="{% url 'web:problems' %}?computer_id={{ active_allocation.computer_id }}" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Informar problema</a>
     </div>
   </section>
+  {% include "components/confirmation_dialog.html" with dialog_prefix="session-finish-confirmation" object_id=active_session.pk title="Registrar saída?" message="A sessão será encerrada agora." action_url=session_finish_url target="#room-user-app" swap="outerHTML" confirm_label="Confirmar saída" %}
 
   <p class="section-title">Histórico de computadores</p>
   <section class="timeline">
@@ -38,7 +39,7 @@
   <section class="empty-state empty-state-large">
     <span class="empty-icon">{% include "components/icon.html" with name="session" %}</span>
     <h2>Nenhuma sessão ativa</h2>
-    <p>Escolha um computador disponível de hoje e informe a duração para iniciar o uso.</p>
+    <p>Escolha um computador disponível de hoje e informe a saída planejada para iniciar o uso.</p>
     <a class="button button-primary" href="{% url 'web:computers' %}?day=today" hx-get="{% url 'web:computers' %}?day=today" hx-target="#room-user-app" hx-swap="outerHTML" hx-push-url="true">Ver computadores de hoje</a>
   </section>
 {% endif %}

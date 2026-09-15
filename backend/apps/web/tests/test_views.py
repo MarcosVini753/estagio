@@ -65,10 +65,15 @@ class RoomUserWebTest(TestCase):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Escolha seu perfil")
         self.assertContains(response, 'value="ROOM_USER"')
         self.assertContains(response, 'value="ROOM_MONITOR"')
         self.assertContains(response, 'value="LIBRARY_SUPERVISOR"')
         self.assertContains(response, 'value="SYSTEM_ADMIN"')
+        self.assertNotContains(response, "Autorização simulada")
+        self.assertNotContains(response, "perfil de teste")
+        self.assertNotContains(response, "demonstração")
+        self.assertNotContains(response, "fictícia")
 
         invalid = self.client.post("/", {"profile": "ROOM_USER"})
         self.assertEqual(invalid.status_code, 400)
@@ -103,7 +108,9 @@ class RoomUserWebTest(TestCase):
         self.assertRedirects(response, "/perfil-indisponivel/")
         pending = self.client.get("/perfil-indisponivel/")
         self.assertContains(pending, "Administrador do Sistema")
-        self.assertContains(pending, "ainda não foi migrada")
+        self.assertContains(pending, "ainda não está disponível")
+        self.assertNotContains(pending, "Autorização simulada")
+        self.assertNotContains(pending, "demonstração")
 
     def test_room_user_pages_require_compatible_profile(self):
         response = self.client.get("/sala/computadores/")
@@ -141,7 +148,8 @@ class RoomUserWebTest(TestCase):
 
         self.assertContains(today_response, "Computador 01")
         self.assertContains(today_response, "Hoje")
-        self.assertContains(today_response, "Perfil de teste")
+        self.assertContains(today_response, "Usuário da Sala")
+        self.assertNotContains(today_response, "Perfil de teste")
         self.assertNotContains(today_response, "Ambiente demonstrativo")
         self.assertNotContains(tomorrow_response, "Computador 01")
         self.assertContains(tomorrow_response, "Computador 02")
@@ -150,6 +158,34 @@ class RoomUserWebTest(TestCase):
         self.assertNotContains(partial, "<!doctype html>")
         self.assertContains(detail, "15 min")
         self.assertContains(detail, "30 min")
+
+    def test_room_user_screen_hides_operational_tolerances_and_uses_planned_end(self):
+        self.select_room_user()
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(9)),
+            ends_at=self.aware(self.tomorrow, time(10)),
+            created_by_profile="ROOM_USER",
+        )
+
+        agenda = self.client.get("/sala/agenda/")
+        with patch(
+            "apps.operations.availability.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            detail = self.client.get(
+                f"/sala/computadores/{self.computer.pk}/?day=today",
+                HTTP_HX_REQUEST="true",
+            )
+
+        self.assertContains(agenda, "09:00–10:00")
+        self.assertNotContains(
+            agenda, reservation.check_in_deadline_at.strftime("%H:%M")
+        )
+        self.assertNotContains(agenda, reservation.exit_deadline_at.strftime("%H:%M"))
+        self.assertContains(detail, 'name="planned_ends_at"')
+        self.assertNotContains(detail, 'name="slot_count"')
 
     def test_agenda_and_problems_paginate_without_losing_search(self):
         self.select_room_user()
@@ -319,7 +355,8 @@ class RoomUserWebTest(TestCase):
 
         self.assertContains(refreshed, 'id="agenda-content"', count=1)
         self.assertNotContains(refreshed, "<!doctype html>")
-        self.assertContains(refreshed, "Entrada de 08:57 até 09:03")
+        self.assertNotContains(refreshed, "08:57")
+        self.assertNotContains(refreshed, "09:03")
         self.assertContains(refreshed, "Registrar entrada")
 
     def test_immediate_session_switch_and_finish_flow(self):
@@ -332,7 +369,7 @@ class RoomUserWebTest(TestCase):
                 "/sala/sessao/iniciar/",
                 {
                     "computer_id": self.computer.pk,
-                    "slot_count": 4,
+                    "planned_ends_at": self.aware(self.today, time(9)).isoformat(),
                     "user_reference": "identidade-injetada",
                     "affiliation_type": "PROFESSOR",
                     "institutional_unit": "Unidade injetada",
@@ -378,6 +415,99 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(active_session.status, UseSession.Status.FINISHED)
         self.assertEqual(active_session.allocations.count(), 2)
 
+    def test_switch_after_planned_end_hides_operational_tolerance(self):
+        self.select_room_user()
+        planned_end = self.aware(self.today, time(8, 30))
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            self.client.post(
+                "/sala/sessao/iniciar/",
+                {
+                    "computer_id": self.computer.pk,
+                    "planned_ends_at": planned_end.isoformat(),
+                },
+            )
+        active_session = UseSession.objects.get()
+
+        with (
+            patch(
+                "apps.operations.services.usage_sessions.timezone.now",
+                return_value=planned_end,
+            ),
+            patch(
+                "apps.operations.availability.timezone.now",
+                return_value=planned_end,
+            ),
+        ):
+            response = self.client.post(
+                f"/sala/sessao/{active_session.pk}/trocar/",
+                {"computer_id": self.other_computer.pk},
+                HTTP_HX_REQUEST="true",
+                HTTP_HX_TARGET="app-dialog-content",
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertContains(
+            response,
+            "tempo planejado restante",
+            status_code=409,
+        )
+        self.assertNotContains(response, "tolerância", status_code=409)
+        self.assertNotContains(response, "08:33", status_code=409)
+        self.assertEqual(active_session.allocations.count(), 1)
+
+    def test_confirmation_forms_keep_their_non_javascript_post_fallback(self):
+        self.select_room_user()
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(9)),
+            ends_at=self.aware(self.tomorrow, time(10)),
+            created_by_profile="ROOM_USER",
+        )
+
+        agenda = self.client.get("/sala/agenda/")
+        response = self.client.post(f"/sala/reservas/{reservation.pk}/cancelar/")
+
+        self.assertContains(agenda, "data-confirm-form")
+        self.assertContains(agenda, "data-confirm-dialog")
+        self.assertRedirects(response, "/sala/agenda/")
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            self.client.post(
+                "/sala/sessao/iniciar/",
+                {
+                    "computer_id": self.computer.pk,
+                    "planned_ends_at": self.aware(
+                        self.today,
+                        time(9),
+                    ).isoformat(),
+                },
+            )
+        active_session = UseSession.objects.get(status=UseSession.Status.ACTIVE)
+        session_page = self.client.get("/sala/sessao/")
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.fixed_now + timedelta(minutes=5),
+        ):
+            finish_response = self.client.post(
+                f"/sala/sessao/{active_session.pk}/encerrar/"
+            )
+
+        self.assertContains(session_page, "data-confirm-form")
+        self.assertContains(session_page, "data-confirm-dialog")
+        self.assertRedirects(finish_response, "/sala/computadores/")
+        active_session.refresh_from_db()
+        self.assertEqual(active_session.status, UseSession.Status.FINISHED)
+
     def test_concurrent_immediate_start_refreshes_modal_with_error(self):
         self.select_room_user()
         with patch(
@@ -386,7 +516,10 @@ class RoomUserWebTest(TestCase):
         ):
             self.client.post(
                 "/sala/sessao/iniciar/",
-                {"computer_id": self.computer.pk, "slot_count": 4},
+                {
+                    "computer_id": self.computer.pk,
+                    "planned_ends_at": self.aware(self.today, time(9)).isoformat(),
+                },
             )
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
@@ -394,7 +527,10 @@ class RoomUserWebTest(TestCase):
         ):
             response = self.client.post(
                 "/sala/sessao/iniciar/",
-                {"computer_id": self.other_computer.pk, "slot_count": 2},
+                {
+                    "computer_id": self.other_computer.pk,
+                    "planned_ends_at": self.aware(self.today, time(8, 30)).isoformat(),
+                },
                 HTTP_HX_REQUEST="true",
                 HTTP_HX_TARGET="app-dialog-content",
             )
@@ -416,7 +552,7 @@ class RoomUserWebTest(TestCase):
 
         response = self.client.post(
             "/sala/sessao/iniciar/",
-            {"computer_id": self.computer.pk, "slot_count": ""},
+            {"computer_id": self.computer.pk, "planned_ends_at": ""},
             HTTP_HX_REQUEST="true",
             HTTP_HX_TARGET="app-dialog-content",
         )
@@ -458,7 +594,10 @@ class RoomUserWebTest(TestCase):
         ):
             self.client.post(
                 "/sala/sessao/iniciar/",
-                {"computer_id": self.computer.pk, "slot_count": 4},
+                {
+                    "computer_id": self.computer.pk,
+                    "planned_ends_at": self.aware(self.today, time(9)).isoformat(),
+                },
             )
         active_session = UseSession.objects.get()
         allocation = active_session.allocations.get()

@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita. A semântica de `NO_SHOW` foi substituída pela ADR 0021 e a regra de check-in antecipado pela ADR 0024; intervalos planejados e deadlines permanecem vigentes.
+Aceita parcialmente. A semântica de `NO_SHOW` foi substituída pela ADR 0021, a regra de check-in antecipado pela ADR 0024 e a duração solicitada do uso imediato pela ADR 0025; intervalos planejados e deadlines permanecem vigentes.
 
 ## Contexto
 
@@ -12,9 +12,9 @@ O domínio precisa distinguir o compromisso de uso assumido antes da entrada do 
 
 ## Decisão
 
-Adotar o Modelo C, no qual cada reserva ou uso imediato possui uma duração solicitada como quantidade inteira de slots consecutivos. O slot é uma regra fixa de 15 minutos e não uma política alterável pelo Supervisor.
+Adotar o Modelo C, no qual reservas possuem duração solicitada como quantidade inteira de slots consecutivos. O slot é uma regra fixa de 15 minutos e não uma política alterável pelo Supervisor. A forma de escolher o fim de uso imediato foi substituída pela ADR 0025.
 
-`Reservation` mantém `starts_at` e `ends_at`, recebe `slot_count` na criação e persiste `check_in_deadline_at` e `exit_deadline_at`. `UseSession` persiste `planned_starts_at`, `planned_ends_at` e `exit_deadline_at`, além dos horários reais. `slot_count` é derivado do intervalo planejado e não gera registros artificiais por slot.
+`Reservation` mantém `starts_at` e `ends_at`, recebe `slot_count` na criação e persiste `check_in_deadline_at` e `exit_deadline_at`. `UseSession` persiste `planned_starts_at`, `planned_ends_at` e `exit_deadline_at`, além dos horários reais. `slot_count` é derivado de reservas e não gera registros artificiais por slot.
 
 Os intervalos planejados usam a convenção semiaberta `[início, fim)`. Eles não podem sobrepor reserva confirmada, outra sessão planejada nem ultrapassar uma única janela do calendário operacional. Intervalos adjacentes são válidos.
 
@@ -43,7 +43,7 @@ Sessões são encerradas logicamente em `exit_deadline_at`, com a alocação mar
 
 ## Consequências negativas e riscos
 
-- clientes precisam enviar `slot_count` para reserva e uso imediato;
+- clientes precisam enviar `slot_count` para reserva; uso imediato segue a ADR 0025;
 - sessões e reservas ganham campos obrigatórios e exigem migração em fases;
 - a implantação deve ocorrer sem sessões legadas ativas;
 - durante a tolerância pode existir sobreposição física deliberada com reserva ou fechamento;
