@@ -101,7 +101,7 @@
 ## Concluído na entrega do frontend do Usuário da Sala
 
 - app de apresentação `web`, sem models, com páginas completas e partials HTMX;
-- seletor visual dos quatro perfis e identidade fictícia obrigatória para o Usuário da Sala;
+- seletor visual dos quatro perfis e identificação obrigatória para o Usuário da Sala;
 - proteção de todas as rotas `/sala/` pelo perfil armazenado na sessão;
 - interface mobile-first de computadores, agenda, sessão e problemas;
 - disponibilidade real de hoje e amanhã, busca server-side e avisos operacionais;

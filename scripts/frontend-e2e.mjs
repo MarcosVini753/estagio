@@ -3,6 +3,10 @@ import { chromium } from "playwright";
 
 const baseURL = process.env.FRONTEND_BASE_URL || "http://127.0.0.1:8000";
 
+async function submitProfileSelection(page) {
+  await page.locator("form.profile-form button[type='submit']").click();
+}
+
 async function selectRoomUser(page, suffix, reference = `e2e-user-${suffix}`) {
   await page.goto(baseURL, { waitUntil: "networkidle" });
   await page
@@ -13,7 +17,7 @@ async function selectRoomUser(page, suffix, reference = `e2e-user-${suffix}`) {
   await page
     .locator('input[name="institutional_unit"]')
     .fill("Sistemas de Informação");
-  await page.getByRole("button", { name: "Entrar no ambiente" }).click();
+  await submitProfileSelection(page);
   await page.waitForURL("**/sala/computadores/");
 }
 
@@ -22,8 +26,52 @@ async function selectProfile(page, profileName, destination) {
   await page
     .locator("label.profile-option", { hasText: profileName })
     .click();
-  await page.getByRole("button", { name: "Entrar no ambiente" }).click();
+  await submitProfileSelection(page);
   await page.waitForURL(destination);
+}
+
+async function assertSidebarIsFixed(page, selector) {
+  const sidebar = page.locator(selector);
+  const getMetrics = () =>
+    sidebar.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return {
+        bottom: Math.round(bounds.bottom),
+        position: getComputedStyle(element).position,
+        top: Math.round(bounds.top),
+        viewportHeight: window.innerHeight,
+      };
+    });
+
+  const metrics = await getMetrics();
+
+  assert.equal(metrics.position, "fixed", `${selector} deve ficar fixa`);
+  assert.equal(metrics.top, 0, `${selector} deve começar no topo da janela`);
+  assert.equal(
+    metrics.bottom,
+    metrics.viewportHeight,
+    `${selector} deve ocupar toda a altura da janela`,
+  );
+
+  await page.evaluate(() => {
+    const spacer = document.createElement("div");
+    spacer.dataset.e2eSidebarScrollSpacer = "";
+    spacer.style.height = "200vh";
+    document.body.append(spacer);
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+
+  const scrolledMetrics = await getMetrics();
+  assert.deepEqual(
+    scrolledMetrics,
+    metrics,
+    `${selector} deve permanecer fixa após a rolagem`,
+  );
+
+  await page.evaluate(() => {
+    document.querySelector("[data-e2e-sidebar-scroll-spacer]")?.remove();
+    window.scrollTo(0, 0);
+  });
 }
 
 async function swipe(locator, { fromX, toX, fromY = 300, toY = 305 }) {
@@ -174,6 +222,7 @@ try {
   await selectRoomUser(desktopPage, "desktop");
   assert.equal(await desktopPage.locator(".desktop-sidebar").isVisible(), true);
   assert.equal(await desktopPage.locator(".mobile-navigation").isVisible(), false);
+  await assertSidebarIsFixed(desktopPage, ".desktop-sidebar");
   assert.equal(await desktopPage.getByRole("heading", { name: "Sala de Informática" }).first().isVisible(), true);
   await desktop.close();
 
@@ -283,6 +332,7 @@ try {
     await supervisorPage.locator(".staff-mobile-navigation").isVisible(),
     false,
   );
+  await assertSidebarIsFixed(supervisorPage, ".staff-sidebar");
   await supervisorPage
     .getByRole("link", { name: "Inventário", exact: true })
     .click();

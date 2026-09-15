@@ -5,15 +5,10 @@
   <section class="profile-hero">
     <p class="eyebrow">Biblioteca UFAC</p>
     <h1>Sala de Informática</h1>
-    <p>Ambiente de demonstração do controle de uso dos computadores.</p>
+    <p>Escolha o perfil que deseja acessar.</p>
   </section>
 
   <section class="profile-panel" aria-labelledby="profile-title">
-    <div class="demo-warning" role="note">
-      <strong>Autorização simulada</strong>
-      <span>Use somente dados fictícios. Este ambiente não possui login ou identidade real.</span>
-    </div>
-
     {% for notice in active_notices %}
       <article class="notice notice-{{ notice.notice_type|lower }}" role="{% if notice.notice_type == 'CLOSURE' %}alert{% else %}status{% endif %}">
         <strong>{{ notice.title }}</strong>
@@ -27,10 +22,10 @@
 
     <div class="profile-heading">
       <div>
-        <p class="eyebrow eyebrow-dark">Acesso ao ambiente funcional</p>
-        <h2 id="profile-title">Escolha o perfil de teste</h2>
+        <p class="eyebrow eyebrow-dark">Acesso</p>
+        <h2 id="profile-title">Escolha seu perfil</h2>
       </div>
-      <span class="current-profile">Atual: {{ current_profile_label }}</span>
+      <span class="current-profile">Perfil atual: {{ current_profile_label }}</span>
     </div>
 
     {% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
@@ -52,10 +47,10 @@
       </fieldset>
 
       <section class="identity-fields" x-show="selected === 'ROOM_USER'">
-        <h3>Identidade fictícia do Usuário da Sala</h3>
+        <h3>Identificação do Usuário da Sala</h3>
         <div class="form-grid">
           <label class="field">
-            <span>Referência fictícia</span>
+            <span>Referência</span>
             <input name="user_reference" maxlength="100" value="{{ form_data.user_reference|default:'' }}" placeholder="Ex.: aluno-si-001" :required="selected === 'ROOM_USER'">
           </label>
           <label class="field">
@@ -68,13 +63,13 @@
             </select>
           </label>
           <label class="field field-wide">
-            <span>Unidade institucional fictícia</span>
+            <span>Unidade institucional</span>
             <input name="institutional_unit" maxlength="255" value="{{ form_data.institutional_unit|default:'' }}" placeholder="Ex.: Sistemas de Informação" :required="selected === 'ROOM_USER'">
           </label>
         </div>
       </section>
 
-      <button class="button button-primary button-full" type="submit">Entrar no ambiente de demonstração</button>
+      <button class="button button-primary button-full" type="submit">Continuar</button>
     </form>
   </section>
 </main>

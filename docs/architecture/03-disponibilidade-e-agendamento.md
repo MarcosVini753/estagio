@@ -9,8 +9,8 @@ Centralizar a regra que determina se um computador pode ser consultado, utilizad
 - computador;
 - data;
 - instante ou intervalo;
-- perfil de teste atual;
-- usuário fictício selecionado, quando necessário.
+- perfil selecionado;
+- usuário selecionado, quando necessário.
 
 ## Janela temporal
 

@@ -65,10 +65,15 @@ class RoomUserWebTest(TestCase):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Escolha seu perfil")
         self.assertContains(response, 'value="ROOM_USER"')
         self.assertContains(response, 'value="ROOM_MONITOR"')
         self.assertContains(response, 'value="LIBRARY_SUPERVISOR"')
         self.assertContains(response, 'value="SYSTEM_ADMIN"')
+        self.assertNotContains(response, "Autorização simulada")
+        self.assertNotContains(response, "perfil de teste")
+        self.assertNotContains(response, "demonstração")
+        self.assertNotContains(response, "fictícia")
 
         invalid = self.client.post("/", {"profile": "ROOM_USER"})
         self.assertEqual(invalid.status_code, 400)
@@ -103,7 +108,9 @@ class RoomUserWebTest(TestCase):
         self.assertRedirects(response, "/perfil-indisponivel/")
         pending = self.client.get("/perfil-indisponivel/")
         self.assertContains(pending, "Administrador do Sistema")
-        self.assertContains(pending, "ainda não foi migrada")
+        self.assertContains(pending, "ainda não está disponível")
+        self.assertNotContains(pending, "Autorização simulada")
+        self.assertNotContains(pending, "demonstração")
 
     def test_room_user_pages_require_compatible_profile(self):
         response = self.client.get("/sala/computadores/")
@@ -141,7 +148,8 @@ class RoomUserWebTest(TestCase):
 
         self.assertContains(today_response, "Computador 01")
         self.assertContains(today_response, "Hoje")
-        self.assertContains(today_response, "Perfil de teste")
+        self.assertContains(today_response, "Usuário da Sala")
+        self.assertNotContains(today_response, "Perfil de teste")
         self.assertNotContains(today_response, "Ambiente demonstrativo")
         self.assertNotContains(tomorrow_response, "Computador 01")
         self.assertContains(tomorrow_response, "Computador 02")

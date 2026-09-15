@@ -6,7 +6,7 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 
 ## Como funciona na prática
 
-1. O usuário abre a aplicação e escolhe um perfil de teste (não há autenticação real no MVP).
+1. O usuário abre a aplicação e escolhe o perfil que deseja acessar.
 2. Consulta a disponibilidade de **hoje** ou **amanhã**.
 3. **Hoje**: pode iniciar uso imediato em um computador livre, escolhendo a saída planejada em uma grade de 15 minutos.
 4. **Amanhã (ou horário futuro de hoje)**: pode reservar um ou mais slots consecutivos.
@@ -24,7 +24,7 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 5. Um usuário tem no máximo **uma sessão ativa**; um computador, **uma alocação ativa**.
 6. Trocar de computador **não cria nova sessão** nem apaga histórico.
 7. Relatórios são **projeções** dos registros operacionais — não há lançamento manual.
-8. A autorização é **simulada** por perfil de teste; não há autenticação real no MVP.
+8. O MVP não possui autenticação real; o perfil escolhido controla as funcionalidades disponíveis.
 
 ## Onde está cada coisa
 

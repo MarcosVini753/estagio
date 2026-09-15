@@ -2,11 +2,11 @@
 
 ## Visão geral
 
-A primeira versão não possui autenticação real. O usuário escolhe um perfil de teste em uma tela inicial e a aplicação passa a exibir as funcionalidades correspondentes.
+A primeira versão não possui autenticação real. O usuário escolhe um perfil na tela inicial e a aplicação passa a exibir as funcionalidades correspondentes.
 
 Essa autorização é apenas comportamental. Ela não garante identidade, sigilo ou segurança. O MVP deve operar somente com dados fictícios em ambiente local ou controlado.
 
-Ao escolher Usuário da Sala, a demonstração exige referência fictícia, vínculo e unidade institucional. Esses dados distinguem pessoas e agrupamentos analíticos, mas não comprovam identidade.
+Ao escolher Usuário da Sala, a área exige referência, vínculo e unidade institucional. Esses dados distinguem pessoas e agrupamentos analíticos, mas não comprovam identidade.
 
 ## Usuário da Sala
 
@@ -18,7 +18,7 @@ Pode:
 - consultar o funcionamento da sala e avisos ativos;
 - iniciar uso imediato hoje;
 - reservar para hoje ou amanhã, em horários válidos;
-- consultar e cancelar suas próprias reservas simuladas;
+- consultar e cancelar suas próprias reservas;
 - registrar entrada e saída;
 - trocar de computador;
 - consultar sua sessão atual;
@@ -86,7 +86,7 @@ Na autorização simulada atual, o Administrador também pode executar as açõe
 
 Seus casos de uso detalhados permanecem fora do escopo documental funcional atual, mas nenhum desenho técnico deve assumir que Supervisor é o maior papel possível.
 
-## Perfis simulados
+## Perfis de acesso
 
 Sugestão de identificadores internos:
 

@@ -100,9 +100,9 @@ Registro de problema técnico ou operacional associado opcionalmente a computado
 
 Projeção gerencial diária, mensal ou anual usada pelo Supervisor.
 
-## Perfil de teste
+## Perfil de acesso
 
-Papel selecionado na tela inicial do MVP para simular autorização. Não representa autenticação ou identidade comprovada.
+Papel selecionado na tela inicial do MVP para controlar as funcionalidades disponíveis. Não representa autenticação ou identidade comprovada.
 
 ## MVP
 

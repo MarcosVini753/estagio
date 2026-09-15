@@ -3,15 +3,11 @@
 {% block body %}
 <main class="standalone-page">
   <section class="standalone-card">
-    <div class="demo-warning" role="note">
-      <strong>Autorização simulada</strong>
-      <span>O perfil selecionado não representa autenticação real.</span>
-    </div>
     <p class="eyebrow eyebrow-dark">Biblioteca UFAC</p>
     <h1>{{ profile_label }}</h1>
-    <p>O perfil foi selecionado para demonstração, mas sua interface ainda não foi migrada para o frontend Django.</p>
-    <p class="muted">Nesta entrega, a área completa disponível é a do Usuário da Sala.</p>
-    <a class="button button-primary" href="{% url 'web:home' %}">Trocar perfil</a>
+    <p>Esta interface ainda não está disponível.</p>
+    <p class="muted">Escolha outro perfil para acessar as áreas disponíveis.</p>
+    <a class="button button-primary" href="{% url 'web:home' %}">Escolher outro perfil</a>
   </section>
 </main>
 {% endblock %}

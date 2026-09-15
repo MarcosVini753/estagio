@@ -1,6 +1,6 @@
 # Escopo do MVP
 
-## Seleção de perfil de teste
+## Seleção de perfil
 
 A aplicação permite escolher:
 
@@ -9,7 +9,7 @@ A aplicação permite escolher:
 - Supervisor da Biblioteca;
 - Administrador do Sistema.
 
-A seleção controla menus e autorizações simuladas. Não existe autenticação real.
+A seleção controla menus e autorizações conforme o perfil escolhido. Não existe autenticação real nesta etapa.
 
 ## Usuário da Sala
 

@@ -51,6 +51,6 @@ A migração é incremental. Os fluxos do Usuário da Sala, Monitor da Sala e Su
 
 ## Estado atual
 
-O seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca estão implementados no app Django `web`. Os fluxos usam dados e serviços reais do backend, preservam navegação convencional como alternativa a HTMX e Alpine.js e mantêm o perfil de demonstração visível.
+O seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca estão implementados no app Django `web`. Os fluxos usam dados e serviços reais do backend, preservam navegação convencional como alternativa a HTMX e Alpine.js e mostram o papel selecionado somente quando isso dá contexto ao fluxo.
 
 O Administrador continua exibindo uma página coerente de indisponibilidade. A CI compila os assets versionados e executa o E2E contra a aplicação Django real, com PostgreSQL, migrations e seed, cobrindo os três perfis migrados em mobile e desktop.
