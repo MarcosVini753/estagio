@@ -1,13 +1,14 @@
 {% if summary %}
-  <section class="room-status room-status-{{ summary.room.status|lower }}">
+  <input type="hidden" id="search-day-input" name="day" value="{{ day }}" hx-swap-oob="outerHTML">
+  <section class="room-status room-status-{{ room_display.tone }}">
     <div>
       <p class="section-kicker">Funcionamento da sala</p>
-      <h2>{% if summary.room.status == "OPEN" %}Sala aberta{% else %}Sala fechada{% endif %}</h2>
-      {% if summary.room.reason %}<p>{{ summary.room.reason }}</p>{% endif %}
+      <h2>{{ room_display.title }}</h2>
+      {% if room_display.reason %}<p>{{ room_display.reason }}</p>{% endif %}
     </div>
     <div class="room-windows">
-      {% for window in summary.room.operating_windows %}
-        <span>{{ window.opens_at|time:"H:i" }}–{{ window.closes_at|time:"H:i" }}</span>
+      {% for window in room_display.operating_windows_display %}
+        <span>{{ window.label }}</span>
       {% empty %}
         <span>Sem funcionamento nesta data</span>
       {% endfor %}

@@ -417,7 +417,6 @@ def get_computers_availability(
         operating_day=operating_day,
     )
     room.pop("date")
-    room.pop("is_open_now")
     return (
         {
             "date": target_date,

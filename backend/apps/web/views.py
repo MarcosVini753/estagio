@@ -59,6 +59,7 @@ from .presenters import (
     immediate_end_options,
     normalize_search,
     reservation_duration_options,
+    room_presenter,
     slot_rows,
 )
 
@@ -287,6 +288,9 @@ def computers(request):
             "day": day,
             "target_date": target_date,
             "summary": summary,
+            "room_display": room_presenter(summary["room"], summary["is_today"])
+            if summary
+            else None,
             "computers": rows,
             "screen_error": screen_error,
             "active_session": _active_session(request, now=now),
@@ -328,6 +332,8 @@ def _computer_detail_context(
         "computer_row": row,
         "day": day,
         "target_date": target_date,
+        "summary": summary,
+        "room_display": room_presenter(summary["room"], summary["is_today"]),
         "slots": slot_rows(raw_slots, selected_starts_at),
         "selected_starts_at": selected_starts_at,
         "reservation_options": reservation_duration_options(

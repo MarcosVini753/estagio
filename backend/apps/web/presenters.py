@@ -180,3 +180,63 @@ def flatten_serializer_errors(errors) -> str:
         label = "" if field in {"non_field_errors", "detail"} else f"{field}: "
         messages.extend(f"{label}{value}" for value in values)
     return " ".join(message for message in messages if message)
+
+
+def room_presenter(room: dict, is_today: bool) -> dict:
+    status = room.get("status", "CLOSED")
+    is_open_now = room.get("is_open_now", False)
+
+    formatted_windows = []
+    for window in room.get("operating_windows", []):
+        opens_at = window["opens_at"]
+        closes_at = window["closes_at"]
+        opens_display = (
+            opens_at[:5] if isinstance(opens_at, str) else opens_at.strftime("%H:%M")
+        )
+        closes_display = (
+            closes_at[:5] if isinstance(closes_at, str) else closes_at.strftime("%H:%M")
+        )
+        formatted_windows.append(
+            {
+                **window,
+                "opens_display": opens_display,
+                "closes_display": closes_display,
+                "label": f"{opens_display}–{closes_display}",
+            }
+        )
+
+    if is_today:
+        if status == "CLOSED":
+            title = "Sala fechada"
+            tone = "closed"
+        elif status == "SPECIAL_HOURS":
+            if is_open_now:
+                title = "Sala aberta (horário especial)"
+                tone = "special"
+            else:
+                title = "Sala fechada (horário especial)"
+                tone = "closed"
+        else:
+            if is_open_now:
+                title = "Sala aberta"
+                tone = "open"
+            else:
+                title = "Sala fechada no momento"
+                tone = "closed"
+    else:
+        if status == "CLOSED":
+            title = "Sala fechada nesta data"
+            tone = "closed"
+        elif status == "SPECIAL_HOURS":
+            title = "Funcionamento previsto (horário especial)"
+            tone = "special"
+        else:
+            title = "Funcionamento previsto"
+            tone = "open"
+
+    return {
+        **room,
+        "title": title,
+        "tone": tone,
+        "operating_windows_display": formatted_windows,
+    }

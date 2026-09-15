@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.computers.models import Computer
 from apps.configuration.models import (
     BookingPolicy,
+    CalendarException,
     OperatingSchedule,
     RoomNotice,
     Weekday,
@@ -635,3 +636,50 @@ class RoomUserWebTest(TestCase):
         own_problems = self.client.get("/sala/problemas/")
         self.assertContains(own_problems, "O mouse não está funcionando.")
         self.assertNotContains(own_problems, "Ocorrência de outra pessoa.")
+
+    def test_search_preserves_selected_day_parameter_via_oob_swap(self):
+        self.select_room_user()
+        with patch("django.utils.timezone.now", return_value=self.fixed_now):
+            tomorrow_screen = self.client.get(
+                "/sala/computadores/?day=tomorrow",
+                HTTP_HX_REQUEST="true",
+                HTTP_HX_TARGET="screen-content",
+            )
+        self.assertContains(tomorrow_screen, 'name="day" value="tomorrow"')
+        self.assertContains(tomorrow_screen, 'hx-swap-oob="outerHTML"')
+
+        with patch("django.utils.timezone.now", return_value=self.fixed_now):
+            search_tomorrow = self.client.get(
+                f"/sala/computadores/?day=tomorrow&q={self.computer.code}"
+            )
+        self.assertContains(search_tomorrow, self.computer.code)
+        self.assertContains(search_tomorrow, 'name="day" value="tomorrow"')
+
+    def test_room_status_presentation_handles_special_hours_and_after_closing(self):
+        self.select_room_user()
+        CalendarException.objects.create(
+            date=self.today,
+            exception_type=CalendarException.ExceptionType.SPECIAL_HOURS,
+            opens_at=time(8),
+            closes_at=time(12),
+            description="Horário especial de teste.",
+        )
+
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.aware(self.today, time(9)),
+        ):
+            open_special = self.client.get("/sala/computadores/?day=today")
+
+        self.assertContains(open_special, "Sala aberta (horário especial)")
+        self.assertContains(open_special, "08:00–12:00")
+        self.assertNotContains(open_special, "Sala fechada")
+
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.aware(self.today, time(21, 30)),
+        ):
+            after_hours = self.client.get("/sala/computadores/?day=today")
+
+        self.assertContains(after_hours, "Sala fechada")
+        self.assertNotContains(after_hours, "Sala aberta")

@@ -143,6 +143,7 @@ class ComputerAvailabilityItemSerializer(serializers.Serializer):
 class RoomAvailabilitySerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=ROOM_STATUS_CHOICES)
     source = serializers.ChoiceField(choices=CALENDAR_SOURCE_CHOICES)
+    is_open_now = serializers.BooleanField()
     reason = serializers.CharField(allow_blank=True)
     operating_windows = RoomStatusWindowSerializer(many=True)
     active_notices = RoomNoticeSerializer(many=True)

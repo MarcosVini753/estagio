@@ -607,6 +607,12 @@ svg {
   background: var(--danger-soft);
 }
 
+.room-status-special,
+.room-status-special_hours {
+  border-color: #f7d088;
+  background: var(--warning-soft);
+}
+
 .room-windows {
   display: grid;
   justify-items: end;
