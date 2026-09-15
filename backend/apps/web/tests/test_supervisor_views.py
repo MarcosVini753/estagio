@@ -451,3 +451,51 @@ class LibrarySupervisorWebTest(TestCase):
         self.assertTrue(
             AuditEvent.objects.filter(action="REPORT_CONFIGURATION_UPDATED").exists()
         )
+
+    def test_booking_policy_versioning_shows_both_current_and_future_version_with_dates(
+        self,
+    ):
+        self.select_supervisor()
+        current_policy = BookingPolicy.objects.get()
+        current_policy.valid_from = self.today
+        current_policy.cancellation_limit_minutes = 0
+        current_policy.max_future_reservations_per_user = 1
+        current_policy.save(
+            update_fields=[
+                "valid_from",
+                "cancellation_limit_minutes",
+                "max_future_reservations_per_user",
+            ]
+        )
+        create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.today, time(9)),
+            ends_at=self.aware(self.today, time(10)),
+            booking_policy=current_policy,
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.client.post(
+            "/supervisor/configuracoes/",
+            {
+                "kind": "booking",
+                "cancellation_limit_minutes": "45",
+                "max_future_reservations_per_user": "2",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            "/supervisor/funcionamento/?section=policies",
+        )
+        self.assertEqual(BookingPolicy.objects.count(), 2)
+        future_policy = BookingPolicy.objects.order_by("valid_from").last()
+        self.assertEqual(future_policy.valid_from, self.tomorrow)
+        self.assertEqual(future_policy.cancellation_limit_minutes, 45)
+
+        page = self.client.get("/supervisor/funcionamento/?section=policies")
+        self.assertContains(page, "Versão vigente hoje")
+        self.assertContains(page, "Próxima versão agendada")
+        self.assertContains(page, self.tomorrow.strftime("%d/%m/%Y"))
+        self.assertContains(page, 'value="45"')

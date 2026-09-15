@@ -1,7 +1,40 @@
 <section class="settings-grid">
   <article class="staff-card">
-    <p class="section-kicker">Reservas</p><h2>Política vigente</h2><p class="helper-text">A atualização cria uma versão temporal quando a política atual já explica reservas.</p>
-    <form class="staff-form" method="post" action="{% url 'web:supervisor-configurations' %}">{% csrf_token %}<input type="hidden" name="kind" value="booking"><label class="field"><span>Limite de cancelamento (minutos)</span><input type="number" min="0" name="cancellation_limit_minutes" value="{{ booking_policy.cancellation_limit_minutes|default:0 }}" required></label><label class="field"><span>Máximo de reservas futuras por usuário</span><input type="number" min="1" name="max_future_reservations_per_user" value="{{ booking_policy.max_future_reservations_per_user|default:1 }}" required></label><button class="button button-primary" type="submit">Versionar política</button></form>
+    <p class="section-kicker">Reservas</p><h2>Política de agendamento</h2>
+    
+    <div class="version-summary">
+      <div class="inline-heading">
+        <strong>Versão vigente hoje</strong>
+        <span class="badge badge-success">Em vigor</span>
+      </div>
+      <p class="helper-text">Vigência: {{ current_booking_policy.valid_from|date:"d/m/Y" }}{% if current_booking_policy.valid_until %} a {{ current_booking_policy.valid_until|date:"d/m/Y" }}{% else %} em diante{% endif %}. Limite de cancelamento: {{ current_booking_policy.cancellation_limit_minutes|default:0 }} min · Máximo de reservas futuras: {{ current_booking_policy.max_future_reservations_per_user|default:1 }}.</p>
+    </div>
+
+    {% if future_booking_policy %}
+      <div class="version-summary version-summary-future">
+        <div class="inline-heading">
+          <strong>Próxima versão agendada</strong>
+          <span class="badge badge-warning">A partir de {{ future_booking_policy.valid_from|date:"d/m/Y" }}</span>
+        </div>
+        <p class="helper-text">Vigorará a partir de {{ future_booking_policy.valid_from|date:"d/m/Y" }}. Limite de cancelamento: {{ future_booking_policy.cancellation_limit_minutes|default:0 }} min · Máximo de reservas futuras: {{ future_booking_policy.max_future_reservations_per_user|default:1 }}.</p>
+      </div>
+    {% endif %}
+
+    <form class="staff-form" method="post" action="{% url 'web:supervisor-configurations' %}">
+      {% csrf_token %}
+      <input type="hidden" name="kind" value="booking">
+      <h3 class="field-wide">{% if future_booking_policy %}Editar próxima versão{% else %}Ajustar ou versionar política{% endif %}</h3>
+      <p class="helper-text">Se a versão atual já possuir reservas associadas, salvar criará automaticamente uma nova versão para amanhã.</p>
+      <label class="field">
+        <span>Limite de cancelamento (minutos)</span>
+        <input type="number" min="0" name="cancellation_limit_minutes" value="{{ form_data.cancellation_limit_minutes|default:latest_booking_policy.cancellation_limit_minutes|default:0 }}" required>
+      </label>
+      <label class="field">
+        <span>Máximo de reservas futuras por usuário</span>
+        <input type="number" min="1" name="max_future_reservations_per_user" value="{{ form_data.max_future_reservations_per_user|default:latest_booking_policy.max_future_reservations_per_user|default:1 }}" required>
+      </label>
+      <button class="button button-primary" type="submit">Salvar política</button>
+    </form>
   </article>
   <article class="staff-card">
     <p class="section-kicker">Relatórios</p><h2>Parâmetros de apresentação</h2><p class="helper-text">Esses parâmetros controlam a visão mensal. Exportadores continuam fora desta etapa.</p>

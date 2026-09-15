@@ -623,6 +623,20 @@ svg {
   text-align: right;
 }
 
+.version-summary {
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-soft, rgba(0, 0, 0, 0.02));
+}
+
+.version-summary-future {
+  border-color: #f7d088;
+  background: var(--warning-soft);
+}
+
 .active-session-callout {
   margin-top: 0.65rem;
   display: flex;

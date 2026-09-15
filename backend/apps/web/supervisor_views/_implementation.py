@@ -28,6 +28,7 @@ from apps.configuration.api.serializers import (
 )
 from apps.configuration.calendar import resolve_operating_day
 from apps.configuration.models import (
+    BookingPolicy,
     CalendarException,
     OperatingSchedule,
     ReportConfiguration,
@@ -467,6 +468,16 @@ def _configuration_context(
         post_data=form_data,
         active_schedule_id=active_schedule_id,
     )
+    today = timezone.localdate()
+    current_policy = get_booking_policy_for_date(today)
+    latest_policy = BookingPolicy.objects.order_by(
+        "valid_from", "created_at", "pk"
+    ).last()
+    future_policy = (
+        BookingPolicy.objects.filter(valid_from__gt=today)
+        .order_by("valid_from", "created_at", "pk")
+        .first()
+    )
     context = _screen_context(request, screen="calendar")
     context.update(
         {
@@ -485,7 +496,10 @@ def _configuration_context(
             "exception_types": CalendarException.ExceptionType.choices,
             "notices": RoomNotice.objects.all(),
             "notice_types": RoomNotice.NoticeType.choices,
-            "booking_policy": get_booking_policy_for_date(timezone.localdate()),
+            "current_booking_policy": current_policy,
+            "future_booking_policy": future_policy,
+            "latest_booking_policy": latest_policy,
+            "booking_policy": latest_policy or current_policy,
             "report_configuration": _report_configuration(),
             "report_formats": ReportConfiguration.ExportFormat.choices,
             "form_error": form_error,
@@ -1147,10 +1161,18 @@ def configurations(request):
             form_kind=f"{kind}-configuration",
         )
     if kind == "booking":
-        update_current_booking_policy(
+        policy = update_current_booking_policy(
             values=serializer.validated_data,
             actor_profile=get_demo_profile(request),
         )
+        if policy.valid_from > timezone.localdate():
+            formatted_date = policy.valid_from.strftime("%d/%m/%Y")
+            success_message = (
+                "Política de reservas versionada. A nova versão "
+                f"vigorará a partir de {formatted_date}."
+            )
+        else:
+            success_message = "Política de reservas atualizada."
     else:
         update_report_configuration(
             values=serializer.validated_data,
