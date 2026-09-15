@@ -683,3 +683,41 @@ class RoomUserWebTest(TestCase):
 
         self.assertContains(after_hours, "Sala fechada")
         self.assertNotContains(after_hours, "Sala aberta")
+
+    def test_agenda_disables_cancellation_when_within_cancellation_limit_minutes(
+        self,
+    ):
+        self.select_room_user()
+        policy = BookingPolicy.objects.order_by("-valid_from").first()
+        if policy:
+            policy.cancellation_limit_minutes = 30
+            policy.save(update_fields=["cancellation_limit_minutes", "updated_at"])
+        else:
+            policy = BookingPolicy.objects.create(
+                cancellation_limit_minutes=30,
+                valid_from=self.today - timedelta(days=1),
+            )
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(9)),
+            ends_at=self.aware(self.tomorrow, time(10)),
+            booking_policy=policy,
+            created_by_profile="ROOM_USER",
+        )
+
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.aware(self.tomorrow, time(8, 45)),
+        ):
+            agenda = self.client.get("/sala/agenda/")
+            response = self.client.post(f"/sala/reservas/{reservation.pk}/cancelar/")
+
+        self.assertNotContains(
+            agenda,
+            f'action="/sala/reservas/{reservation.pk}/cancelar/"',
+        )
+        self.assertContains(agenda, "Prazo de cancelamento encerrado às 08:30")
+        self.assertEqual(response.status_code, 409)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.CONFIRMED)

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from django.db import IntegrityError, connection, transaction
@@ -30,6 +31,50 @@ from apps.operations.slotting import (
     validate_interval_inside_operating_window,
     validate_reservation_slot_start,
 )
+
+
+@dataclass(frozen=True)
+class CancellationDecision:
+    can_cancel: bool
+    deadline: datetime | None = None
+    reason: str = ""
+
+
+def user_cancellation_decision(
+    reservation: Reservation, *, now: datetime | None = None
+) -> CancellationDecision:
+    """Calcula a disponibilidade de cancelamento pelo usuário e o motivo.
+
+    Quando indisponível, inclui o motivo para apresentação direta na interface.
+    """
+    current = now or timezone.now()
+    if reservation.status != Reservation.Status.CONFIRMED:
+        return CancellationDecision(
+            can_cancel=False,
+            reason="Apenas reservas confirmadas podem ser canceladas.",
+        )
+    policy = reservation.booking_policy
+    limit_minutes = policy.cancellation_limit_minutes if policy else 0
+    cancellation_deadline = reservation.starts_at - timedelta(minutes=limit_minutes)
+
+    if current >= reservation.starts_at:
+        return CancellationDecision(
+            can_cancel=False,
+            deadline=cancellation_deadline,
+            reason="O horário de início da reserva já passou.",
+        )
+    if current > cancellation_deadline:
+        deadline_time_str = timezone.localtime(cancellation_deadline).strftime("%H:%M")
+        return CancellationDecision(
+            can_cancel=False,
+            deadline=cancellation_deadline,
+            reason=f"Prazo de cancelamento encerrado às {deadline_time_str}.",
+        )
+    return CancellationDecision(
+        can_cancel=True,
+        deadline=cancellation_deadline,
+        reason="",
+    )
 
 
 def lock_user_reference(user_reference: str) -> None:
@@ -171,16 +216,21 @@ def cancel_reservation(
         raise ReservationCancellationReasonRequired()
 
     current = now or timezone.now()
-    policy = reservation.booking_policy
-    cancellation_deadline = reservation.starts_at - timedelta(
-        minutes=policy.cancellation_limit_minutes
-    )
-    if (
-        reservation.status != Reservation.Status.CONFIRMED
-        or current >= reservation.starts_at
-        or current > cancellation_deadline
-    ):
-        raise ReservationCancellationUnavailable()
+    if is_owner:
+        decision = user_cancellation_decision(reservation, now=current)
+        if not decision.can_cancel:
+            raise ReservationCancellationUnavailable()
+    else:
+        policy = reservation.booking_policy
+        cancellation_deadline = reservation.starts_at - timedelta(
+            minutes=policy.cancellation_limit_minutes
+        )
+        if (
+            reservation.status != Reservation.Status.CONFIRMED
+            or current >= reservation.starts_at
+            or current > cancellation_deadline
+        ):
+            raise ReservationCancellationUnavailable()
 
     return cancel_locked_reservation(
         reservation=reservation,

@@ -97,7 +97,18 @@ document.addEventListener("submit", (event) => {
   openDialog(dialog);
 });
 
+document.body.addEventListener("htmx:configRequest", (event) => {
+  const isPolling = event.detail.elt?.getAttribute("hx-trigger")?.includes("every");
+  if (isPolling && document.querySelector("dialog[open]")) {
+    event.preventDefault();
+  }
+});
+
 document.body.addEventListener("htmx:beforeSwap", (event) => {
+  if (event.detail.target?.id === "agenda-content" && document.querySelector("dialog[open]")) {
+    event.detail.shouldSwap = false;
+    return;
+  }
   if (event.detail.xhr.status >= 400 && event.detail.xhr.status < 500) {
     event.detail.shouldSwap = true;
     event.detail.isError = false;

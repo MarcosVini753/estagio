@@ -40,6 +40,7 @@ from apps.operations.services import (
     finish_usage_session,
     start_usage_session,
     switch_computer,
+    user_cancellation_decision,
 )
 from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 
@@ -564,10 +565,9 @@ def _agenda_context(request, *, screen_error=""):
         check_in_starts_at = reservation.starts_at - timedelta(
             minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES
         )
-        reservation.can_cancel_ui = (
-            reservation.status == Reservation.Status.CONFIRMED
-            and now < reservation.starts_at
-        )
+        decision = user_cancellation_decision(reservation, now=now)
+        reservation.can_cancel_ui = decision.can_cancel
+        reservation.cancellation_unavailable_reason = decision.reason
         reservation.can_check_in_ui = (
             reservation.status == Reservation.Status.CONFIRMED
             and check_in_starts_at <= now <= reservation.check_in_deadline_at

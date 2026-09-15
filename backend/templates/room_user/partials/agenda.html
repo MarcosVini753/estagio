@@ -27,7 +27,7 @@
         </div>
         <p>{{ reservation.starts_at|date:"d/m/Y" }} · {{ reservation.starts_at|time:"H:i" }}–{{ reservation.ends_at|time:"H:i" }}</p>
         {% if reservation.cancellation_reason %}<small class="cancellation-reason">Motivo: {{ reservation.cancellation_reason }}</small>{% endif %}
-        {% if reservation.can_check_in_ui or reservation.can_cancel_ui %}
+        {% if reservation.can_check_in_ui or reservation.can_cancel_ui or reservation.cancellation_unavailable_reason %}
           <div class="card-actions">
             {% if reservation.can_check_in_ui %}
               <form method="post" action="{% url 'web:booking-check-in' reservation.pk %}" hx-post="{% url 'web:booking-check-in' reservation.pk %}" hx-target="#room-user-app" hx-swap="outerHTML">
@@ -40,6 +40,8 @@
                 {% csrf_token %}<button class="button button-ghost button-small" type="submit">Cancelar</button>
               </form>
               {% include "components/confirmation_dialog.html" with dialog_prefix="booking-cancel-confirmation" object_id=reservation.pk title="Cancelar reserva?" message="Esta reserva será cancelada e o horário voltará a ficar disponível." action_url=booking_cancel_url target="#room-user-app" swap="outerHTML" confirm_label="Confirmar cancelamento" %}
+            {% elif reservation.status == 'CONFIRMED' and reservation.cancellation_unavailable_reason %}
+              <small class="cancellation-reason">{{ reservation.cancellation_unavailable_reason }}</small>
             {% endif %}
           </div>
         {% endif %}

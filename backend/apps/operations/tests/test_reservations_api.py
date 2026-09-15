@@ -9,7 +9,10 @@ from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, OperatingSchedule, Shift, Weekday
 from apps.configuration.tests.factories import create_operating_schedule
 from apps.operations.models import ComputerAllocation, Reservation
-from apps.operations.services import cancel_reservation_due_to_operational_change
+from apps.operations.services import (
+    cancel_reservation_due_to_operational_change,
+    user_cancellation_decision,
+)
 
 from .factories import create_reservation, create_use_session
 
@@ -364,6 +367,41 @@ class ReservationAPITest(APITestCase):
         self.assertEqual(maintenance_response.status_code, 409)
         self.assertEqual(limit_response.status_code, 409)
         self.assertEqual(limit_response.data["code"], "RESERVATION_LIMIT_REACHED")
+
+    def test_cancellation_decision_respects_booking_policy_limit(self):
+        policy = BookingPolicy.objects.order_by("-valid_from").first()
+        if policy:
+            policy.cancellation_limit_minutes = 30
+            policy.save(update_fields=["cancellation_limit_minutes", "updated_at"])
+        else:
+            policy = BookingPolicy.objects.create(
+                cancellation_limit_minutes=30,
+                valid_from=self.today - timedelta(days=1),
+            )
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(9)),
+            ends_at=self.aware(self.tomorrow, time(10)),
+            booking_policy=policy,
+            created_by_profile="ROOM_USER",
+        )
+
+        decision_ok = user_cancellation_decision(
+            reservation, now=self.aware(self.tomorrow, time(8, 29))
+        )
+        self.assertTrue(decision_ok.can_cancel)
+
+        decision_boundary = user_cancellation_decision(
+            reservation, now=self.aware(self.tomorrow, time(8, 30))
+        )
+        self.assertTrue(decision_boundary.can_cancel)
+
+        decision_late = user_cancellation_decision(
+            reservation, now=self.aware(self.tomorrow, time(8, 31))
+        )
+        self.assertFalse(decision_late.can_cancel)
+        self.assertIn("08:30", decision_late.reason)
 
     def test_today_reservation_must_start_in_the_future(self):
         fixed_now = self.aware(self.today, time(7, 30))
