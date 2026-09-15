@@ -331,7 +331,7 @@ class ConfigurationAPITest(APITestCase):
         )
         Shift.objects.create(
             name="Conflitante",
-            start_time=time(9, 0),
+            start_time=time(12, 0),
             end_time=time(14, 0),
             valid_from=today + timedelta(days=1),
         )

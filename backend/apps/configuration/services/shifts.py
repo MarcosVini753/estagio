@@ -1,6 +1,6 @@
 from datetime import date, time, timedelta
 
-from django.db import transaction
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -9,6 +9,36 @@ from apps.audit.models import AuditEvent
 from apps.core.api.errors import ShiftReplacementConflict, ShiftReplacementInvalid
 
 from ..models import Shift
+
+SHIFT_WRITE_LOCK_KEY = "operating-shifts-write"
+SHIFT_OVERLAP_CONSTRAINT = "shift_no_overlap_active"
+SHIFT_OVERLAP_ERROR = "O turno sobrepõe outro turno ativo."
+
+
+def _raise_shift_conflict(error: IntegrityError) -> None:
+    """Converte a violação da constraint em erro de domínio compreensível."""
+
+    if SHIFT_OVERLAP_CONSTRAINT in str(error):
+        raise ValidationError({"non_field_errors": [SHIFT_OVERLAP_ERROR]}) from error
+    raise error
+
+
+def lock_shift_writes() -> None:
+    """Serializa a verificação e a gravação de turnos.
+
+    A checagem de sobreposição não encontra linhas quando ainda não existe
+    conflito, então `select_for_update()` não bloqueia nada e duas transações
+    simultâneas poderiam criar turnos sobrepostos. O bloqueio consultivo cobre
+    o intervalo entre a consulta e a gravação. É global em vez de por data
+    porque dois turnos conflitam independentemente da vigência; escritas de
+    turnos ocorrem apenas no fluxo de configuração e são raras.
+    """
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT pg_advisory_xact_lock(hashtext(%s))",
+            [SHIFT_WRITE_LOCK_KEY],
+        )
 
 
 def _snapshot(shift: Shift) -> dict:
@@ -69,15 +99,17 @@ def _validated_values(*, values: dict, shift: Shift | None = None) -> dict:
         if shift:
             conflicts = conflicts.exclude(pk=shift.pk)
         if conflicts.exists():
-            raise ValidationError(
-                {"non_field_errors": ["O turno sobrepõe outro turno ativo."]}
-            )
+            raise ValidationError({"non_field_errors": [SHIFT_OVERLAP_ERROR]})
     return merged
 
 
 @transaction.atomic
 def create_shift(*, values: dict, actor_profile: str) -> Shift:
-    shift = Shift.objects.create(**_validated_values(values=values))
+    lock_shift_writes()
+    try:
+        shift = Shift.objects.create(**_validated_values(values=values))
+    except IntegrityError as error:
+        _raise_shift_conflict(error)
     AuditEvent.objects.create(
         actor_profile=actor_profile,
         action="SHIFT_CREATED",
@@ -90,12 +122,16 @@ def create_shift(*, values: dict, actor_profile: str) -> Shift:
 
 @transaction.atomic
 def update_shift(*, shift_id: int, values: dict, actor_profile: str) -> Shift:
+    lock_shift_writes()
     shift = Shift.objects.select_for_update().get(pk=shift_id)
     old_values = _snapshot(shift)
     _validated_values(values=values, shift=shift)
     for field, value in values.items():
         setattr(shift, field, value)
-    shift.save(update_fields=[*values.keys(), "updated_at"])
+    try:
+        shift.save(update_fields=[*values.keys(), "updated_at"])
+    except IntegrityError as error:
+        _raise_shift_conflict(error)
     AuditEvent.objects.create(
         actor_profile=actor_profile,
         action="SHIFT_UPDATED",
@@ -118,6 +154,7 @@ def replace_shift(
     display_order: int,
     actor_profile: str,
 ) -> Shift:
+    lock_shift_writes()
     shift = Shift.objects.select_for_update().get(pk=shift_id)
     if (
         effective_from <= timezone.localdate()
@@ -140,15 +177,18 @@ def replace_shift(
 
     old_values = _snapshot(shift)
     shift.valid_until = effective_from - timedelta(days=1)
-    shift.save(update_fields=["valid_until", "updated_at"])
-    replacement = Shift.objects.create(
-        series_key=shift.series_key,
-        name=name,
-        start_time=start_time,
-        end_time=end_time,
-        display_order=display_order,
-        valid_from=effective_from,
-    )
+    try:
+        shift.save(update_fields=["valid_until", "updated_at"])
+        replacement = Shift.objects.create(
+            series_key=shift.series_key,
+            name=name,
+            start_time=start_time,
+            end_time=end_time,
+            display_order=display_order,
+            valid_from=effective_from,
+        )
+    except IntegrityError as error:
+        _raise_shift_conflict(error)
     AuditEvent.objects.create(
         actor_profile=actor_profile,
         action="SHIFT_REPLACED",
