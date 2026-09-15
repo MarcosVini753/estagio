@@ -491,6 +491,11 @@ def _configuration_context(
             "form_error": form_error,
             "form_data": form_data or {},
             "form_kind": form_kind,
+            "form_shift_id": (
+                int(form_kind.removeprefix("shift-edit-"))
+                if form_kind.startswith("shift-edit-")
+                else None
+            ),
             "preview_result": preview_result,
             "preview_schedule_id": active_schedule_id,
         }
@@ -576,7 +581,7 @@ def shifts(request):
 @require_POST
 def update_shift(request, pk):
     shift = get_object_or_404(Shift, pk=pk)
-    if shift.use_sessions.exists():
+    if request.POST.get("intent") == "deactivate":
         payload = {"is_active": False}
     else:
         payload = {
