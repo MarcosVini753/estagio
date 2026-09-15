@@ -22,6 +22,17 @@ class ComputerStateChangeResult:
     impact: dict
 
 
+def _candidate_has_open_allocation(candidate: Computer) -> bool:
+    # A ocupação real manda: enquanto a alocação estiver aberta o computador
+    # permanece ocupado, inclusive na tolerância de saída, quando o horário
+    # planejado já passou. Sem esta checagem o banco rejeitaria a alocação
+    # duplicada e toda a operação seria revertida.
+    return ComputerAllocation.objects.filter(
+        computer=candidate,
+        ended_at__isnull=True,
+    ).exists()
+
+
 def _candidate_is_available_for_session(
     *,
     candidate: Computer,
@@ -31,6 +42,8 @@ def _candidate_is_available_for_session(
     if candidate.operational_state != Computer.OperationalState.AVAILABLE:
         return False
     if starts_at >= session.planned_ends_at:
+        return False
+    if _candidate_has_open_allocation(candidate):
         return False
     if ComputerAllocation.objects.filter(
         computer=candidate,
@@ -57,6 +70,8 @@ def _candidate_is_available_for_reservation(
     reservation: Reservation,
 ) -> bool:
     if candidate.operational_state != Computer.OperationalState.AVAILABLE:
+        return False
+    if _candidate_has_open_allocation(candidate):
         return False
     if ComputerAllocation.objects.filter(
         computer=candidate,
@@ -264,6 +279,10 @@ def change_computer_operational_state(
     )
     if becomes_unavailable:
         candidates = [computer for computer in computers if computer.pk != source.pk]
+        for candidate in candidates:
+            # Fecha alocações cujo prazo de saída já venceu para que o
+            # computador volte a ser destino válido ainda nesta operação.
+            reconcile_computer_deadlines(candidate.pk, current)
         operational_reason = f"{source.code} indisponibilizado: {normalized_reason}"
         impact["active_session"] = _resolve_active_session(
             source=source,

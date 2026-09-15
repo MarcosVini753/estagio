@@ -41,6 +41,7 @@ from apps.operations.services import (
     start_usage_session,
     switch_computer,
 )
+from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 
 from .http import (
     is_htmx as _is_htmx,
@@ -106,10 +107,17 @@ def _room_user_required(view):
     return wrapped
 
 
-def _active_session(request):
+def _active_session(request, now=None):
     reference = get_demo_user_reference(request)
     if not reference:
         return None
+    current = now or timezone.now()
+    # Uma sessão com prazo vencido precisa aparecer encerrada aqui, e não como
+    # ativa, enquanto o computador já se apresenta livre.
+    reconcile_deadlines(
+        now=current,
+        scope=ReconcileScope(user_references=(reference,)),
+    )
     allocation_queryset = ComputerAllocation.objects.select_related(
         "computer"
     ).order_by("sequence")
@@ -261,11 +269,13 @@ def computers(request):
     screen_error = ""
     summary = None
     rows = []
+    now = timezone.now()
     try:
         summary, _ = get_computers_availability(
             target_date=target_date,
             computers=computer_list,
             user_reference=get_demo_user_reference(request),
+            now=now,
         )
         rows = computer_rows(summary=summary, computers=computer_list, query=query)
     except APIException as error:
@@ -279,7 +289,7 @@ def computers(request):
             "summary": summary,
             "computers": rows,
             "screen_error": screen_error,
-            "active_session": _active_session(request),
+            "active_session": _active_session(request, now=now),
             "today_query": urlencode({"day": "today", "q": query}),
             "tomorrow_query": urlencode({"day": "tomorrow", "q": query}),
         }
@@ -301,15 +311,17 @@ def _computer_detail_context(
 ):
     today = timezone.localdate()
     target_date = today if day == "today" else today + timedelta(days=1)
+    now = timezone.now()
     summary, slots_by_computer = get_computers_availability(
         target_date=target_date,
         computers=[computer],
         user_reference=get_demo_user_reference(request),
+        now=now,
         include_planned_end_options=True,
     )
     row = computer_rows(summary=summary, computers=[computer], query="")[0]
     raw_slots = slots_by_computer[computer.pk]
-    active_session = _active_session(request)
+    active_session = _active_session(request, now=now)
     active_allocation = _active_allocation(active_session)
     return {
         "computer": computer,

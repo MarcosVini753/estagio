@@ -73,6 +73,50 @@ class ComputerOperationalStateAPITest(APITestCase):
             created_by_profile="ROOM_USER",
         )
 
+    def occupy_within_exit_tolerance(self, computer):
+        session = create_use_session(
+            user_reference=f"aluno-tolerancia-{computer.pk}",
+            started_at=self.now - timedelta(hours=1),
+            planned_starts_at=self.now - timedelta(hours=1),
+            planned_ends_at=self.now - timedelta(minutes=1),
+            exit_deadline_at=self.now + timedelta(minutes=2),
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        ComputerAllocation.objects.create(
+            session=session,
+            computer=computer,
+            sequence=1,
+            started_at=session.started_at,
+        )
+        return session
+
+    def test_maintenance_skips_candidate_occupied_within_exit_tolerance(self):
+        occupant = self.occupy_within_exit_tolerance(self.destination)
+        free = Computer.objects.create(code="PC-03")
+        self.create_active_session()
+
+        response = self.change_state()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["impact"]["active_session"]["to_computer_id"],
+            free.pk,
+        )
+        self.assertEqual(response.data["computer"]["operational_state"], "MAINTENANCE")
+        self.assertTrue(
+            ComputerAllocation.objects.filter(
+                computer=free,
+                ended_at__isnull=True,
+            ).exists()
+        )
+        self.assertTrue(
+            ComputerAllocation.objects.filter(
+                computer=self.destination,
+                session=occupant,
+                ended_at__isnull=True,
+            ).exists()
+        )
+
     def test_unavailable_state_without_impacts_only_changes_computer(self):
         response = self.change_state()
 

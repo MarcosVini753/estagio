@@ -1,3 +1,14 @@
+x-app-environment: &app-environment
+  DJANGO_SETTINGS_MODULE: config.settings.local
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-development-only}
+  DJANGO_DEBUG: "true"
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+  POSTGRES_DB: ${POSTGRES_DB:-biblioteca}
+  POSTGRES_USER: ${POSTGRES_USER:-biblioteca}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-biblioteca}
+  POSTGRES_HOST: db
+  POSTGRES_PORT: 5432
+
 services:
   db:
     image: postgres:17-alpine
@@ -22,15 +33,7 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     working_dir: /app/backend
     environment:
-      DJANGO_SETTINGS_MODULE: config.settings.local
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-development-only}
-      DJANGO_DEBUG: "true"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
-      POSTGRES_DB: ${POSTGRES_DB:-biblioteca}
-      POSTGRES_USER: ${POSTGRES_USER:-biblioteca}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-biblioteca}
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
+      <<: *app-environment
     ports:
       - "8000:8000"
     volumes:
@@ -38,6 +41,21 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python manage.py reconcile_operational_deadlines --watch
+    working_dir: /app/backend
+    environment:
+      <<: *app-environment
+    volumes:
+      - ./backend:/app/backend
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

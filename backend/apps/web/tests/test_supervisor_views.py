@@ -267,7 +267,7 @@ class LibrarySupervisorWebTest(TestCase):
         page = self.client.get("/supervisor/funcionamento/?section=shifts")
         response = self.client.post(
             f"/supervisor/turnos/{shift.pk}/editar/",
-            {},
+            {"intent": "deactivate"},
         )
 
         self.assertContains(page, "Apenas a desativação é permitida")
@@ -303,6 +303,7 @@ class LibrarySupervisorWebTest(TestCase):
         response = self.client.post(
             f"/supervisor/turnos/{shift.pk}/editar/",
             {
+                "intent": "edit",
                 "name": "Nome adulterado",
                 "start_time": "08:00",
                 "end_time": "12:00",
@@ -312,17 +313,19 @@ class LibrarySupervisorWebTest(TestCase):
             },
         )
 
-        self.assertRedirects(
+        self.assertContains(
             response,
-            "/supervisor/funcionamento/?section=shifts",
+            "Apenas a desativação é permitida",
+            status_code=400,
         )
+        self.assertContains(response, 'value="Nome adulterado"', status_code=400)
         shift.refresh_from_db()
         self.assertEqual(shift.name, "Noite histórica")
         self.assertEqual(shift.start_time, time(18))
         self.assertEqual(shift.end_time, time(22))
         self.assertEqual(shift.display_order, 3)
         self.assertEqual(shift.valid_from, self.today - timedelta(days=5))
-        self.assertFalse(shift.is_active)
+        self.assertTrue(shift.is_active)
 
     def test_exception_preview_and_confirmation_cancel_affected_booking(self):
         self.select_supervisor()

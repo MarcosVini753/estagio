@@ -9,6 +9,7 @@ from django.utils import timezone
 from apps.computers.models import Computer
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 from apps.operations.services.deadlines import (
+    ReconcileResult,
     cancel_overdue_reservations,
     expire_overdue_sessions,
 )
@@ -113,3 +114,85 @@ class OperationalDeadlineTest(TestCase):
         self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
         self.assertIn("1 sessão(ões) expirada(s)", output.getvalue())
         self.assertIn("1 reserva(s) cancelada(s) por prazo", output.getvalue())
+
+
+class ReconcileCommandWatchTest(TestCase):
+    def interrupt_after(self, sleeps, limit):
+        def sleep(seconds):
+            sleeps.append(seconds)
+            if len(sleeps) >= limit:
+                raise KeyboardInterrupt
+
+        return sleep
+
+    def patch_sleep(self, sleeps, limit):
+        return patch(
+            "apps.operations.management.commands."
+            "reconcile_operational_deadlines.time.sleep",
+            side_effect=self.interrupt_after(sleeps, limit),
+        )
+
+    def patch_service(self, name, **kwargs):
+        return patch(
+            "apps.operations.management.commands."
+            f"reconcile_operational_deadlines.{name}",
+            **kwargs,
+        )
+
+    def test_watch_repeats_reconciliation_until_interrupted(self):
+        sleeps = []
+        output = StringIO()
+
+        with (
+            self.patch_sleep(sleeps, 3),
+            self.patch_service(
+                "reconcile_deadlines", return_value=ReconcileResult()
+            ) as expired,
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            call_command(
+                "reconcile_operational_deadlines",
+                "--watch",
+                stdout=output,
+            )
+
+        self.assertEqual(expired.call_count, 3)
+        self.assertEqual(len(sleeps), 3)
+        self.assertIn("Reconciliação contínua a cada 60s", output.getvalue())
+
+    def test_watch_keeps_running_after_a_failed_round(self):
+        sleeps = []
+        errors = StringIO()
+
+        with (
+            self.patch_sleep(sleeps, 2),
+            self.patch_service(
+                "reconcile_deadlines",
+                side_effect=RuntimeError("banco indisponível"),
+            ) as expired,
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            call_command(
+                "reconcile_operational_deadlines",
+                "--watch",
+                stderr=errors,
+            )
+
+        self.assertEqual(expired.call_count, 2)
+        self.assertIn("Falha na reconciliação", errors.getvalue())
+        self.assertIn("banco indisponível", errors.getvalue())
+
+    def test_single_run_does_not_loop(self):
+        output = StringIO()
+
+        with (
+            self.patch_service("reconcile_deadlines", return_value=ReconcileResult()),
+            patch(
+                "apps.operations.management.commands."
+                "reconcile_operational_deadlines.time.sleep"
+            ) as sleep,
+        ):
+            call_command("reconcile_operational_deadlines", stdout=output)
+
+        sleep.assert_not_called()
+        self.assertIn("Reconciliação concluída", output.getvalue())

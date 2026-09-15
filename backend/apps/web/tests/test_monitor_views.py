@@ -143,7 +143,11 @@ class RoomMonitorWebTest(TestCase):
             result["active_session"]["to_computer_id"], self.other_computer.pk
         )
 
-        page = self.client.get("/monitor/computadores/")
+        with patch(
+            "apps.operations.availability.timezone.now",
+            return_value=self.aware(time(8, 15)),
+        ):
+            page = self.client.get("/monitor/computadores/")
         self.assertContains(page, "Sessão realocada")
         self.assertContains(page, "Falha no monitor")
         self.computer.refresh_from_db()

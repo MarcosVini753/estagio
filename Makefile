@@ -9,7 +9,7 @@ export DJANGO_ALLOWED_HOSTS DJANGO_CSRF_TRUSTED_ORIGINS
 export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT
 endif
 
-.PHONY: install db-up db-down migrate migrations seed seed-e2e seed-reports run check test lint format-check frontend-build frontend-check frontend-e2e
+.PHONY: install db-up db-down migrate migrations seed seed-e2e seed-reports reconcile reconcile-watch run check test lint format-check frontend-build frontend-check frontend-e2e
 
 install:
 	$(PYTHON) -m pip install -r requirements/dev.txt
@@ -36,6 +36,12 @@ seed-e2e:
 
 seed-reports:
 	$(MANAGE) seed_report_demo_data --reset
+
+reconcile:
+	$(MANAGE) reconcile_operational_deadlines
+
+reconcile-watch:
+	$(MANAGE) reconcile_operational_deadlines --watch
 
 run:
 	$(MANAGE) runserver 0.0.0.0:8000

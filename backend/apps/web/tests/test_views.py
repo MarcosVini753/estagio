@@ -391,7 +391,11 @@ class RoomUserWebTest(TestCase):
                 f"/sala/sessao/{active_session.pk}/trocar/",
                 {"computer_id": self.other_computer.pk},
             )
-        session_page = self.client.get("/sala/sessao/")
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.fixed_now + timedelta(minutes=10),
+        ):
+            session_page = self.client.get("/sala/sessao/")
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
@@ -492,7 +496,11 @@ class RoomUserWebTest(TestCase):
                 },
             )
         active_session = UseSession.objects.get(status=UseSession.Status.ACTIVE)
-        session_page = self.client.get("/sala/sessao/")
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            session_page = self.client.get("/sala/sessao/")
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
@@ -602,13 +610,17 @@ class RoomUserWebTest(TestCase):
         active_session = UseSession.objects.get()
         allocation = active_session.allocations.get()
 
-        response = self.client.post(
-            "/sala/problemas/",
-            {
-                "computer_id": self.computer.pk,
-                "description": "O mouse não está funcionando.",
-            },
-        )
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            response = self.client.post(
+                "/sala/problemas/",
+                {
+                    "computer_id": self.computer.pk,
+                    "description": "O mouse não está funcionando.",
+                },
+            )
 
         self.assertRedirects(response, "/sala/problemas/")
         occurrence = active_session.occurrences.get()
