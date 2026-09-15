@@ -21,6 +21,28 @@ def get_shifts_for_date(target_date: date):
     )
 
 
+def get_historical_shifts_at(instant: datetime) -> list[Shift]:
+    """Retorna todas as versões de turno aplicáveis por data e horário.
+
+    Diferente de `get_shifts_for_date`, não filtra por `is_active=True` para
+    permitir que correções históricas encontrem versões que estavam vigentes na
+    data da entrada, mesmo que tenham sido desativadas posteriormente.
+    """
+
+    local_dt = timezone.localtime(instant)
+    target_date = local_dt.date()
+    target_time = local_dt.time()
+    return list(
+        Shift.objects.filter(
+            valid_from__lte=target_date,
+            start_time__lte=target_time,
+            end_time__gt=target_time,
+        )
+        .filter(Q(valid_until__isnull=True) | Q(valid_until__gte=target_date))
+        .order_by("display_order", "start_time", "pk")
+    )
+
+
 def get_calendar_exception_for_date(target_date: date):
     return CalendarException.objects.filter(date=target_date).first()
 

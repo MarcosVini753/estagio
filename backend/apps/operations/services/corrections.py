@@ -4,6 +4,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from apps.audit.models import AuditEvent
+from apps.configuration.selectors import get_historical_shifts_at
 from apps.core.api.errors import (
     SessionCorrectionInvalid,
     SessionCorrectionReasonRequired,
@@ -12,12 +13,13 @@ from apps.operations.models import ComputerAllocation, UseSession
 from apps.operations.rules import EARLY_CHECK_IN_TOLERANCE_MINUTES
 
 
-def _serialize(session, first, last):
-    return {
+def _serialize(session, first, last, candidate_shift_ids=None):
+    data = {
         "session": {
             "started_at": session.started_at.isoformat(),
             "ended_at": session.ended_at.isoformat() if session.ended_at else None,
             "status": session.status,
+            "start_shift_id": session.start_shift_id,
         },
         "first_allocation": {
             "id": first.pk,
@@ -30,6 +32,9 @@ def _serialize(session, first, last):
             "end_reason": last.end_reason,
         },
     }
+    if candidate_shift_ids is not None:
+        data["session"]["candidate_shift_ids"] = candidate_shift_ids
+    return data
 
 
 def _overlaps_other_session(allocation, *, started_at, ended_at):
@@ -140,9 +145,15 @@ def correct_usage_session(
     ):
         raise SessionCorrectionInvalid()
 
+    candidate_shifts = None
     if started_at is not None:
         session.started_at = started_at
         first.started_at = started_at
+        candidate_shifts = get_historical_shifts_at(started_at)
+        if len(candidate_shifts) == 1:
+            session.start_shift = candidate_shifts[0]
+        else:
+            session.start_shift = None
     if last_allocation_started_at is not None:
         last.started_at = last_allocation_started_at
     if ended_at is not None:
@@ -163,6 +174,7 @@ def correct_usage_session(
             "started_at",
             "ended_at",
             "status",
+            "start_shift",
             "exit_recorded_by_profile",
             "updated_at",
         ]
@@ -177,13 +189,16 @@ def correct_usage_session(
             ]
         )
 
+    candidate_ids = (
+        [c.pk for c in candidate_shifts] if candidate_shifts is not None else None
+    )
     AuditEvent.objects.create(
         actor_profile=actor_profile,
         action="USAGE_SESSION_CORRECTED",
         entity_type="UseSession",
         entity_id=str(session.pk),
         old_values=old_values,
-        new_values=_serialize(session, first, last),
+        new_values=_serialize(session, first, last, candidate_shift_ids=candidate_ids),
         reason=correction_reason,
     )
     return session

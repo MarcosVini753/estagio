@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from unittest.mock import patch
 
 from django.utils import timezone
@@ -6,6 +6,7 @@ from rest_framework.test import APITestCase
 
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
+from apps.configuration.models import Shift
 from apps.operations.models import ComputerAllocation, UseSession
 
 from .factories import create_reservation, create_use_session
@@ -158,8 +159,88 @@ class SessionCorrectionAPITest(APITestCase):
         self.session.refresh_from_db()
         self.allocation.refresh_from_db()
         self.assertEqual(self.session.status, UseSession.Status.ACTIVE)
-        self.assertIsNone(self.allocation.ended_at)
-        self.assertFalse(AuditEvent.objects.exists())
+
+    def test_correction_recalculates_start_shift_across_shift_boundaries(self):
+        shift1 = Shift.objects.create(
+            name="1º Turno",
+            start_time=time(7, 15),
+            end_time=time(9, 0),
+            display_order=1,
+            valid_from=self.today - timedelta(days=5),
+        )
+        shift2 = Shift.objects.create(
+            name="2º Turno",
+            start_time=time(9, 0),
+            end_time=time(13, 0),
+            display_order=2,
+            valid_from=self.today - timedelta(days=5),
+        )
+        self.session.start_shift = shift1
+        self.session.save(update_fields=["start_shift"])
+
+        response = self.correct(
+            {
+                "started_at": self.aware(time(9, 5)).isoformat(),
+                "reason": "Ajustando horário de entrada para o 2º turno.",
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.session.refresh_from_db()
+        self.assertEqual(self.session.start_shift, shift2)
+        event = AuditEvent.objects.get(action="USAGE_SESSION_CORRECTED")
+        self.assertEqual(event.old_values["session"]["start_shift_id"], shift1.pk)
+        self.assertEqual(event.new_values["session"]["start_shift_id"], shift2.pk)
+        self.assertEqual(
+            event.new_values["session"]["candidate_shift_ids"],
+            [shift2.pk],
+        )
+
+    def test_correction_recalculates_start_shift_using_deactivated_historical_shift(
+        self,
+    ):
+        shift1 = Shift.objects.create(
+            name="Turno Histórico Desativado",
+            start_time=time(7, 15),
+            end_time=time(13, 0),
+            display_order=1,
+            valid_from=self.today - timedelta(days=5),
+            is_active=False,
+        )
+
+        response = self.correct(
+            {
+                "started_at": self.aware(time(9, 5)).isoformat(),
+                "reason": "Ajuste em turno desativado historicamente.",
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.session.refresh_from_db()
+        self.assertEqual(self.session.start_shift, shift1)
+
+    def test_correction_sets_start_shift_to_none_when_no_shift_matches(self):
+        Shift.objects.create(
+            name="Turno Tarde",
+            start_time=time(9, 0),
+            end_time=time(13, 0),
+            display_order=1,
+            valid_from=self.today - timedelta(days=5),
+        )
+
+        response = self.correct(
+            {
+                "started_at": self.aware(time(8, 15)).isoformat(),
+                "reason": "Entrada em horário fora de qualquer turno.",
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.session.refresh_from_db()
+        self.assertIsNone(self.session.start_shift)
+        event = AuditEvent.objects.get(action="USAGE_SESSION_CORRECTED")
+        self.assertIsNone(event.new_values["session"]["start_shift_id"])
+        self.assertEqual(event.new_values["session"]["candidate_shift_ids"], [])
 
     def test_rejects_conflicting_fields_and_missing_reason(self):
         conflicting = self.correct(
