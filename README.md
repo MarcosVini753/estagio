@@ -46,8 +46,8 @@ source .venv/bin/activate
 # 3. Instala dependências Python e JavaScript e gera CSS/arquivos do frontend.
 make install
 
-# 4. Inicia somente o banco de desenvolvimento em segundo plano.
-docker compose up -d db
+# 4. Inicia o banco e espera o health check antes da migration.
+docker compose up -d --wait db
 
 # 5. Cria ou atualiza as tabelas do banco.
 make migrate
@@ -97,7 +97,7 @@ o banco antes de iniciar os dois processos duradouros:
 
 ```bash
 docker compose build
-docker compose up -d db
+docker compose up -d --wait db
 docker compose run --rm web python manage.py migrate
 docker compose run --rm web python manage.py seed_demo_data
 docker compose up -d web scheduler

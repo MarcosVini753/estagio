@@ -17,7 +17,7 @@ install:
 	$(NPM) run build
 
 db-up:
-	docker compose up -d db
+	docker compose up -d --wait db
 
 db-down:
 	docker compose down

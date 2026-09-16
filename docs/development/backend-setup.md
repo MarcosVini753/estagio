@@ -37,8 +37,8 @@ imagem Docker de produção não precisa instalar Node.js.
 ### 2. Iniciar e preparar o banco
 
 ```bash
-# Sobe somente o PostgreSQL em segundo plano.
-docker compose up -d db
+# Sobe o PostgreSQL e só continua quando o health check estiver saudável.
+docker compose up -d --wait db
 
 # Cria ou atualiza a estrutura das tabelas.
 make migrate
@@ -47,8 +47,9 @@ make migrate
 make seed
 ```
 
-Confirme a disponibilidade do banco com `docker compose ps`. O serviço `db`
-precisa aparecer como saudável antes de `make migrate` ou `make test`.
+O parâmetro `--wait` só devolve o terminal quando `db` estiver saudável. Se o
+Docker informar falha ou timeout, confirme o diagnóstico com `docker compose ps`
+e `docker compose logs db` antes de executar `make migrate` ou `make test`.
 
 `make seed` é idempotente e incremental: cria oito computadores fictícios, os
 três turnos iniciais, uma política de reservas e a configuração padrão de
@@ -133,7 +134,7 @@ No Docker, o serviço `scheduler` do `compose.yaml` executa esse mesmo modo com
 `restart: unless-stopped`:
 
 ```bash
-docker compose up -d db
+docker compose up -d --wait db
 docker compose run --rm web python manage.py migrate
 docker compose run --rm web python manage.py seed_demo_data
 docker compose up -d web scheduler
@@ -150,7 +151,7 @@ aplicação inteira. Prepare o banco antes de iniciar a aplicação e o agendado
 
 ```bash
 docker compose build
-docker compose up -d db
+docker compose up -d --wait db
 docker compose run --rm web python manage.py migrate
 docker compose run --rm web python manage.py seed_demo_data
 docker compose up -d web scheduler

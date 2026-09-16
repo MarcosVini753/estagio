@@ -9,6 +9,7 @@ from apps.computers.models import Computer
 from apps.configuration.models import OperatingSchedule, Weekday
 from apps.configuration.tests.factories import create_operating_schedule
 from apps.occurrences.models import Occurrence
+from apps.operations.availability import get_computers_availability
 from apps.operations.models import ComputerAllocation, UseSession
 from apps.operations.tests.factories import create_use_session
 
@@ -43,6 +44,14 @@ class RoomMonitorWebTest(TestCase):
         self.assertRedirects(
             response,
             "/monitor/",
+            fetch_redirect_response=False,
+        )
+
+    def select_supervisor(self):
+        response = self.client.post("/", {"profile": "LIBRARY_SUPERVISOR"})
+        self.assertRedirects(
+            response,
+            "/supervisor/",
             fetch_redirect_response=False,
         )
 
@@ -248,6 +257,119 @@ class RoomMonitorWebTest(TestCase):
                 action="USAGE_SESSION_CORRECTED",
                 entity_id=str(session.pk),
                 reason__icontains="registro físico",
+            ).exists()
+        )
+
+    def test_monitor_can_finish_an_active_session_with_a_reason(self):
+        session = self.create_session()
+        self.select_monitor()
+        finished_at = self.aware(time(8, 15))
+
+        with (
+            patch(
+                "apps.web.operational_state.timezone.now",
+                return_value=finished_at,
+            ),
+            patch(
+                "apps.operations.services.usage_sessions.timezone.now",
+                return_value=finished_at,
+            ),
+        ):
+            detail = self.client.get(f"/monitor/historico/{session.pk}/")
+            response = self.client.post(
+                f"/monitor/historico/{session.pk}/encerrar/",
+                {"reason": "Pessoa informou que concluiu o uso."},
+            )
+
+        self.assertContains(detail, "Registrar saída administrativa")
+        self.assertRedirects(response, f"/monitor/historico/{session.pk}/")
+        session.refresh_from_db()
+        allocation = session.allocations.get()
+        self.assertEqual(session.status, UseSession.Status.FINISHED)
+        self.assertEqual(session.ended_at, finished_at)
+        self.assertEqual(session.exit_recorded_by_profile, "ROOM_MONITOR")
+        self.assertEqual(allocation.ended_at, finished_at)
+        self.assertEqual(
+            allocation.end_reason,
+            ComputerAllocation.EndReason.SESSION_FINISHED,
+        )
+        availability, _ = get_computers_availability(
+            target_date=self.today,
+            computers=Computer.objects.filter(pk=self.computer.pk),
+            user_reference=None,
+            now=finished_at,
+        )
+        self.assertEqual(
+            availability["computers"][0]["effective_status_now"],
+            "AVAILABLE",
+        )
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                action="USAGE_SESSION_FINISHED",
+                entity_id=str(session.pk),
+                reason="Pessoa informou que concluiu o uso.",
+            ).exists()
+        )
+
+    def test_monitor_cannot_finish_an_active_session_without_a_reason(self):
+        session = self.create_session()
+        self.select_monitor()
+        current = self.aware(time(8, 15))
+
+        with (
+            patch(
+                "apps.web.operational_state.timezone.now",
+                return_value=current,
+            ),
+            patch(
+                "apps.operations.services.usage_sessions.timezone.now",
+                return_value=current,
+            ),
+        ):
+            response = self.client.post(
+                f"/monitor/historico/{session.pk}/encerrar/",
+                {"reason": ""},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(
+            response,
+            "Informe a justificativa para encerrar a sessão de terceiro.",
+            status_code=400,
+        )
+        session.refresh_from_db()
+        self.assertEqual(session.status, UseSession.Status.ACTIVE)
+        self.assertIsNone(session.ended_at)
+
+    def test_supervisor_inherits_administrative_session_finish(self):
+        session = self.create_session()
+        self.select_supervisor()
+        finished_at = self.aware(time(8, 15))
+
+        with (
+            patch(
+                "apps.web.operational_state.timezone.now",
+                return_value=finished_at,
+            ),
+            patch(
+                "apps.operations.services.usage_sessions.timezone.now",
+                return_value=finished_at,
+            ),
+        ):
+            response = self.client.post(
+                f"/monitor/historico/{session.pk}/encerrar/",
+                {"reason": "Encerramento solicitado pela supervisão."},
+            )
+
+        self.assertRedirects(response, f"/monitor/historico/{session.pk}/")
+        session.refresh_from_db()
+        self.assertEqual(session.status, UseSession.Status.FINISHED)
+        self.assertEqual(session.exit_recorded_by_profile, "LIBRARY_SUPERVISOR")
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                action="USAGE_SESSION_FINISHED",
+                entity_id=str(session.pk),
+                actor_profile="LIBRARY_SUPERVISOR",
             ).exists()
         )
 

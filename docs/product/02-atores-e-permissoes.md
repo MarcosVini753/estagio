@@ -44,6 +44,7 @@ Pode:
 - consultar disponibilidade e ocupação;
 - alterar estado operacional de computadores;
 - registrar e consultar ocorrências;
+- registrar saída administrativa de sessão ativa com justificativa e auditoria;
 - corrigir registros com justificativa;
 - consultar histórico de uso;
 

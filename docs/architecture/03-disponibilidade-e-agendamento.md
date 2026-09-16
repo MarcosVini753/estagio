@@ -145,6 +145,8 @@ Operação transacional:
 3. encerrar alocação atual e sessão com o horário real;
 4. produzir evento de auditoria se a saída for administrativa.
 
+O detalhe operacional de uma sessão ativa oferece a saída administrativa ao Monitor e aos perfis que herdam suas permissões. Ela exige justificativa e reutiliza a mesma operação transacional de saída; não altera diretamente o estado efetivo do computador. Depois do encerramento, a consulta de disponibilidade determina se o computador aparece como `AVAILABLE`, `RESERVED`, `MAINTENANCE` ou `INACTIVE`.
+
 Quando `now >= exit_deadline_at`, a reconciliação registra automaticamente a saída e encerra sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `CANCELLED` com autor sistêmico e motivo explícito. Uma confirmação de saída posterior a esse encerramento devolve a sessão já finalizada sem nova escrita ou auditoria.
 
 Views e endpoints capturam um único instante depois da autorização e da validação dos parâmetros, reconciliam usuários, computadores ou período observados e reutilizam esse instante na consulta. Computadores e usuários compõem uma união; o período inclui sessões sobrepostas, mesmo iniciadas antes dele. A disponibilidade continua pura e sem efeitos persistentes. O comando `reconcile_operational_deadlines --watch` repete a rotina a cada 60 segundos para cobrir períodos sem acesso.

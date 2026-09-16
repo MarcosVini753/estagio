@@ -19,7 +19,18 @@
   </div>
 </section>
 
-{% if session.status != "ACTIVE" %}
+{% if session.status == "ACTIVE" %}
+  <details class="staff-card disclosure-card" {% if finish_error %}open{% endif %}>
+    <summary>Registrar saída administrativa</summary>
+    <p class="helper-text">Encerra esta sessão em nome da pessoa e recalcula a situação efetiva do computador. Ele só ficará disponível se não houver reserva ou bloqueio operacional no momento.</p>
+    {% if finish_error %}<div class="form-error" role="alert">{{ finish_error }}</div>{% endif %}
+    <form class="staff-form" method="post" action="{% url 'web:monitor-session-finish' session.pk %}">
+      {% csrf_token %}
+      <label class="field"><span>Justificativa obrigatória</span><textarea name="reason" maxlength="1000" required>{{ finish_reason }}</textarea></label>
+      <button class="button button-primary" type="submit">Encerrar sessão e registrar saída</button>
+    </form>
+  </details>
+{% else %}
   <details class="staff-card disclosure-card" {% if form_error %}open{% endif %}>
     <summary>Corrigir horários permitidos</summary>
     <p class="helper-text">A correção preserva o histórico, valida a linha do tempo e exige justificativa auditável.</p>
@@ -34,6 +45,4 @@
       <button class="button button-primary field-wide" type="submit">Validar e registrar correção</button>
     </form>
   </details>
-{% else %}
-  <div class="notice" role="status"><strong>Sessão em andamento</strong><span>Correções de histórico ficam disponíveis após o encerramento.</span></div>
 {% endif %}

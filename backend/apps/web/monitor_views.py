@@ -18,10 +18,13 @@ from apps.occurrences.api.serializers import (
 )
 from apps.occurrences.models import Occurrence
 from apps.occurrences.services import create_occurrence, transition_occurrence
-from apps.operations.api.serializers import UsageSessionCorrectionSerializer
+from apps.operations.api.serializers import (
+    UsageSessionCorrectionSerializer,
+    UsageSessionFinishSerializer,
+)
 from apps.operations.availability import get_computers_availability
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
-from apps.operations.services import correct_usage_session
+from apps.operations.services import correct_usage_session, finish_usage_session
 from apps.operations.services.computer_state import (
     change_computer_operational_state,
 )
@@ -483,13 +486,23 @@ def _datetime_input(value):
     return timezone.localtime(value).strftime("%Y-%m-%dT%H:%M") if value else ""
 
 
-def _history_detail_context(request, session, *, form_error="", form_data=None):
+def _history_detail_context(
+    request,
+    session,
+    *,
+    form_error="",
+    form_data=None,
+    finish_error="",
+    finish_reason="",
+):
     session = _decorate_sessions([session])[0]
     context = _screen_context(request, screen="history")
     context.update(
         {
             "session": session,
             "form_error": form_error,
+            "finish_error": finish_error,
+            "finish_reason": finish_reason,
             "form_data": form_data
             or {
                 "started_at": _datetime_input(session.started_at),
@@ -521,6 +534,62 @@ def history_detail(request, pk):
             _history_session(pk, include_active=True),
         ),
     )
+
+
+@operational_profile_required
+@require_POST
+def finish_active_session(request, pk):
+    session = _history_session(pk, include_active=True)
+    serializer = UsageSessionFinishSerializer(
+        data={"reason": request.POST.get("reason", "")}
+    )
+    if not serializer.is_valid():
+        return _render_screen(
+            request,
+            content_template="monitor/partials/history_detail.html",
+            context=_history_detail_context(
+                request,
+                session,
+                finish_error=flatten_serializer_errors(serializer.errors),
+                finish_reason=request.POST.get("reason", ""),
+            ),
+            status=400,
+        )
+    try:
+        result = finish_usage_session(
+            session_id=session.pk,
+            actor_profile=get_demo_profile(request),
+            actor_reference=get_demo_user_reference(request),
+            **serializer.validated_data,
+        )
+    except APIException as error:
+        session = _history_session(pk, include_active=True)
+        return _render_screen(
+            request,
+            content_template="monitor/partials/history_detail.html",
+            context=_history_detail_context(
+                request,
+                session,
+                finish_error=_exception_message(error),
+                finish_reason=request.POST.get("reason", ""),
+            ),
+            status=error.status_code,
+        )
+
+    if result.already_finished:
+        messages.info(request, "A sessão já havia sido encerrada automaticamente.")
+    elif result.automatic:
+        messages.info(
+            request,
+            "A sessão atingiu o prazo e foi encerrada automaticamente.",
+        )
+    else:
+        messages.success(
+            request,
+            "Saída administrativa registrada. A ocupação foi encerrada; consulte "
+            "Computadores para a situação efetiva atual.",
+        )
+    return _redirect(request, "web:monitor-history-detail", pk=session.pk)
 
 
 @operational_profile_required

@@ -38,15 +38,17 @@ Casos de uso principais:
 - alterar estado operacional;
 - registrar e consultar ocorrências;
 - consultar histórico;
+- registrar saída administrativa de sessão ativa, com justificativa;
 - corrigir registro de uso.
 
 Fluxos críticos:
 
 1. acompanhamento da sala;
 2. alteração de estado operacional;
-3. correção auditada de sessão.
+3. saída administrativa auditada;
+4. correção auditada de sessão.
 
-Na indisponibilização de um computador, o sistema transfere ou encerra a sessão ativa, realoca ou cancela cada reserva confirmada e somente então altera o estado, tudo atomicamente.
+Na indisponibilização de um computador, o sistema transfere ou encerra a sessão ativa, realoca ou cancela cada reserva confirmada e somente então altera o estado, tudo atomicamente. No detalhe de uma sessão ativa, Monitor e Supervisor podem registrar a saída em nome da pessoa, sempre com justificativa. A operação encerra a sessão e deixa a disponibilidade recalcular a situação efetiva; ela não grava artificialmente `AVAILABLE`.
 
 ## Supervisor da Biblioteca
 
