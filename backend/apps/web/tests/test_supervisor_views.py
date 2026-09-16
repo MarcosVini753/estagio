@@ -94,7 +94,7 @@ class LibrarySupervisorWebTest(TestCase):
         page = self.client.get("/supervisor/computadores/?q=acessível")
         self.assertContains(page, "PC-02")
         self.assertContains(page, "Próximo à entrada")
-        self.assertContains(page, "Ambiente de demonstração")
+        self.assertNotContains(page, "Ambiente de demonstração")
 
     def test_supervisor_manages_shifts_without_changing_calendar(self):
         self.select_supervisor()

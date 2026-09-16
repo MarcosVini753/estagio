@@ -134,8 +134,7 @@
 - serviços de configuração e views do Supervisor expostos em módulos coesos, preservando imports públicos, URLs e regras transacionais.
 - autorização de perfil, respostas HTMX, redirects e apresentação de erros compartilhados sem mover regras de domínio para a camada web;
 - resolução mensal do calendário em lote, protegida por orçamento máximo de seis consultas;
-- E2E executado por `StaticLiveServerTestCase`, banco isolado, relógio controlado e dados descartáveis criados pelos serviços;
-- aviso visível e persistente de ambiente de demonstração no seletor e nas áreas funcionais.
+- E2E executado por `StaticLiveServerTestCase`, banco isolado, relógio controlado e dados descartáveis criados pelos serviços.
 
 ## Não implementado
 
