@@ -12,7 +12,7 @@ from apps.computers.services import (
     validate_operational_state_change,
 )
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
-from apps.operations.services.deadlines import reconcile_computer_deadlines
+from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 from apps.operations.services.reservations import cancel_locked_reservation
 
 
@@ -263,8 +263,12 @@ def change_computer_operational_state(
     # computadores, sessões/alocações e reservas. Candidatos só precisam ser
     # reconciliados quando realmente participarão de uma realocação.
     observed_computers = computers if becomes_unavailable else [source]
-    for computer in observed_computers:
-        reconcile_computer_deadlines(computer.pk, current)
+    reconcile_deadlines(
+        now=current,
+        scope=ReconcileScope(
+            computer_ids=tuple(computer.pk for computer in observed_computers)
+        ),
+    )
     if becomes_unavailable:
         candidates = [computer for computer in computers if computer.pk != source.pk]
         operational_reason = f"{source.code} indisponibilizado: {normalized_reason}"

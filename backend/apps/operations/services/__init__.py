@@ -3,7 +3,6 @@ from .corrections import correct_usage_session
 from .deadlines import (
     cancel_overdue_reservations,
     expire_overdue_sessions,
-    reconcile_computer_deadlines,
 )
 from .reservations import (
     CancellationDecision,
@@ -29,7 +28,6 @@ __all__ = [
     "correct_usage_session",
     "expire_overdue_sessions",
     "create_reservation",
-    "reconcile_computer_deadlines",
     "finish_usage_session",
     "start_usage_session",
     "switch_computer",

@@ -145,7 +145,9 @@ Operação transacional:
 3. encerrar alocação atual e sessão com o horário real;
 4. produzir evento de auditoria se a saída for administrativa.
 
-Quando `now >= exit_deadline_at`, a reconciliação registra automaticamente a saída e encerra sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `CANCELLED` com autor sistêmico e motivo explícito. O comando `reconcile_operational_deadlines` executa ambas as rotinas, deve ser agendado externamente a cada minuto e as entradas/trocas reconciliam oportunisticamente os computadores envolvidos.
+Quando `now >= exit_deadline_at`, a reconciliação registra automaticamente a saída e encerra sessão e alocação em `exit_deadline_at`, usando `TIME_LIMIT_REACHED`. Reserva permanece `CONFIRMED` até `now > check_in_deadline_at`, quando passa a `CANCELLED` com autor sistêmico e motivo explícito. Uma confirmação de saída posterior a esse encerramento devolve a sessão já finalizada sem nova escrita ou auditoria.
+
+Views e endpoints capturam um único instante depois da autorização e da validação dos parâmetros, reconciliam usuários, computadores ou período observados e reutilizam esse instante na consulta. Computadores e usuários compõem uma união; o período inclui sessões sobrepostas, mesmo iniciadas antes dele. A disponibilidade continua pura e sem efeitos persistentes. O comando `reconcile_operational_deadlines --watch` repete a rotina a cada 60 segundos para cobrir períodos sem acesso.
 
 ## Planejado, atual e histórico
 
@@ -169,7 +171,7 @@ Antes de salvar uma redução de horário, o preview consulta reservas confirmad
 
 ## Indisponibilidade operacional do computador
 
-Ao mudar um computador de `AVAILABLE` para `MAINTENANCE` ou `INACTIVE`, `operations/services/computer_state.py` reconcilia prazos, bloqueia computadores, sessão, alocação e reservas em ordem determinística e então:
+Ao mudar um computador de `AVAILABLE` para `MAINTENANCE` ou `INACTIVE`, `operations/services/computer_state.py` bloqueia os computadores em ordem determinística, reconcilia em uma única rodada o computador de origem e todos os destinos candidatos e então bloqueia sessão, alocação e reservas. Um destino ainda ocupado durante a tolerância não pode receber nova alocação; um destino já vencido é reconciliado antes da escolha.
 
 1. transfere a sessão ativa para um destino livre em `[now, planned_ends_at)` ou a encerra com `COMPUTER_UNAVAILABLE`;
 2. realoca cada reserva confirmada para um computador livre durante seu intervalo ou a cancela administrativamente;

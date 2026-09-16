@@ -86,6 +86,8 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - O turno principal da visita é calculado a partir do horário de entrada.
 - Correções administrativas exigem justificativa e auditoria.
 - A saída antecipada é permitida. A sessão vencida tem a saída registrada automaticamente pela reconciliação no prazo de saída, com motivo `TIME_LIMIT_REACHED`.
+- Leituras operacionais autorizadas reconciliam primeiro somente os usuários, computadores ou período consultados. O processo periódico mantém a mesma regra quando não há acessos.
+- Confirmar a saída depois de um encerramento automático devolve o estado já finalizado sem repetir gravação ou auditoria.
 - Não existe extensão de sessão neste P0.
 
 ## Alocações e troca de computador

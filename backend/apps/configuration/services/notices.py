@@ -86,6 +86,7 @@ def update_room_notice(
     )
     return notice
 
+
 def notice_values_for_change(
     *,
     notice: dict,

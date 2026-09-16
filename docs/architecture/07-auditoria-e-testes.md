@@ -50,6 +50,7 @@ Cobrir:
 - troca pelo intervalo planejado restante e rejeição durante tolerância;
 - saída antecipada, no prazo e registro automático ao expirar;
 - reconciliação de cancelamento por check-in expirado e `TIME_LIMIT_REACHED`;
+- fronteiras exatas de prazo, idempotência da saída após encerramento automático e escopos combinados por usuário, computador e período;
 - correção auditada;
 - alteração de estado operacional com transferência/encerramento de sessão e realocação/cancelamento de reservas;
 - substituição transacional de turno e preservação da versão usada por sessão.
@@ -76,6 +77,8 @@ Usar PostgreSQL para validar:
 - concorrência entre reserva e troca;
 - concorrência entre manutenção e reserva ou entrada;
 - duas indisponibilizações disputando o mesmo destino;
+- criação, edição e substituição de turno concorrentes com entrada e correção de sessão;
+- reconciliação concorrente com saída, troca e indisponibilização;
 - consultas agregadas.
 
 ### Testes de interface
@@ -93,6 +96,8 @@ Cobrir os fluxos principais do protótipo:
 9. gerenciar inventário, funcionamento e avisos pelo Supervisor;
 10. pré-visualizar o impacto de calendário antes da confirmação;
 11. acessar o relatório mensal com parâmetros gerenciais.
+
+O E2E usa `StaticLiveServerTestCase`, banco de teste criado pelo Django e relógio controlado somente no processo de teste. A massa de sessão e reserva é criada pelos serviços de domínio; o Playwright acessa a aplicação real em porta efêmera. A atualização automática da Agenda deve ser testada com diálogo aberto e resposta já em andamento.
 
 ## Invariantes que devem falhar no banco ou serviço
 
@@ -120,6 +125,8 @@ Criar factories para:
 - sessões e alocações;
 - deadlines e reconciliação operacional;
 - ocorrências.
+
+O calendário mensal deve resolver exceções, versões, dias e janelas em lote. O teste de desempenho limita a resolução de um mês a seis consultas, impedindo a reintrodução de N+1.
 
 Nenhum teste ou fixture inicial deve conter dados pessoais reais.
 

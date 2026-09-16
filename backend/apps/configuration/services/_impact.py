@@ -113,6 +113,7 @@ def validate_confirmed_schedule_impact(
     if conflicts and not confirm_cancellation:
         raise ScheduleChangeAffectsReservations(conflict_ids)
 
+
 __all__ = [
     "cancel_conflicting_reservations",
     "conflicts_under_effective_calendar",
@@ -120,4 +121,3 @@ __all__ = [
     "reservations_for_period",
     "validate_confirmed_schedule_impact",
 ]
-

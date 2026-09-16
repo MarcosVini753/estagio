@@ -1,8 +1,6 @@
-from functools import wraps
-
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -28,7 +26,9 @@ from apps.operations.services.computer_state import (
     change_computer_operational_state,
 )
 
-from .http import is_htmx as _is_htmx
+from .http import redirect_response as _redirect
+from .http import render_staff_screen as _render_screen
+from .http import require_profiles
 from .http import service_error_message as _exception_message
 from .operational_state import reconcile_operational_state
 from .pagination import paginate
@@ -75,19 +75,13 @@ MONITOR_SCREEN_META = {
 }
 
 
-def operational_profile_required(view):
-    @wraps(view)
-    def wrapped(request, *args, **kwargs):
-        if get_demo_profile(request) not in OPERATIONAL_PROFILES:
-            messages.warning(
-                request,
-                "Selecione o perfil Monitor da Sala ou um perfil superior para "
-                "acessar esta área.",
-            )
-            return redirect("web:home")
-        return view(request, *args, **kwargs)
-
-    return wrapped
+operational_profile_required = require_profiles(
+    allowed_profiles=OPERATIONAL_PROFILES,
+    message=(
+        "Selecione o perfil Monitor da Sala ou um perfil superior para acessar "
+        "esta área."
+    ),
+)
 
 
 def _allocations_queryset():
@@ -139,26 +133,6 @@ def _screen_context(request, *, screen, query="", search_url_name=None):
         ),
         "area_switch_label": "Gestão da biblioteca",
     }
-
-
-def _render_screen(request, *, content_template, context, status=200):
-    context = {**context, "content_template": content_template}
-    if request.headers.get("HX-Target") == "staff-content":
-        template = "staff/partials/content.html"
-    elif _is_htmx(request):
-        template = "staff/partials/app.html"
-    else:
-        template = "staff/page.html"
-    return render(request, template, context, status=status)
-
-
-def _redirect(request, name, **kwargs):
-    url = reverse(name, kwargs=kwargs or None)
-    if _is_htmx(request):
-        response = render(request, "staff/partials/empty.html", status=200)
-        response["HX-Redirect"] = url
-        return response
-    return redirect(name, **kwargs)
 
 
 def _dashboard_context(request, *, screen_error=""):

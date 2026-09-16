@@ -30,8 +30,9 @@ from apps.operations.rules import (
     LATE_CHECK_OUT_TOLERANCE_MINUTES,
 )
 from apps.operations.services.deadlines import (
+    ReconcileScope,
     expire_locked_session,
-    reconcile_computer_deadlines,
+    reconcile_deadlines,
 )
 from apps.operations.services.reservations import lock_user_reference
 from apps.operations.slotting import validate_immediate_planned_end
@@ -167,24 +168,15 @@ def start_usage_session(
         reconciliation_user_reference = actor_reference
     else:
         reconciliation_user_reference = user_reference
-    computer_ids = {computer_id}
-    if reconciliation_user_reference:
-        computer_ids.update(
-            Reservation.objects.filter(
-                user_reference=reconciliation_user_reference,
-                status=Reservation.Status.CONFIRMED,
-                check_in_deadline_at__lt=current,
-            ).values_list("computer_id", flat=True)
-        )
-        computer_ids.update(
-            ComputerAllocation.objects.filter(
-                session__user_reference=reconciliation_user_reference,
-                session__status=UseSession.Status.ACTIVE,
-                ended_at__isnull=True,
-            ).values_list("computer_id", flat=True)
-        )
-    for target_id in sorted(computer_ids):
-        reconcile_computer_deadlines(target_id, current)
+    reconcile_deadlines(
+        now=current,
+        scope=ReconcileScope(
+            computer_ids=(computer_id,),
+            user_references=(reconciliation_user_reference,)
+            if reconciliation_user_reference
+            else None,
+        ),
+    )
     return _start_usage_session(
         computer_id=computer_id,
         actor_profile=actor_profile,
@@ -352,8 +344,10 @@ def switch_computer(
     computer_ids = {computer_id}
     if source_computer_id is not None:
         computer_ids.add(source_computer_id)
-    for target_id in sorted(computer_ids):
-        reconcile_computer_deadlines(target_id, current)
+    reconcile_deadlines(
+        now=current,
+        scope=ReconcileScope(computer_ids=tuple(sorted(computer_ids))),
+    )
     return _switch_computer(
         session_id=session_id,
         computer_id=computer_id,

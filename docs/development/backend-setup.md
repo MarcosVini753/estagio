@@ -105,17 +105,21 @@ Problemas frequentes:
 
 ## Reconciliação de prazos
 
-Em ambiente em execução, agende o comando abaixo a cada minuto. Ele cancela
-reservas cujo check-in venceu e registra automaticamente a saída de sessões que
-chegaram ao prazo máximo:
+Antes de uma consulta operacional autorizada, a aplicação reconcilia somente os
+usuários, computadores ou período que a resposta observará. Assim, uma rodada
+periódica atrasada não deixa a interface mostrar estado vencido.
+
+O processo periódico continua obrigatório para atualizar os dados mesmo sem
+acessos. O comando abaixo executa uma única rodada: cancela reservas cujo
+check-in venceu e registra automaticamente a saída de sessões que chegaram ao
+prazo máximo.
 
 ```bash
 cd backend && python manage.py reconcile_operational_deadlines
 ```
 
 O comando é idempotente e pode ser executado manualmente para testar esse fluxo.
-Em implantação, use o agendador da plataforma, cron ou timer equivalente; não
-depende de fila assíncrona.
+Não depende de fila assíncrona.
 
 Para manter a reconciliação em execução contínua, use o modo `--watch`, que
 repete a rodada a cada 60 segundos, registra falhas em `stderr` e tenta
@@ -136,23 +140,26 @@ docker compose up -d web scheduler
 ```
 
 A ordem obrigatória em ambos os ambientes é banco → migrations → seed →
-aplicação e processo periódico. O processo periódico depende apenas do banco.
+aplicação e processo periódico. O processo periódico depende apenas do banco e
+encerra normalmente com `Ctrl+C` no host.
 
 ## Execução integral com Docker
 
 Se preferir não instalar Python e Node.js no host, o Compose também executa a
-aplicação inteira:
+aplicação inteira. Prepare o banco antes de iniciar a aplicação e o agendador:
 
 ```bash
-docker compose up --build -d
-docker compose exec web python manage.py migrate
-docker compose exec web python manage.py seed_demo_data
+docker compose build
+docker compose up -d db
+docker compose run --rm web python manage.py migrate
+docker compose run --rm web python manage.py seed_demo_data
+docker compose up -d web scheduler
 ```
 
 Acesse <http://localhost:8000/> normalmente. Para acompanhar o servidor, use
 `docker compose logs -f web`; para encerrar os containers, use
-`docker compose down`. Esse fluxo não substitui o agendamento periódico de
-reconciliação em ambientes duradouros.
+`docker compose down`. O serviço `scheduler` mantém a reconciliação periódica
+ativa enquanto o ambiente estiver em execução.
 
 ## Comandos de qualidade
 

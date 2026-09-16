@@ -230,4 +230,3 @@ __all__ = [
     "_report_configuration",
     "_screen_context",
 ]
-

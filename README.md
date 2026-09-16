@@ -92,12 +92,15 @@ conseguir conectar ao banco, confirme `docker compose ps` e aguarde o serviço
 
 ### Execução integral com Docker
 
-Para executar também o Django no container, em vez de usar `make run`:
+Para executar também o Django no container, em vez de usar `make run`, prepare
+o banco antes de iniciar os dois processos duradouros:
 
 ```bash
-docker compose up --build -d
-docker compose exec web python manage.py migrate
-docker compose exec web python manage.py seed_demo_data
+docker compose build
+docker compose up -d db
+docker compose run --rm web python manage.py migrate
+docker compose run --rm web python manage.py seed_demo_data
+docker compose up -d web scheduler
 ```
 
 Os mesmos endereços locais continuam válidos. Veja logs com
@@ -105,15 +108,18 @@ Os mesmos endereços locais continuam válidos. Veja logs com
 
 ### Reconciliação de prazos em demonstrações longas
 
-O sistema encerra automaticamente sessões que ultrapassam o prazo operacional
-e cancela reservas cujo check-in venceu. Em um ambiente em execução, agende
-este comando a cada minuto:
+O sistema reconcilia os registros relevantes antes de cada consulta operacional
+autorizada, evitando exibir estado vencido. O processo periódico continua
+necessário para encerrar sessões e cancelar reservas mesmo quando ninguém está
+usando a aplicação. Para uma rodada manual:
 
 ```bash
 cd backend && python manage.py reconcile_operational_deadlines
 ```
 
-Ele é seguro para repetição. A documentação operacional detalhada está em
+Ele é seguro para repetição. Para mantê-lo ativo a cada 60 segundos, execute
+`make reconcile-watch`; no Docker, isso é feito pelo serviço `scheduler`. A
+documentação operacional detalhada está em
 [docs/development/backend-setup.md](docs/development/backend-setup.md).
 
 - [Guia rápido](docs/guia-rapido.md)

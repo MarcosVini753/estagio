@@ -1,5 +1,4 @@
 from datetime import timedelta
-from functools import wraps
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -43,15 +42,11 @@ from apps.operations.services import (
     user_cancellation_decision,
 )
 
-from .http import (
-    is_htmx as _is_htmx,
-)
-from .http import (
-    redirect_response as _redirect_response,
-)
-from .http import (
-    service_error_message as _exception_message,
-)
+from .http import is_htmx as _is_htmx
+from .http import redirect_response as _redirect_response
+from .http import render_room_screen as _render_screen
+from .http import require_profiles
+from .http import service_error_message as _exception_message
 from .operational_state import reconcile_room_user_state
 from .pagination import paginate
 from .presenters import (
@@ -95,18 +90,10 @@ SCREEN_META = {
 }
 
 
-def _room_user_required(view):
-    @wraps(view)
-    def wrapped(request, *args, **kwargs):
-        if get_demo_profile(request) != DemoProfile.ROOM_USER:
-            messages.warning(
-                request,
-                "Selecione o perfil Usuário da Sala para acessar esta área.",
-            )
-            return redirect("web:home")
-        return view(request, *args, **kwargs)
-
-    return wrapped
+_room_user_required = require_profiles(
+    allowed_profiles={DemoProfile.ROOM_USER},
+    message="Selecione o perfil Usuário da Sala para acessar esta área.",
+)
 
 
 def _active_session(request, now=None, *, reconcile=True):
@@ -169,17 +156,6 @@ def _screen_base_context(request, *, screen: str, query: str = ""):
         "current_user_reference": get_demo_user_reference(request),
         "active_notices": get_active_room_notices(),
     }
-
-
-def _render_screen(request, *, content_template: str, context: dict, status=200):
-    context = {**context, "content_template": content_template}
-    if request.headers.get("HX-Target") == "screen-content":
-        template = "room_user/partials/screen.html"
-    elif _is_htmx(request):
-        template = "room_user/partials/app.html"
-    else:
-        template = "room_user/page.html"
-    return render(request, template, context, status=status)
 
 
 def home(request):
@@ -313,10 +289,11 @@ def _computer_detail_context(
     *,
     computer,
     day,
+    now=None,
     selected_starts_at="",
     selected_planned_ends_at="",
 ):
-    now = timezone.now()
+    now = now or timezone.now()
     today = timezone.localdate(now)
     target_date = today if day == "today" else today + timedelta(days=1)
     reconcile_room_user_state(
@@ -401,12 +378,14 @@ def _computer_action_error_response(
 @_room_user_required
 def computer_detail(request, pk):
     computer = get_object_or_404(Computer, pk=pk)
-    day, _ = _day_and_date(request)
+    now = timezone.now()
+    day, _ = _day_and_date(request, now=now)
     try:
         context = _computer_detail_context(
             request,
             computer=computer,
             day=day,
+            now=now,
             selected_starts_at=request.GET.get("starts_at", ""),
             selected_planned_ends_at=request.GET.get("planned_ends_at", ""),
         )

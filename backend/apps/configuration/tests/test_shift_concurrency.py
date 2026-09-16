@@ -13,8 +13,7 @@ from apps.configuration.services import create_shift, update_shift
 from apps.configuration.services import shifts as shift_services
 from apps.configuration.tests.factories import create_operating_schedule
 from apps.operations.models import UseSession
-from apps.operations.services import start_usage_session
-from apps.operations.services import usage_sessions
+from apps.operations.services import start_usage_session, usage_sessions
 
 
 class ShiftWriteConcurrencyTest(TransactionTestCase):

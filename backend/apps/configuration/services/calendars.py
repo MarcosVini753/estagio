@@ -558,6 +558,7 @@ def update_future_operating_schedule(
         pk=schedule.pk
     )
 
+
 __all__ = [
     "create_operating_schedule",
     "preview_operating_schedule_impact",

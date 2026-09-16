@@ -30,7 +30,7 @@ async function selectProfile(page, profileName, destination) {
   await page.waitForURL(destination);
 }
 
-async function assertSidebarIsFixed(page, selector, scrollContainerSelector) {
+async function assertSidebarIsFixed(page, selector, contentSelector) {
   const sidebar = page.locator(selector);
   const getMetrics = () =>
     sidebar.evaluate((element) => {
@@ -53,16 +53,16 @@ async function assertSidebarIsFixed(page, selector, scrollContainerSelector) {
     `${selector} deve ocupar toda a altura da janela`,
   );
 
-  const scrollContainer = page.locator(scrollContainerSelector);
-  const scrollTop = await scrollContainer.evaluate((element) => {
+  const content = page.locator(contentSelector);
+  const scrollY = await content.evaluate((element) => {
     const spacer = document.createElement("div");
     spacer.dataset.e2eSidebarScrollSpacer = "";
     spacer.style.height = "200vh";
     element.append(spacer);
-    element.scrollTop = element.scrollHeight;
-    return element.scrollTop;
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    return window.scrollY;
   });
-  assert.ok(scrollTop > 0, `${scrollContainerSelector} deve rolar de verdade`);
+  assert.ok(scrollY > 0, `${contentSelector} deve deslocar a página`);
 
   const scrolledMetrics = await getMetrics();
   assert.deepEqual(
@@ -71,9 +71,9 @@ async function assertSidebarIsFixed(page, selector, scrollContainerSelector) {
     `${selector} deve permanecer fixa após a rolagem`,
   );
 
-  await scrollContainer.evaluate((element) => {
+  await content.evaluate((element) => {
     element.querySelector("[data-e2e-sidebar-scroll-spacer]")?.remove();
-    element.scrollTop = 0;
+    window.scrollTo(0, 0);
   });
 }
 

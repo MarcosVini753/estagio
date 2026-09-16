@@ -82,7 +82,8 @@
 - troca validada até o fim planejado e bloqueada durante a tolerância;
 - disponibilidade futura limitada por `planned_ends_at` e estado atual por `exit_deadline_at`;
 - resposta `immediate_usage` resumida e opções de fim planejado no detalhe do computador;
-- reconciliação oportunista e comando periódico que registra saídas automáticas e cancelamentos por check-in expirado;
+- reconciliação escopada antes de mutações e consultas operacionais autorizadas, com um único instante por operação;
+- comando periódico em rodada única ou modo contínuo de 60 segundos, com serviço dedicado no Compose;
 - migração em três fases com bloqueio explícito de sessões legadas ativas;
 - testes de constraints, APIs, deadlines, backfill e corridas entre reserva, entrada e troca;
 - protótipo, ADR, documentação e diagramas sincronizados.
@@ -131,6 +132,10 @@
 - paginação fixa de 25 itens nas listagens extensas da API e das interfaces, com busca da Agenda e do Histórico executada no banco;
 - constraints de coerência entre estados e metadados de cancelamento, saída e encerramento, precedidas por migration de validação explícita do legado;
 - serviços de configuração e views do Supervisor expostos em módulos coesos, preservando imports públicos, URLs e regras transacionais.
+- autorização de perfil, respostas HTMX, redirects e apresentação de erros compartilhados sem mover regras de domínio para a camada web;
+- resolução mensal do calendário em lote, protegida por orçamento máximo de seis consultas;
+- E2E executado por `StaticLiveServerTestCase`, banco isolado, relógio controlado e dados descartáveis criados pelos serviços;
+- aviso visível e persistente de ambiente de demonstração no seletor e nas áreas funcionais.
 
 ## Não implementado
 

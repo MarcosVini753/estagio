@@ -16,6 +16,8 @@ Camada de apresentação HTML, sem models próprios, responsável por:
 
 O app reutiliza serializers de entrada, selectors e serviços dos módulos de domínio. Não chama a API HTTP internamente e não contém regras de disponibilidade, duração ou transição de estado.
 
+Helpers compartilhados tratam somente autorização simulada, negociação de página/partial HTMX, redirects e mensagens de erro. Contextos e fluxos permanecem separados por área. As views do Supervisor são divididas entre painel, relatórios, inventário, configurações e calendários; regras transacionais continuam nos serviços dos domínios correspondentes.
+
 ## `core`
 
 Responsabilidades compartilhadas:
@@ -61,6 +63,8 @@ Entidades:
 - `RoomNotice`;
 - `BookingPolicy`;
 - `ReportConfiguration`.
+
+Os serviços são organizados por política, turno, calendário, exceção e aviso. Somente cálculo de impacto e cancelamento compartilhado fica em módulo interno comum; o pacote mantém uma superfície pública estável em `apps.configuration.services`.
 
 ## `computers`
 

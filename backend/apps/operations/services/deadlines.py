@@ -148,12 +148,3 @@ def reconcile_deadlines(
         expired_sessions=expire_overdue_sessions(now, scope=scope),
         cancelled_reservations=cancel_overdue_reservations(now, scope=scope),
     )
-
-
-@transaction.atomic
-def reconcile_computer_deadlines(computer_id: int, now: datetime) -> tuple[int, int]:
-    result = reconcile_deadlines(
-        now=now,
-        scope=ReconcileScope(computer_ids=(computer_id,)),
-    )
-    return result.expired_sessions, result.cancelled_reservations
