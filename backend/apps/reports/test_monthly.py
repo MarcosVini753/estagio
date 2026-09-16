@@ -1,7 +1,9 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APITestCase
 
 from apps.computers.models import Computer
@@ -16,6 +18,7 @@ from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 from apps.operations.tests.factories import create_reservation, create_use_session
 from apps.reports.projections import NOT_INFORMED, overlap_minutes
+from apps.reports.selectors import get_operating_days_for_period
 
 REPORT_TZ = ZoneInfo("America/Rio_Branco")
 
@@ -196,9 +199,10 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.select_profile()
 
-        with patch(
-            "apps.reports.projections.timezone.now",
-            return_value=report_datetime(2, 12, 19),
+        report_now = report_datetime(2, 12, 19)
+        with (
+            patch("apps.reports.projections.timezone.now", return_value=report_now),
+            patch("apps.reports.api.views.timezone.now", return_value=report_now),
         ):
             response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
@@ -229,9 +233,12 @@ class MonthlyReportAPITest(APITestCase):
         )
         self.assertEqual(response.data["summary"]["occurrences"], 1)
         self.assertEqual(response.data["summary"]["computers_used"], 2)
-        self.assertEqual(response.data["summary"]["allocated_minutes"], 270)
-        self.assertEqual(response.data["summary"]["average_stay_minutes"], 70)
-        self.assertEqual(response.data["warnings"]["active_session_ids"], [active.pk])
+        self.assertEqual(response.data["summary"]["allocated_minutes"], 228)
+        self.assertEqual(response.data["summary"]["average_stay_minutes"], 57)
+        self.assertEqual(response.data["warnings"]["active_session_ids"], [])
+        active.refresh_from_db()
+        self.assertEqual(active.status, UseSession.Status.FINISHED)
+        self.assertEqual(active.ended_at, report_datetime(2, 12, 18, 18))
         self.assertEqual(
             response.data["warnings"]["sessions_without_shift"],
             [without_shift.pk],
@@ -351,3 +358,20 @@ class MonthlyReportAPITest(APITestCase):
             "TEMPORARY_SCHEDULE",
         )
         self.assertEqual(response.data["days"][1]["operating_minutes"], 300)
+
+    def test_month_calendar_is_resolved_with_bounded_queries(self):
+        CalendarException.objects.create(
+            date=date(2026, 2, 10),
+            exception_type=CalendarException.ExceptionType.CLOSED,
+            description="Fechamento excepcional",
+        )
+
+        with CaptureQueriesContext(connection) as queries:
+            operating_days = get_operating_days_for_period(
+                date(2026, 2, 1),
+                date(2026, 3, 1),
+            )
+
+        self.assertEqual(len(operating_days), 28)
+        self.assertEqual(operating_days[9].source, "CALENDAR_EXCEPTION")
+        self.assertLessEqual(len(queries), 6)

@@ -73,8 +73,9 @@ class RoomUserWebTest(TestCase):
         self.assertContains(response, 'value="SYSTEM_ADMIN"')
         self.assertNotContains(response, "Autorização simulada")
         self.assertNotContains(response, "perfil de teste")
-        self.assertNotContains(response, "demonstração")
-        self.assertNotContains(response, "fictícia")
+        self.assertContains(response, "Ambiente de demonstração")
+        self.assertContains(response, "A escolha de perfil não é autenticação")
+        self.assertContains(response, "Use apenas dados fictícios")
 
         invalid = self.client.post("/", {"profile": "ROOM_USER"})
         self.assertEqual(invalid.status_code, 400)
@@ -150,12 +151,14 @@ class RoomUserWebTest(TestCase):
         self.assertContains(today_response, "Computador 01")
         self.assertContains(today_response, "Hoje")
         self.assertContains(today_response, "Usuário da Sala")
+        self.assertContains(today_response, 'id="search-day-input"', count=1)
         self.assertNotContains(today_response, "Perfil de teste")
-        self.assertNotContains(today_response, "Ambiente demonstrativo")
+        self.assertContains(today_response, "Ambiente de demonstração")
         self.assertNotContains(tomorrow_response, "Computador 01")
         self.assertContains(tomorrow_response, "Computador 02")
         self.assertContains(tomorrow_response, "horários disponíveis")
         self.assertContains(partial, 'id="screen-content"')
+        self.assertContains(partial, 'hx-swap-oob="outerHTML"')
         self.assertNotContains(partial, "<!doctype html>")
         self.assertContains(detail, "15 min")
         self.assertContains(detail, "30 min")
@@ -341,7 +344,7 @@ class RoomUserWebTest(TestCase):
             before_window = self.client.get("/sala/agenda/")
 
         self.assertNotContains(before_window, "Registrar entrada")
-        self.assertContains(before_window, 'hx-trigger="every 15s"')
+        self.assertContains(before_window, 'hx-trigger="every 15s, refreshAgenda"')
         self.assertContains(before_window, 'hx-target="#agenda-content"')
 
         with patch(

@@ -23,15 +23,17 @@ def _raise_shift_conflict(error: IntegrityError) -> None:
     raise error
 
 
-def lock_shift_writes() -> None:
-    """Serializa a verificação e a gravação de turnos.
+def lock_shift_configuration() -> None:
+    """Serializa escritas e atribuições dependentes da configuração de turnos.
 
     A checagem de sobreposição não encontra linhas quando ainda não existe
     conflito, então `select_for_update()` não bloqueia nada e duas transações
     simultâneas poderiam criar turnos sobrepostos. O bloqueio consultivo cobre
     o intervalo entre a consulta e a gravação. É global em vez de por data
     porque dois turnos conflitam independentemente da vigência; escritas de
-    turnos ocorrem apenas no fluxo de configuração e são raras.
+    turnos ocorrem apenas no fluxo de configuração e são raras. Entradas e
+    correções históricas também usam este bloqueio antes de escolher o turno,
+    evitando classificar uma sessão durante uma troca de versão.
     """
 
     with connection.cursor() as cursor:
@@ -105,7 +107,7 @@ def _validated_values(*, values: dict, shift: Shift | None = None) -> dict:
 
 @transaction.atomic
 def create_shift(*, values: dict, actor_profile: str) -> Shift:
-    lock_shift_writes()
+    lock_shift_configuration()
     try:
         shift = Shift.objects.create(**_validated_values(values=values))
     except IntegrityError as error:
@@ -122,7 +124,7 @@ def create_shift(*, values: dict, actor_profile: str) -> Shift:
 
 @transaction.atomic
 def update_shift(*, shift_id: int, values: dict, actor_profile: str) -> Shift:
-    lock_shift_writes()
+    lock_shift_configuration()
     shift = Shift.objects.select_for_update().get(pk=shift_id)
     old_values = _snapshot(shift)
     _validated_values(values=values, shift=shift)
@@ -154,7 +156,7 @@ def replace_shift(
     display_order: int,
     actor_profile: str,
 ) -> Shift:
-    lock_shift_writes()
+    lock_shift_configuration()
     shift = Shift.objects.select_for_update().get(pk=shift_id)
     if (
         effective_from <= timezone.localdate()
@@ -200,4 +202,9 @@ def replace_shift(
     return replacement
 
 
-__all__ = ["create_shift", "replace_shift", "update_shift"]
+__all__ = [
+    "create_shift",
+    "lock_shift_configuration",
+    "replace_shift",
+    "update_shift",
+]

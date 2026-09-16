@@ -158,8 +158,8 @@ def room_status_payload(
         "reason": operating_day.reason,
         "operating_windows": [
             {
-                "opens_at": window.opens_at.isoformat(),
-                "closes_at": window.closes_at.isoformat(),
+                "opens_at": window.opens_at,
+                "closes_at": window.closes_at,
             }
             for window in operating_day.windows
         ],
@@ -208,12 +208,10 @@ def _from_exception(
     )
 
 
-def resolve_operating_day(target_date: date) -> OperatingDayResult:
-    exception = get_calendar_exception_for_date(target_date)
-    if exception is not None:
-        return _from_exception(target_date, exception)
-
-    schedule = get_effective_operating_schedule_for_date(target_date)
+def _from_schedule(
+    target_date: date,
+    schedule: OperatingSchedule,
+) -> OperatingDayResult:
     if schedule is None:
         raise OperatingScheduleRequired()
     days = [day for day in schedule.days.all() if day.weekday == target_date.weekday()]
@@ -255,4 +253,27 @@ def resolve_operating_day(target_date: date) -> OperatingDayResult:
         windows=windows,
         reason="" if day.is_open else _closed_reason(target_date),
         schedule_id=schedule.pk,
+    )
+
+
+def resolve_operating_day_from_sources(
+    target_date: date,
+    *,
+    exception: CalendarException | None,
+    schedule: OperatingSchedule | None,
+) -> OperatingDayResult:
+    """Resolve um dia com fontes já carregadas, preservando a precedência."""
+
+    if exception is not None:
+        return _from_exception(target_date, exception)
+    if schedule is None:
+        raise OperatingScheduleRequired()
+    return _from_schedule(target_date, schedule)
+
+
+def resolve_operating_day(target_date: date) -> OperatingDayResult:
+    return resolve_operating_day_from_sources(
+        target_date,
+        exception=get_calendar_exception_for_date(target_date),
+        schedule=get_effective_operating_schedule_for_date(target_date),
     )

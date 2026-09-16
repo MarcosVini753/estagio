@@ -63,8 +63,14 @@ function appDialog() {
   return document.getElementById("app-dialog");
 }
 
+const dialogReturnFocus = new WeakMap();
+let agendaFocusDialogId = null;
+
 function openDialog(dialog) {
-  if (dialog && !dialog.open) dialog.showModal();
+  if (dialog && !dialog.open) {
+    dialogReturnFocus.set(dialog, document.activeElement);
+    dialog.showModal();
+  }
 }
 
 function closeDialog(dialog) {
@@ -97,6 +103,26 @@ document.addEventListener("submit", (event) => {
   openDialog(dialog);
 });
 
+document.addEventListener(
+  "close",
+  (event) => {
+    const dialog = event.target;
+    if (!(dialog instanceof HTMLDialogElement)) return;
+
+    const previousFocus = dialogReturnFocus.get(dialog);
+    if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+      previousFocus.focus({ preventScroll: true });
+    }
+    dialogReturnFocus.delete(dialog);
+
+    const agenda = dialog.closest("#agenda-content");
+    if (!agenda) return;
+    agendaFocusDialogId = dialog.id;
+    htmx.trigger(agenda, "refreshAgenda");
+  },
+  true,
+);
+
 document.body.addEventListener("htmx:configRequest", (event) => {
   const isPolling = event.detail.elt?.getAttribute("hx-trigger")?.includes("every");
   if (isPolling && document.querySelector("dialog[open]")) {
@@ -117,6 +143,13 @@ document.body.addEventListener("htmx:beforeSwap", (event) => {
 
 document.body.addEventListener("htmx:afterSwap", (event) => {
   if (event.detail.target.id === "app-dialog-content") openAppDialog();
+  if (event.detail.target.id === "agenda-content" && agendaFocusDialogId) {
+    const opener = document.querySelector(
+      `[data-confirm-dialog-id="${CSS.escape(agendaFocusDialogId)}"] button`,
+    );
+    if (opener instanceof HTMLElement) opener.focus({ preventScroll: true });
+    agendaFocusDialogId = null;
+  }
   if (event.detail.target.id === "screen-content") {
     event.detail.target.focus({ preventScroll: true });
   }

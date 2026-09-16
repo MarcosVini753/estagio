@@ -1,9 +1,11 @@
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.access.permissions import HasDemoProfile
 from apps.core.enums import DemoProfile
+from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 from apps.reports.projections import build_monthly_report, month_bounds
 from apps.reports.selectors import (
     get_allocations_for_period,
@@ -35,6 +37,11 @@ class MonthlyReportAPIView(APIView):
         year = query.validated_data["year"]
         month = query.validated_data["month"]
         starts_at, ends_at = month_bounds(year, month)
+        current = timezone.now()
+        reconcile_deadlines(
+            now=current,
+            scope=ReconcileScope(period=(starts_at, ends_at)),
+        )
 
         report = build_monthly_report(
             year=year,
@@ -48,5 +55,6 @@ class MonthlyReportAPIView(APIView):
                 starts_at.date(),
                 ends_at.date(),
             ),
+            now=current,
         )
         return Response(report)

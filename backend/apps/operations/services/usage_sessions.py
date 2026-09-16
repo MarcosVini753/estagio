@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
@@ -12,6 +13,7 @@ from apps.configuration.calendar import (
     resolve_operating_day,
 )
 from apps.configuration.selectors import get_shifts_for_date
+from apps.configuration.services.shifts import lock_shift_configuration
 from apps.core.api.errors import (
     ReservationCheckInUnavailable,
     RoomClosed,
@@ -39,6 +41,13 @@ OPERATIONAL_PROFILES = {
     DemoProfile.LIBRARY_SUPERVISOR,
     DemoProfile.SYSTEM_ADMIN,
 }
+
+
+@dataclass(frozen=True)
+class FinishUsageSessionResult:
+    session: UseSession
+    automatic: bool
+    already_finished: bool = False
 
 
 def _shift_at(current: datetime):
@@ -110,17 +119,28 @@ def _validate_identity(
     return user_reference, affiliation_type, institutional_unit
 
 
-def _get_active_session(
+def _get_session(
     *, session_id: int, actor_profile: str, actor_reference: str
 ) -> UseSession:
     session = UseSession.objects.select_for_update().get(pk=session_id)
-    if session.status != UseSession.Status.ACTIVE:
-        raise UsageSessionNotActive()
     if (
         actor_profile not in OPERATIONAL_PROFILES
         and actor_reference != session.user_reference
     ):
         raise UsageSessionNotAllowed()
+    return session
+
+
+def _get_active_session(
+    *, session_id: int, actor_profile: str, actor_reference: str
+) -> UseSession:
+    session = _get_session(
+        session_id=session_id,
+        actor_profile=actor_profile,
+        actor_reference=actor_reference,
+    )
+    if session.status != UseSession.Status.ACTIVE:
+        raise UsageSessionNotActive()
     return session
 
 
@@ -191,6 +211,7 @@ def _start_usage_session(
     institutional_unit: str | None,
     current: datetime,
 ) -> UseSession:
+    lock_shift_configuration()
     lock_operating_date(timezone.localdate(current))
     reservation = None
 
@@ -429,16 +450,34 @@ def finish_usage_session(
     actor_reference: str,
     reason: str = "",
     now: datetime | None = None,
-) -> UseSession:
+) -> FinishUsageSessionResult:
     current = now or timezone.now()
-    session = _get_active_session(
+    session = _get_session(
         session_id=session_id,
         actor_profile=actor_profile,
         actor_reference=actor_reference,
     )
-    if current > session.exit_deadline_at:
+    if session.status != UseSession.Status.ACTIVE:
+        automatically_finished = (
+            session.status == UseSession.Status.FINISHED
+            and session.exit_recorded_by_profile == DemoProfile.SYSTEM_ADMIN
+            and session.allocations.select_for_update()
+            .filter(
+                ended_at=session.exit_deadline_at,
+                end_reason=ComputerAllocation.EndReason.TIME_LIMIT_REACHED,
+            )
+            .exists()
+        )
+        if automatically_finished:
+            return FinishUsageSessionResult(
+                session=session,
+                automatic=True,
+                already_finished=True,
+            )
+        raise UsageSessionNotActive()
+    if current >= session.exit_deadline_at:
         expire_locked_session(session)
-        return session
+        return FinishUsageSessionResult(session=session, automatic=True)
     is_owner = actor_reference == session.user_reference
     finish_reason = reason.strip()
     if not is_owner and not finish_reason:
@@ -475,4 +514,4 @@ def finish_usage_session(
             },
             reason=finish_reason,
         )
-    return session
+    return FinishUsageSessionResult(session=session, automatic=False)

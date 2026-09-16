@@ -148,7 +148,6 @@ class ReconcileCommandWatchTest(TestCase):
             self.patch_service(
                 "reconcile_deadlines", return_value=ReconcileResult()
             ) as expired,
-            self.assertRaises(KeyboardInterrupt),
         ):
             call_command(
                 "reconcile_operational_deadlines",
@@ -159,10 +158,12 @@ class ReconcileCommandWatchTest(TestCase):
         self.assertEqual(expired.call_count, 3)
         self.assertEqual(len(sleeps), 3)
         self.assertIn("Reconciliação contínua a cada 60s", output.getvalue())
+        self.assertIn("Reconciliação contínua encerrada", output.getvalue())
 
     def test_watch_keeps_running_after_a_failed_round(self):
         sleeps = []
         errors = StringIO()
+        output = StringIO()
 
         with (
             self.patch_sleep(sleeps, 2),
@@ -170,17 +171,18 @@ class ReconcileCommandWatchTest(TestCase):
                 "reconcile_deadlines",
                 side_effect=RuntimeError("banco indisponível"),
             ) as expired,
-            self.assertRaises(KeyboardInterrupt),
         ):
             call_command(
                 "reconcile_operational_deadlines",
                 "--watch",
+                stdout=output,
                 stderr=errors,
             )
 
         self.assertEqual(expired.call_count, 2)
         self.assertIn("Falha na reconciliação", errors.getvalue())
         self.assertIn("banco indisponível", errors.getvalue())
+        self.assertIn("Reconciliação contínua encerrada", output.getvalue())
 
     def test_single_run_does_not_loop(self):
         output = StringIO()

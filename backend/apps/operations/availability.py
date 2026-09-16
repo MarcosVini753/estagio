@@ -299,22 +299,6 @@ def get_computers_availability(
         operating_day=operating_day,
     )
     computer_list = list(computers)
-    # A leitura não pode contradizer o estado reconciliado: prazos vencidos são
-    # fechados antes de calcular a disponibilidade, com o mesmo instante de
-    # referência usado nesta resposta. Import local para evitar ciclo entre o
-    # pacote de serviços e esta consulta.
-    from apps.operations.services.deadlines import (  # noqa: PLC0415
-        ReconcileScope,
-        reconcile_deadlines,
-    )
-
-    reconcile_deadlines(
-        now=current,
-        scope=ReconcileScope(
-            computer_ids=tuple(computer.pk for computer in computer_list),
-            user_references=(user_reference,) if user_reference else None,
-        ),
-    )
     allocations, reservations = _load_events(
         computer_list,
         target_date,

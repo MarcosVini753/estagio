@@ -1,7 +1,7 @@
 <div
   id="agenda-content"
   hx-get="{% url 'web:agenda' %}{% querystring %}"
-  hx-trigger="every 15s"
+  hx-trigger="every 15s, refreshAgenda"
   hx-target="#agenda-content"
   hx-swap="outerHTML">
 <section class="summary-card">

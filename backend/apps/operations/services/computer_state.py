@@ -45,14 +45,6 @@ def _candidate_is_available_for_session(
         return False
     if _candidate_has_open_allocation(candidate):
         return False
-    if ComputerAllocation.objects.filter(
-        computer=candidate,
-        ended_at__isnull=True,
-        session__status=UseSession.Status.ACTIVE,
-        session__planned_starts_at__lt=session.planned_ends_at,
-        session__planned_ends_at__gt=starts_at,
-    ).exists():
-        return False
     return not (
         Reservation.objects.filter(
             status=Reservation.Status.CONFIRMED,
@@ -72,14 +64,6 @@ def _candidate_is_available_for_reservation(
     if candidate.operational_state != Computer.OperationalState.AVAILABLE:
         return False
     if _candidate_has_open_allocation(candidate):
-        return False
-    if ComputerAllocation.objects.filter(
-        computer=candidate,
-        ended_at__isnull=True,
-        session__status=UseSession.Status.ACTIVE,
-        session__planned_starts_at__lt=reservation.ends_at,
-        session__planned_ends_at__gt=reservation.starts_at,
-    ).exists():
         return False
     return (
         not Reservation.objects.filter(
@@ -256,8 +240,6 @@ def change_computer_operational_state(
     now: datetime | None = None,
 ) -> ComputerStateChangeResult:
     current = now or timezone.now()
-    reconcile_computer_deadlines(computer_id, current)
-
     computers = list(Computer.objects.select_for_update().order_by("pk"))
     source = next(computer for computer in computers if computer.pk == computer_id)
     normalized_reason = validate_operational_state_change(
@@ -277,12 +259,14 @@ def change_computer_operational_state(
             Computer.OperationalState.INACTIVE,
         }
     )
+    # Todas as mutações que disputam computadores seguem a mesma ordem:
+    # computadores, sessões/alocações e reservas. Candidatos só precisam ser
+    # reconciliados quando realmente participarão de uma realocação.
+    observed_computers = computers if becomes_unavailable else [source]
+    for computer in observed_computers:
+        reconcile_computer_deadlines(computer.pk, current)
     if becomes_unavailable:
         candidates = [computer for computer in computers if computer.pk != source.pk]
-        for candidate in candidates:
-            # Fecha alocações cujo prazo de saída já venceu para que o
-            # computador volte a ser destino válido ainda nesta operação.
-            reconcile_computer_deadlines(candidate.pk, current)
         operational_reason = f"{source.code} indisponibilizado: {normalized_reason}"
         impact["active_session"] = _resolve_active_session(
             source=source,

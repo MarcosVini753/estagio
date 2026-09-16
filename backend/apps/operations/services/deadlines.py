@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
 from apps.core.enums import DemoProfile
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
@@ -31,20 +31,23 @@ class ReconcileResult:
 def _scope_sessions(queryset: QuerySet, scope: ReconcileScope | None) -> QuerySet:
     if scope is None:
         return queryset
+    observed = Q()
     if scope.computer_ids is not None:
         # Somente sessões que ainda ocupam um dos computadores observados.
         session_ids = ComputerAllocation.objects.filter(
             computer_id__in=scope.computer_ids,
             ended_at__isnull=True,
         ).values("session_id")
-        queryset = queryset.filter(pk__in=session_ids)
+        observed |= Q(pk__in=session_ids)
     if scope.user_references is not None:
-        queryset = queryset.filter(user_reference__in=scope.user_references)
+        observed |= Q(user_reference__in=scope.user_references)
+    if scope.computer_ids is not None or scope.user_references is not None:
+        queryset = queryset.filter(observed)
     if scope.period is not None:
         starts_at, ends_at = scope.period
         queryset = queryset.filter(
-            planned_starts_at__gte=starts_at,
             planned_starts_at__lt=ends_at,
+            exit_deadline_at__gte=starts_at,
         )
     return queryset
 
@@ -52,10 +55,13 @@ def _scope_sessions(queryset: QuerySet, scope: ReconcileScope | None) -> QuerySe
 def _scope_reservations(queryset: QuerySet, scope: ReconcileScope | None) -> QuerySet:
     if scope is None:
         return queryset
+    observed = Q()
     if scope.computer_ids is not None:
-        queryset = queryset.filter(computer_id__in=scope.computer_ids)
+        observed |= Q(computer_id__in=scope.computer_ids)
     if scope.user_references is not None:
-        queryset = queryset.filter(user_reference__in=scope.user_references)
+        observed |= Q(user_reference__in=scope.user_references)
+    if scope.computer_ids is not None or scope.user_references is not None:
+        queryset = queryset.filter(observed)
     if scope.period is not None:
         starts_at, ends_at = scope.period
         queryset = queryset.filter(starts_at__gte=starts_at, starts_at__lt=ends_at)

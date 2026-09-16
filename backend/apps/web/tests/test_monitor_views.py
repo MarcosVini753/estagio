@@ -40,7 +40,11 @@ class RoomMonitorWebTest(TestCase):
 
     def select_monitor(self):
         response = self.client.post("/", {"profile": "ROOM_MONITOR"})
-        self.assertRedirects(response, "/monitor/")
+        self.assertRedirects(
+            response,
+            "/monitor/",
+            fetch_redirect_response=False,
+        )
 
     def create_session(self, *, active=True):
         started_at = self.aware(time(8))
@@ -90,19 +94,24 @@ class RoomMonitorWebTest(TestCase):
         session = self.create_session()
         self.select_monitor()
 
-        response = self.client.get("/monitor/")
-        partial = self.client.get(
-            "/monitor/",
-            HTTP_HX_REQUEST="true",
-            HTTP_HX_TARGET="staff-content",
-        )
+        with patch(
+            "apps.web.operational_state.timezone.now",
+            return_value=self.aware(time(8, 15)),
+        ):
+            response = self.client.get("/monitor/")
+            partial = self.client.get(
+                "/monitor/",
+                HTTP_HX_REQUEST="true",
+                HTTP_HX_TARGET="staff-content",
+            )
 
         self.assertContains(response, "Sessões ativas")
         self.assertContains(response, session.user_reference)
         self.assertContains(response, self.computer.code)
         self.assertContains(response, "Funcionamento de hoje")
         self.assertNotContains(response, "Autorização simulada")
-        self.assertNotContains(response, "dados fictícios")
+        self.assertContains(response, "Ambiente de demonstração")
+        self.assertContains(response, "Use apenas dados fictícios")
         self.assertContains(partial, 'id="staff-content"')
         self.assertNotContains(partial, "<!doctype html>")
 
@@ -111,7 +120,7 @@ class RoomMonitorWebTest(TestCase):
         self.select_monitor()
 
         with patch(
-            "apps.operations.availability.timezone.now",
+            "apps.web.operational_state.timezone.now",
             return_value=self.aware(time(8, 15)),
         ):
             before = self.client.get("/monitor/computadores/")

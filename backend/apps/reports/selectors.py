@@ -2,8 +2,8 @@ from datetime import date, datetime, timedelta
 
 from django.db.models import Q
 
-from apps.configuration.calendar import resolve_operating_day
-from apps.configuration.models import Shift
+from apps.configuration.calendar import resolve_operating_day_from_sources
+from apps.configuration.models import CalendarException, OperatingSchedule, Shift
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
 
@@ -56,9 +56,52 @@ def get_shifts_for_period(starts_on: date, ends_on: date):
 
 
 def get_operating_days_for_period(starts_on: date, ends_on: date):
+    exceptions_by_date = {
+        exception.date: exception
+        for exception in CalendarException.objects.filter(
+            date__gte=starts_on,
+            date__lt=ends_on,
+        )
+    }
+    schedules = list(
+        OperatingSchedule.objects.filter(
+            is_active=True,
+            valid_from__lt=ends_on,
+        )
+        .filter(Q(valid_until__isnull=True) | Q(valid_until__gte=starts_on))
+        .prefetch_related("days__windows")
+        .order_by("-valid_from", "-created_at")
+    )
+
+    def effective_schedule(target_date):
+        def first_applicable(schedule_type):
+            return next(
+                (
+                    schedule
+                    for schedule in schedules
+                    if schedule.schedule_type == schedule_type
+                    and schedule.valid_from <= target_date
+                    and (
+                        schedule.valid_until is None
+                        or schedule.valid_until >= target_date
+                    )
+                ),
+                None,
+            )
+
+        return first_applicable(
+            OperatingSchedule.ScheduleType.TEMPORARY
+        ) or first_applicable(OperatingSchedule.ScheduleType.REGULAR)
+
     current = starts_on
     results = []
     while current < ends_on:
-        results.append(resolve_operating_day(current))
+        results.append(
+            resolve_operating_day_from_sources(
+                current,
+                exception=exceptions_by_date.get(current),
+                schedule=effective_schedule(current),
+            )
+        )
         current += timedelta(days=1)
     return results

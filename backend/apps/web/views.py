@@ -42,7 +42,6 @@ from apps.operations.services import (
     switch_computer,
     user_cancellation_decision,
 )
-from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 
 from .http import (
     is_htmx as _is_htmx,
@@ -53,6 +52,7 @@ from .http import (
 from .http import (
     service_error_message as _exception_message,
 )
+from .operational_state import reconcile_room_user_state
 from .pagination import paginate
 from .presenters import (
     computer_rows,
@@ -109,17 +109,13 @@ def _room_user_required(view):
     return wrapped
 
 
-def _active_session(request, now=None):
+def _active_session(request, now=None, *, reconcile=True):
     reference = get_demo_user_reference(request)
     if not reference:
         return None
     current = now or timezone.now()
-    # Uma sessão com prazo vencido precisa aparecer encerrada aqui, e não como
-    # ativa, enquanto o computador já se apresenta livre.
-    reconcile_deadlines(
-        now=current,
-        scope=ReconcileScope(user_references=(reference,)),
-    )
+    if reconcile:
+        reconcile_room_user_state(request, now=current)
     allocation_queryset = ComputerAllocation.objects.select_related(
         "computer"
     ).order_by("sequence")
@@ -146,11 +142,11 @@ def _active_allocation(active_session):
     )
 
 
-def _day_and_date(request):
+def _day_and_date(request, *, now):
     day = request.GET.get("day", "today")
     if day not in {"today", "tomorrow"}:
         day = "today"
-    today = timezone.localdate()
+    today = timezone.localdate(now)
     return day, today if day == "today" else today + timedelta(days=1)
 
 
@@ -265,13 +261,18 @@ def profile_unavailable(request):
 
 @_room_user_required
 def computers(request):
-    day, target_date = _day_and_date(request)
+    now = timezone.now()
+    day, target_date = _day_and_date(request, now=now)
     query = request.GET.get("q", "").strip()
     computer_list = list(Computer.objects.all())
     screen_error = ""
     summary = None
     rows = []
-    now = timezone.now()
+    reconcile_room_user_state(
+        request,
+        now=now,
+        computer_ids=(computer.pk for computer in computer_list),
+    )
     try:
         summary, _ = get_computers_availability(
             target_date=target_date,
@@ -294,9 +295,10 @@ def computers(request):
             else None,
             "computers": rows,
             "screen_error": screen_error,
-            "active_session": _active_session(request, now=now),
+            "active_session": _active_session(request, now=now, reconcile=False),
             "today_query": urlencode({"day": "today", "q": query}),
             "tomorrow_query": urlencode({"day": "tomorrow", "q": query}),
+            "sync_search_day": request.headers.get("HX-Target") == "screen-content",
         }
     )
     return _render_screen(
@@ -314,9 +316,14 @@ def _computer_detail_context(
     selected_starts_at="",
     selected_planned_ends_at="",
 ):
-    today = timezone.localdate()
-    target_date = today if day == "today" else today + timedelta(days=1)
     now = timezone.now()
+    today = timezone.localdate(now)
+    target_date = today if day == "today" else today + timedelta(days=1)
+    reconcile_room_user_state(
+        request,
+        now=now,
+        computer_ids=(computer.pk,),
+    )
     summary, slots_by_computer = get_computers_availability(
         target_date=target_date,
         computers=[computer],
@@ -326,7 +333,7 @@ def _computer_detail_context(
     )
     row = computer_rows(summary=summary, computers=[computer], query="")[0]
     raw_slots = slots_by_computer[computer.pk]
-    active_session = _active_session(request, now=now)
+    active_session = _active_session(request, now=now, reconcile=False)
     active_allocation = _active_allocation(active_session)
     return {
         "computer": computer,
@@ -538,6 +545,7 @@ def _agenda_context(request, *, screen_error=""):
     query = request.GET.get("q", "").strip()
     normalized_query = normalize_search(query)
     now = timezone.now()
+    reconcile_room_user_state(request, now=now)
     reservations = Reservation.objects.filter(
         user_reference=get_demo_user_reference(request)
     ).select_related("computer", "booking_policy")
@@ -705,10 +713,9 @@ def switch_session_computer(request, pk):
 @_room_user_required
 @require_POST
 def finish_session(request, pk):
-    active_session = get_object_or_404(
+    owned_session = get_object_or_404(
         UseSession,
         pk=pk,
-        status=UseSession.Status.ACTIVE,
         user_reference=get_demo_user_reference(request),
     )
     serializer = UsageSessionFinishSerializer(
@@ -725,8 +732,8 @@ def finish_session(request, pk):
             status=400,
         )
     try:
-        finish_usage_session(
-            session_id=active_session.pk,
+        result = finish_usage_session(
+            session_id=owned_session.pk,
             actor_profile=get_demo_profile(request),
             actor_reference=get_demo_user_reference(request),
             **serializer.validated_data,
@@ -741,7 +748,13 @@ def finish_session(request, pk):
             ),
             status=error.status_code,
         )
-    messages.success(request, "Saída registrada e computador liberado.")
+    if result.automatic:
+        messages.info(
+            request,
+            "A sessão já havia chegado ao fim e foi encerrada automaticamente.",
+        )
+    else:
+        messages.success(request, "Saída registrada e computador liberado.")
     return _redirect_response(request, "web:computers")
 
 

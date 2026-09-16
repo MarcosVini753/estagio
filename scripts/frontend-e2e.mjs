@@ -30,7 +30,7 @@ async function selectProfile(page, profileName, destination) {
   await page.waitForURL(destination);
 }
 
-async function assertSidebarIsFixed(page, selector) {
+async function assertSidebarIsFixed(page, selector, scrollContainerSelector) {
   const sidebar = page.locator(selector);
   const getMetrics = () =>
     sidebar.evaluate((element) => {
@@ -53,13 +53,16 @@ async function assertSidebarIsFixed(page, selector) {
     `${selector} deve ocupar toda a altura da janela`,
   );
 
-  await page.evaluate(() => {
+  const scrollContainer = page.locator(scrollContainerSelector);
+  const scrollTop = await scrollContainer.evaluate((element) => {
     const spacer = document.createElement("div");
     spacer.dataset.e2eSidebarScrollSpacer = "";
     spacer.style.height = "200vh";
-    document.body.append(spacer);
-    window.scrollTo(0, document.documentElement.scrollHeight);
+    element.append(spacer);
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop;
   });
+  assert.ok(scrollTop > 0, `${scrollContainerSelector} deve rolar de verdade`);
 
   const scrolledMetrics = await getMetrics();
   assert.deepEqual(
@@ -68,9 +71,9 @@ async function assertSidebarIsFixed(page, selector) {
     `${selector} deve permanecer fixa após a rolagem`,
   );
 
-  await page.evaluate(() => {
-    document.querySelector("[data-e2e-sidebar-scroll-spacer]")?.remove();
-    window.scrollTo(0, 0);
+  await scrollContainer.evaluate((element) => {
+    element.querySelector("[data-e2e-sidebar-scroll-spacer]")?.remove();
+    element.scrollTop = 0;
   });
 }
 
@@ -222,7 +225,11 @@ try {
   await selectRoomUser(desktopPage, "desktop");
   assert.equal(await desktopPage.locator(".desktop-sidebar").isVisible(), true);
   assert.equal(await desktopPage.locator(".mobile-navigation").isVisible(), false);
-  await assertSidebarIsFixed(desktopPage, ".desktop-sidebar");
+  await assertSidebarIsFixed(
+    desktopPage,
+    ".desktop-sidebar",
+    ".app-content",
+  );
   assert.equal(await desktopPage.getByRole("heading", { name: "Sala de Informática" }).first().isVisible(), true);
   await desktop.close();
 
@@ -250,7 +257,12 @@ try {
     hasText: "Registrar saída?",
   });
   await assert.equal(await confirmationDialog.isVisible(), true);
-  await confirmationPage.waitForTimeout(100);
+  await confirmationPage.waitForTimeout(15_500);
+  assert.equal(
+    await confirmationDialog.isVisible(),
+    true,
+    "A atualização periódica não fecha o diálogo em uso",
+  );
   assert.equal(finishRequests, 0, "Abrir a confirmação não encerra a sessão");
   await confirmationDialog
     .locator('form[method="dialog"] button[data-confirm-cancel]')
@@ -332,7 +344,11 @@ try {
     await supervisorPage.locator(".staff-mobile-navigation").isVisible(),
     false,
   );
-  await assertSidebarIsFixed(supervisorPage, ".staff-sidebar");
+  await assertSidebarIsFixed(
+    supervisorPage,
+    ".staff-sidebar",
+    ".staff-content",
+  );
   await supervisorPage
     .getByRole("link", { name: "Inventário", exact: true })
     .click();
@@ -349,7 +365,9 @@ try {
   await supervisorPage.getByRole("link", { name: "Parâmetros" }).click();
   await supervisorPage.waitForURL("**section=policies");
   assert.ok(
-    await supervisorPage.getByRole("heading", { name: "Política vigente" }).count(),
+    await supervisorPage
+      .getByRole("heading", { name: "Política de agendamento" })
+      .count(),
   );
   await supervisorPage
     .getByRole("link", { name: "Relatórios", exact: true })

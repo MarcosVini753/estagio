@@ -46,9 +46,14 @@ class Command(BaseCommand):
             f"Reconciliação contínua a cada {RECONCILE_INTERVAL_SECONDS}s. "
             "Interrompa com Ctrl+C."
         )
-        while True:
-            try:
-                self.run_once()
-            except Exception as error:
-                self.stderr.write(self.style.ERROR(f"Falha na reconciliação: {error}"))
-            time.sleep(RECONCILE_INTERVAL_SECONDS)
+        try:
+            while True:
+                try:
+                    self.run_once()
+                except Exception as error:
+                    self.stderr.write(
+                        self.style.ERROR(f"Falha na reconciliação: {error}")
+                    )
+                time.sleep(RECONCILE_INTERVAL_SECONDS)
+        except KeyboardInterrupt:
+            self.stdout.write("Reconciliação contínua encerrada.")

@@ -46,7 +46,11 @@ class LibrarySupervisorWebTest(TestCase):
 
     def select_supervisor(self):
         response = self.client.post("/", {"profile": "LIBRARY_SUPERVISOR"})
-        self.assertRedirects(response, "/supervisor/")
+        self.assertRedirects(
+            response,
+            "/supervisor/",
+            fetch_redirect_response=False,
+        )
 
     def weekly_windows(self, value="08:00-12:00,13:00-18:00"):
         return {f"windows_{weekday}": value for weekday in Weekday.values}
@@ -90,6 +94,7 @@ class LibrarySupervisorWebTest(TestCase):
         page = self.client.get("/supervisor/computadores/?q=acessível")
         self.assertContains(page, "PC-02")
         self.assertContains(page, "Próximo à entrada")
+        self.assertContains(page, "Ambiente de demonstração")
 
     def test_supervisor_manages_shifts_without_changing_calendar(self):
         self.select_supervisor()

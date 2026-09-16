@@ -1,4 +1,6 @@
 <main id="staff-content" class="staff-content screen-enter" tabindex="-1">
+  {% include "components/demo_warning.html" %}
+
   {% for notice in active_notices %}
     <article class="notice notice-{{ notice.notice_type|lower }}" role="{% if notice.notice_type == 'CLOSURE' %}alert{% else %}status{% endif %}">
       <strong>{{ notice.title }}</strong>

@@ -68,4 +68,4 @@ frontend-check:
 	$(NPM) run check:frontend
 
 frontend-e2e:
-	$(NPM) run test:e2e
+	cd backend && RUN_FRONTEND_E2E=1 $(PYTHON) manage.py test apps.web.tests.test_frontend_e2e --noinput

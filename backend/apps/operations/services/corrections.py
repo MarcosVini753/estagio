@@ -5,6 +5,7 @@ from django.db.models import Q
 
 from apps.audit.models import AuditEvent
 from apps.configuration.selectors import get_historical_shifts_at
+from apps.configuration.services.shifts import lock_shift_configuration
 from apps.core.api.errors import (
     SessionCorrectionInvalid,
     SessionCorrectionReasonRequired,
@@ -123,6 +124,8 @@ def correct_usage_session(
     if not correction_reason:
         raise SessionCorrectionReasonRequired()
 
+    if started_at is not None:
+        lock_shift_configuration()
     session = UseSession.objects.select_for_update().get(pk=session_id)
     allocations = list(session.allocations.select_for_update().order_by("sequence"))
     if not allocations:

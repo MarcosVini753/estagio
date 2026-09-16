@@ -30,6 +30,7 @@ from apps.operations.services.computer_state import (
 
 from .http import is_htmx as _is_htmx
 from .http import service_error_message as _exception_message
+from .operational_state import reconcile_operational_state
 from .pagination import paginate
 from .presenters import computer_rows, flatten_serializer_errors, normalize_search
 
@@ -161,7 +162,8 @@ def _redirect(request, name, **kwargs):
 
 
 def _dashboard_context(request, *, screen_error=""):
-    today = timezone.localdate()
+    current = reconcile_operational_state()
+    today = timezone.localdate(current)
     try:
         operating_day = resolve_operating_day(today)
     except APIException as error:
@@ -202,15 +204,17 @@ def dashboard(request):
 
 
 def _computers_context(request, *, screen_error=""):
+    current = reconcile_operational_state()
     query = request.GET.get("q", "").strip()
     computers = list(Computer.objects.all())
     rows = []
     room = None
     try:
         room, _ = get_computers_availability(
-            target_date=timezone.localdate(),
+            target_date=timezone.localdate(current),
             computers=computers,
             user_reference=None,
+            now=current,
         )
         rows = computer_rows(summary=room, computers=computers, query=query)
         active_sessions = {
@@ -459,6 +463,7 @@ def transition_occurrence_view(request, pk):
 
 
 def _history_context(request):
+    reconcile_operational_state()
     query = request.GET.get("q", "").strip()
     sessions = _sessions_queryset().exclude(status=UseSession.Status.ACTIVE)
     if query:
@@ -525,6 +530,7 @@ def _history_detail_context(request, session, *, form_error="", form_data=None):
 
 
 def _history_session(pk, *, include_active=False):
+    reconcile_operational_state()
     sessions = _sessions_queryset()
     if not include_active:
         sessions = sessions.exclude(status=UseSession.Status.ACTIVE)

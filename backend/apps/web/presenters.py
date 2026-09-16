@@ -190,12 +190,8 @@ def room_presenter(room: dict, is_today: bool) -> dict:
     for window in room.get("operating_windows", []):
         opens_at = window["opens_at"]
         closes_at = window["closes_at"]
-        opens_display = (
-            opens_at[:5] if isinstance(opens_at, str) else opens_at.strftime("%H:%M")
-        )
-        closes_display = (
-            closes_at[:5] if isinstance(closes_at, str) else closes_at.strftime("%H:%M")
-        )
+        opens_display = opens_at.strftime("%H:%M")
+        closes_display = closes_at.strftime("%H:%M")
         formatted_windows.append(
             {
                 **window,
