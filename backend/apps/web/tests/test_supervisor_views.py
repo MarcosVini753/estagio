@@ -457,6 +457,77 @@ class LibrarySupervisorWebTest(TestCase):
             AuditEvent.objects.filter(action="REPORT_CONFIGURATION_UPDATED").exists()
         )
 
+    def test_supervisor_can_open_all_report_views_with_server_side_filters(self):
+        self.select_supervisor()
+        cases = [
+            (
+                {"report": "daily", "date": self.today.isoformat()},
+                "Relatório diário",
+                "Calendário efetivo",
+            ),
+            (
+                {
+                    "report": "monthly",
+                    "year": self.today.year,
+                    "month": self.today.month,
+                },
+                "Relatório mensal",
+                "Minutos operacionais",
+            ),
+            (
+                {"report": "annual", "year": self.today.year + 1},
+                "Relatório anual",
+                "Meses de",
+            ),
+            (
+                {
+                    "report": "indicators",
+                    "starts_on": self.today.replace(day=1).isoformat(),
+                    "ends_on": self.today.isoformat(),
+                },
+                "Indicadores gerenciais",
+                "Uso por computador",
+            ),
+        ]
+
+        for query, heading, table_title in cases:
+            with self.subTest(report=query["report"]):
+                response = self.client.get("/supervisor/relatorios/", query)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, heading)
+                self.assertContains(response, table_title)
+                self.assertContains(response, "Baixar esta visão")
+                self.assertContains(response, "format=CSV")
+                self.assertContains(response, 'method="get"')
+
+    def test_report_filters_support_htmx_and_preserve_invalid_values(self):
+        self.select_supervisor()
+        partial = self.client.get(
+            "/supervisor/relatorios/",
+            {"report": "annual", "year": self.today.year + 1},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="staff-content",
+        )
+        invalid = self.client.get(
+            "/supervisor/relatorios/",
+            {
+                "report": "indicators",
+                "starts_on": "2025-01-01",
+                "ends_on": "2026-01-02",
+            },
+        )
+
+        self.assertEqual(partial.status_code, 200)
+        self.assertContains(partial, 'id="staff-content"')
+        self.assertNotContains(partial, "<!doctype html>")
+        self.assertEqual(invalid.status_code, 400)
+        self.assertContains(
+            invalid,
+            "O período pode possuir no máximo 366 dias.",
+            status_code=400,
+        )
+        self.assertContains(invalid, 'value="2025-01-01"', status_code=400)
+
     def test_booking_policy_versioning_shows_both_current_and_future_version_with_dates(
         self,
     ):

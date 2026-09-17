@@ -376,6 +376,27 @@ try {
   assert.ok(
     await supervisorPage.getByRole("heading", { name: "Relatório mensal" }).count(),
   );
+  for (const [tab, heading, reportKey] of [
+    ["Diário", "Relatório diário", "daily"],
+    ["Anual", "Relatório anual", "annual"],
+    ["Indicadores", "Indicadores gerenciais", "indicators"],
+    ["Mensal", "Relatório mensal", "monthly"],
+  ]) {
+    await supervisorPage.getByRole("link", { name: tab, exact: true }).click();
+    await supervisorPage.waitForURL(`**report=${reportKey}**`);
+    assert.ok(
+      await supervisorPage.getByRole("heading", { name: heading }).count(),
+    );
+  }
+  const [reportDownload] = await Promise.all([
+    supervisorPage.waitForEvent("download"),
+    supervisorPage.getByRole("link", { name: /^CSV/ }).click(),
+  ]);
+  assert.match(
+    reportDownload.suggestedFilename(),
+    /^relatorio-mensal-\d{4}-\d{2}\.csv$/,
+  );
+  assert.ok(await reportDownload.path(), "O arquivo de relatório deve ser baixado");
   await supervisorDesktop.close();
 
   const crossProfile = await browser.newContext({
@@ -466,6 +487,24 @@ try {
   await noScriptPage.waitForURL("**/monitor/computadores/");
   assert.equal(
     await noScriptPage.getByText("Alterar estado", { exact: true }).first().isVisible(),
+    true,
+  );
+  await selectProfile(
+    noScriptPage,
+    "Supervisor da Biblioteca",
+    "**/supervisor/",
+  );
+  await noScriptPage
+    .getByRole("link", { name: "Relatórios", exact: true })
+    .last()
+    .click();
+  await noScriptPage.waitForURL("**/supervisor/relatorios/");
+  await noScriptPage.getByRole("link", { name: "Diário", exact: true }).click();
+  await noScriptPage.waitForURL("**report=daily**");
+  assert.equal(
+    await noScriptPage
+      .getByRole("heading", { name: "Relatório diário" })
+      .isVisible(),
     true,
   );
   await noScript.close();

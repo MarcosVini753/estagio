@@ -1134,6 +1134,60 @@ svg {
   gap: 0.7rem;
 }
 
+.report-tabs {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.report-tab {
+  min-height: 44px;
+  display: inline-flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.6rem 0.9rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.report-tab-active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.report-toolbar,
+.report-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.report-toolbar small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+}
+
+.report-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.report-warning {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .report-filter .button {
   align-self: end;
 }
@@ -1187,6 +1241,13 @@ svg {
   display: block;
   color: var(--muted);
   font-size: 0.62rem;
+}
+
+.report-table th small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 600;
 }
 
 .problem-form {

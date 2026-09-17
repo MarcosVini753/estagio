@@ -200,10 +200,7 @@ class MonthlyReportAPITest(APITestCase):
         self.select_profile()
 
         report_now = report_datetime(2, 12, 19)
-        with (
-            patch("apps.reports.projections.timezone.now", return_value=report_now),
-            patch("apps.reports.api.views.timezone.now", return_value=report_now),
-        ):
+        with patch("apps.reports.api.views.timezone.now", return_value=report_now):
             response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
         self.assertEqual(response.status_code, 200)
