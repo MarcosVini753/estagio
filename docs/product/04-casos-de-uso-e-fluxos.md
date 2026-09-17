@@ -63,7 +63,7 @@ Possui **todos** os casos de uso e fluxos do Monitor da Sala, além dos seguinte
 - `UC-SUP-Publicar aviso`: publicar ou desativar uma comunicação interna;
 - configurar parâmetros de relatório;
 - analisar uso por período, turno, curso/setor e computador;
-- identificar maior movimento e demanda;
+- identificar os períodos de maior uso observado;
 - acompanhar taxa de ocupação;
 - gerar relatórios consolidados.
 

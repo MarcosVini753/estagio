@@ -194,7 +194,13 @@ git diff --check
 - sessões de uso: entrada, troca de computador, saída e correção;
 - ocorrências;
 - indisponibilidade de computador com transferência/realocação atômica;
-- relatório mensal JSON.
+- relatórios diário, mensal, anual e de indicadores em JSON;
+- interface gerencial com filtros e exportações CSV, XLSX e PDF.
+
+Para explorar a área com dados históricos, execute `make seed-reports` em um
+banco descartável, selecione **Supervisor da Biblioteca** e abra
+`/supervisor/relatorios/`. A visão mensal é a inicial; as abas mantêm os filtros
+na URL e os downloads respeitam a preferência configurada pelo Supervisor.
 
 ## Seeds de demonstração
 

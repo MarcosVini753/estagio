@@ -4,7 +4,14 @@ Repositório de documentação, diagramas, protótipo navegável e implementaç�
 
 ## Estado atual
 
-O sistema já implementa reservas, sessões de uso, troca de computador, saída, ocorrências, calendário operacional, indisponibilidade de computador e relatório mensal. Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca possuem interfaces funcionais e responsivas; o Administrador continua selecionável no MVP, mas sua interface própria ainda não está disponível. Consulte [docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md) para o detalhamento.
+O sistema já implementa reservas, sessões de uso, troca de computador, saída,
+ocorrências, calendário operacional, indisponibilidade de computador e
+relatórios diário, mensal, anual e de indicadores, com exportação CSV, XLSX e
+PDF. Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca possuem
+interfaces funcionais e responsivas; o Administrador continua selecionável no
+MVP, mas sua interface própria ainda não está disponível. Consulte
+[docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md)
+para o detalhamento.
 
 ## Regras centrais
 
@@ -77,6 +84,11 @@ Mantenha o terminal de `make run` aberto. Para pará-lo, use `Ctrl+C`.
 - `make seed-reports`: cria uma massa histórica para demonstrar relatórios. Ele
   executa um reset explícito dos próprios dados de relatório; use-o somente em
   banco descartável de desenvolvimento.
+
+Depois de `make seed-reports`, selecione **Supervisor da Biblioteca**, abra
+**Relatórios** e alterne entre Diário, Mensal, Anual e Indicadores. Os filtros
+funcionam com ou sem JavaScript e os botões CSV, Planilha e PDF baixam a mesma
+projeção exibida na tela.
 
 ### Configuração local e porta do banco
 
@@ -168,4 +180,5 @@ make test
 
 ## Próxima etapa
 
-Implementar as demais projeções e exportações a partir das mesmas regras do relatório mensal.
+Validar os relatórios com dados representativos e medir desempenho antes de
+introduzir cache, processamento assíncrono ou novas visualizações.

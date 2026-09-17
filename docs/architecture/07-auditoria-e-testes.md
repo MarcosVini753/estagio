@@ -95,7 +95,8 @@ Cobrir os fluxos principais do protótipo:
 8. acessar e operar o painel do Monitor;
 9. gerenciar inventário, funcionamento e avisos pelo Supervisor;
 10. pré-visualizar o impacto de calendário antes da confirmação;
-11. acessar o relatório mensal com parâmetros gerenciais.
+11. alternar relatórios diário, mensal, anual e indicadores e baixar ao menos um
+    arquivo real com parâmetros gerenciais.
 
 O E2E usa `StaticLiveServerTestCase`, banco de teste criado pelo Django e relógio controlado somente no processo de teste. A massa de sessão e reserva é criada pelos serviços de domínio; o Playwright acessa a aplicação real em porta efêmera. A atualização automática da Agenda deve ser testada com diálogo aberto e resposta já em andamento.
 
@@ -127,6 +128,11 @@ Criar factories para:
 - ocorrências.
 
 O calendário mensal deve resolver exceções, versões, dias e janelas em lote. O teste de desempenho limita a resolução de um mês a seis consultas, impedindo a reintrodução de N+1.
+
+Ano e indicadores também são carregados em lote. Os testes devem manter a
+quantidade de consultas independente da quantidade de dias e validar CSV com a
+biblioteca padrão, XLSX pela estrutura ZIP/XML e PDF pela assinatura, metadados
+e paginação.
 
 Nenhum teste ou fixture inicial deve conter dados pessoais reais.
 

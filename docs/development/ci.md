@@ -45,11 +45,13 @@ Valida a interface Django real em um ambiente efêmero:
 4. inicia o servidor estático Django real em uma porta efêmera;
 5. seleciona o Usuário da Sala com identidade fictícia e valida layout, navegação e gestos em mobile e desktop;
 6. seleciona o Monitor da Sala em viewport mobile, acessa ocorrências e registra um problema real;
-7. seleciona o Supervisor da Biblioteca em desktop e percorre inventário, configurações e relatório mensal;
+7. seleciona o Supervisor da Biblioteca em desktop, percorre inventário e
+   configurações, alterna as quatro visões de relatório e baixa um CSV real;
 8. testa swipe entre hoje e amanhã, swipe da navegação inferior e distinção de rolagem vertical;
 9. percorre o ciclo interligado de ocorrência entre Usuário da Sala, Monitor e Supervisor, confirmando o retorno do estado resolvido ao criador;
 10. mantém diálogos abertos durante uma atualização automática, confirma que não há troca de conteúdo e testa Voltar, `Esc` e envio único;
-11. falha caso existam erros JavaScript não tratados no navegador.
+11. confirma a navegação convencional dos relatórios com JavaScript desativado;
+12. falha caso existam erros JavaScript não tratados no navegador.
 
 O job possui limite de 15 minutos. Em `ubuntu-latest`, ele baixa somente o
 binário Chromium compatível com a versão bloqueada do Playwright; não executa

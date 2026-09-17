@@ -66,8 +66,9 @@ Pode executar **todas** as ações do Monitor da Sala e, adicionalmente:
 - visualizar reservas afetadas e confirmar seu cancelamento com justificativa;
 - publicar e desativar avisos internos;
 - configurar parâmetros de relatórios;
-- consultar indicadores gerenciais;
-- gerar relatórios consolidados.
+- consultar indicadores gerenciais por período;
+- gerar relatórios diário, mensal e anual;
+- exportar as projeções em CSV, XLSX e PDF.
 
 Nos diagramas separados, as ações herdadas do Monitor da Sala podem ser omitidas para reduzir poluição visual.
 

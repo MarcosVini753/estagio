@@ -343,7 +343,11 @@ python manage.py reconcile_operational_deadlines
 
 Sem `--watch`, o comando executa uma rodada. Com `--watch`, repete a cada 60 segundos e continua após falhas transitórias. Ele registra automaticamente a saída e encerra sessões com `now >= exit_deadline_at` e cancela reservas vencidas quando `now > check_in_deadline_at`.
 
-Depois de autorizar e validar a requisição, consultas de disponibilidade, reservas, sessões, painéis operacionais e relatório mensal também reconciliam o escopo que observarão. Entrada, troca e manutenção reutilizam o mesmo serviço antes de prosseguir. O processo periódico continua necessário para intervalos sem acesso.
+Depois de autorizar e validar a requisição, consultas de disponibilidade,
+reservas, sessões, painéis operacionais e relatórios também reconciliam o escopo
+que observarão. Entrada, troca e manutenção reutilizam o mesmo serviço antes de
+prosseguir. O processo periódico continua necessário para intervalos sem
+acesso.
 
 ```text
 POST /api/usage-sessions/{id}/correct/
@@ -365,22 +369,42 @@ Usuário da Sala consulta apenas as próprias ocorrências. Perfis operacionais 
 ### Relatórios
 
 ```text
+GET /api/reports/daily/?date=YYYY-MM-DD
 GET /api/reports/monthly/?year=YYYY&month=M
+GET /api/reports/annual/?year=YYYY
+GET /api/reports/indicators/?starts_on=YYYY-MM-DD&ends_on=YYYY-MM-DD
 ```
 
-O relatório mensal é restrito ao Supervisor e Administrador. A resposta contém todos os dias do mês, `calendar_status`, `calendar_source`, `operating_minutes`, colunas por `Shift.series_key`, totais por turno e as métricas de visitas, pessoas distintas, reservas totais e `reservations_by_status`, ocorrências, computadores utilizados, minutos operacionais, minutos alocados e tempo médio das sessões finalizadas. Sessões sem turno são agrupadas em `NOT_INFORMED`.
+Todos são restritos ao Supervisor e Administrador e compartilham `period`,
+`summary`, `occupancy` e `warnings`. O diário acrescenta calendário efetivo e
+turnos; o mensal mantém todos os dias, origem, situação, minutos operacionais e
+matriz por `Shift.series_key`; o anual retorna sempre os 12 meses; indicadores
+agrupam por turno lógico, vínculo, unidade, computador, dia e bloco de 15
+minutos. Sessões sem turno são agrupadas em `NOT_INFORMED`.
 
-## Endpoints planejados
+As datas de indicadores são inclusivas, a inicial não pode superar a final e o
+intervalo máximo é de 366 dias. A taxa usa alocações reais sobre a interseção do
+calendário com períodos históricos `AVAILABLE`, limitada por `now`. Sem
+denominador, `rate_percent` é `null`; computadores cujo histórico de mudança de
+estado é incoerente são excluídos e identificados em `warnings`.
 
-### Relatórios
+Os downloads usam a mesma projeção dos endpoints JSON:
 
 ```text
-GET /api/reports/daily/
-GET /api/reports/annual/
-GET /api/reports/occupancy/
+GET /api/reports/daily/export/?date=YYYY-MM-DD&format=CSV|XLSX|PDF
+GET /api/reports/monthly/export/?year=YYYY&month=M&format=CSV|XLSX|PDF
+GET /api/reports/annual/export/?year=YYYY&format=CSV|XLSX|PDF
+GET /api/reports/indicators/export/?starts_on=YYYY-MM-DD&ends_on=YYYY-MM-DD&format=CSV|XLSX|PDF
 ```
 
-O relatório semanal permanece como evolução futura e não possui endpoint definido na Etapa 4.
+Quando `format` é omitido, a resposta usa
+`ReportConfiguration.default_format`. CSV usa UTF-8 com BOM e `;`; XLSX separa
+resumo e agrupamentos; PDF gera tabelas multipágina. Os nomes seguem
+`relatorio-diario-AAAA-MM-DD`, `relatorio-mensal-AAAA-MM`,
+`relatorio-anual-AAAA` e `indicadores-DATA-a-DATA`. Arquivos não incluem
+referências individuais de usuários.
+
+O relatório semanal permanece fora do escopo e não possui endpoint.
 
 ## Formato de erro
 

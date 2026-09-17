@@ -116,6 +116,20 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - O relatório mensal deve reproduzir dias nas linhas, turnos nas colunas e totais no rodapé.
 - Total de visitas significa quantidade de sessões, não quantidade de alocações.
 - Taxa de ocupação usa tempo alocado dividido pelo tempo operacional disponível.
+- O tempo disponível é calculado por computador, intersectando as janelas do
+  calendário com períodos históricos em estado `AVAILABLE`, e termina no
+  instante atual quando o período ainda não acabou.
+- Computador com sequência histórica de estado contraditória não participa da
+  taxa e deve aparecer como ressalva do relatório.
+- Sem tempo disponível elegível, a taxa é desconhecida (`null`), não zero.
+- Horário de maior uso mede alocações reais em blocos de 15 minutos. Como o
+  sistema não registra fila nem tentativas recusadas, essa métrica não deve ser
+  apresentada como demanda não atendida.
+- O relatório anual contém os 12 meses; pessoas distintas e médias são
+  recalculadas pelos registros do ano, sem somar deduplicações nem tirar média
+  das médias mensais.
+- Indicadores aceitam datas inicial e final inclusivas em intervalo de até 366
+  dias.
 - Domingo regular e demais dias fechados possuem zero tempo operacional; no sábado regular, o denominador termina às 13h.
 - Períodos de manutenção e inatividade devem ser excluídos do tempo operacional disponível quando houver histórico suficiente.
 
