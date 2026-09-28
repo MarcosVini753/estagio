@@ -87,6 +87,7 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - Correções administrativas exigem justificativa e auditoria.
 - A saída antecipada é permitida. A sessão vencida tem a saída registrada automaticamente pela reconciliação no prazo de saída, com motivo `TIME_LIMIT_REACHED`.
 - Leituras operacionais autorizadas reconciliam primeiro somente os usuários, computadores ou período consultados. O processo periódico mantém a mesma regra quando não há acessos.
+- Em relatórios, uma alocação ainda aberta que começou antes do fim do período exige reconciliação da sessão vencida, mesmo quando seu prazo de saída é anterior ao início do período.
 - Confirmar a saída depois de um encerramento automático devolve o estado já finalizado sem repetir gravação ou auditoria.
 - Não existe extensão de sessão neste P0.
 

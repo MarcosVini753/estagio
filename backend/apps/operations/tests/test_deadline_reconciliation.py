@@ -185,6 +185,42 @@ class ReconcileScopeTest(TestCase):
         session.refresh_from_db()
         self.assertEqual(session.status, UseSession.Status.FINISHED)
 
+    def test_period_scope_reconciles_old_open_allocation_but_not_later_session(self):
+        current = timezone.now()
+        old_deadline = current - timedelta(hours=2)
+        old_session = create_use_session(
+            user_reference="aluno-janeiro",
+            started_at=old_deadline - timedelta(minutes=30),
+            planned_ends_at=old_deadline - timedelta(minutes=3),
+            exit_deadline_at=old_deadline,
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        old_allocation = ComputerAllocation.objects.create(
+            session=old_session,
+            computer=self.computer,
+            sequence=1,
+            started_at=old_session.started_at,
+        )
+        later_session = self.occupy(
+            user_reference="aluno-depois-do-periodo",
+            computer=self.other_computer,
+        )
+
+        result = reconcile_deadlines(
+            now=current,
+            scope=ReconcileScope(
+                period=(current - timedelta(hours=1), current - timedelta(minutes=30))
+            ),
+        )
+
+        old_session.refresh_from_db()
+        old_allocation.refresh_from_db()
+        later_session.refresh_from_db()
+        self.assertEqual(result.expired_sessions, 1)
+        self.assertEqual(old_session.status, UseSession.Status.FINISHED)
+        self.assertEqual(old_allocation.ended_at, old_deadline)
+        self.assertEqual(later_session.status, UseSession.Status.ACTIVE)
+
 
 class AvailabilityReconciliationTest(TestCase):
     def setUp(self):

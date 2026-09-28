@@ -44,11 +44,14 @@ def _scope_sessions(queryset: QuerySet, scope: ReconcileScope | None) -> QuerySe
     if scope.computer_ids is not None or scope.user_references is not None:
         queryset = queryset.filter(observed)
     if scope.period is not None:
-        starts_at, ends_at = scope.period
-        queryset = queryset.filter(
-            planned_starts_at__lt=ends_at,
-            exit_deadline_at__gte=starts_at,
-        )
+        _, ends_at = scope.period
+        # A mesma alocação aberta seria incluída pela projeção do período,
+        # mesmo que o prazo da sessão tenha terminado antes de seu início.
+        open_session_ids = ComputerAllocation.objects.filter(
+            started_at__lt=ends_at,
+            ended_at__isnull=True,
+        ).values("session_id")
+        queryset = queryset.filter(pk__in=open_session_ids)
     return queryset
 
 

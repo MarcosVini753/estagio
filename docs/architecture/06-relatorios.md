@@ -8,10 +8,12 @@ chamam a mesma camada de geração para que uma correção legítima apareça de
 forma idêntica em todas as saídas.
 
 Antes de carregar os dados, a geração captura um único `now` e reconcilia os
-prazos do período. Os selectors carregam sessões, alocações, reservas,
-ocorrências, turnos, calendários e históricos de estado em lote; as projeções
-seguintes são puras. Não há cache global, materialized view ou processamento
-assíncrono.
+prazos do período. O escopo inclui sessões vencidas com alocação ainda aberta
+iniciada antes do fim consultado, mesmo que o prazo de saída seja anterior ao
+início do período; assim a alocação é encerrada antes da projeção. Os selectors
+carregam sessões, alocações, reservas, ocorrências, turnos, calendários e
+históricos de estado em lote; as projeções seguintes são puras. Não há cache
+global, materialized view ou processamento assíncrono.
 
 ```text
 Banco → reconciliação → selectors → projections → JSON/HTML/exporters

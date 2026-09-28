@@ -88,6 +88,38 @@ class ConsolidatedReportsAPITest(APITestCase):
         self.assertEqual(response.data["summary"]["distinct_users"], 1)
         self.assertEqual(response.data["occupancy"]["allocated_minutes"], 60)
 
+    def test_monthly_report_reconciles_open_allocation_from_previous_month(self):
+        january = date(2026, 1, 31)
+        overdue = create_use_session(
+            user_reference="aluno-janeiro-vencido",
+            started_at=at(january, 8),
+            planned_ends_at=at(january, 9),
+            exit_deadline_at=at(january, 9, 3),
+            entry_recorded_by_profile="ROOM_USER",
+        )
+        other_computer = Computer.objects.create(code="PC-02")
+        Computer.objects.filter(pk=other_computer.pk).update(
+            created_at=at(date(2026, 1, 1))
+        )
+        allocation = ComputerAllocation.objects.create(
+            session=overdue,
+            computer=other_computer,
+            sequence=1,
+            started_at=overdue.started_at,
+        )
+
+        response = self.client.get("/api/reports/monthly/", {"year": 2026, "month": 2})
+
+        overdue.refresh_from_db()
+        allocation.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(overdue.status, UseSession.Status.FINISHED)
+        self.assertEqual(overdue.ended_at, at(january, 9, 3))
+        self.assertEqual(allocation.ended_at, at(january, 9, 3))
+        self.assertEqual(response.data["summary"]["visits"], 1)
+        self.assertEqual(response.data["summary"]["allocated_minutes"], 60)
+        self.assertEqual(response.data["occupancy"]["allocated_minutes"], 60)
+
     def test_annual_report_always_returns_twelve_months(self):
         response = self.client.get("/api/reports/annual/", {"year": 2026})
 
