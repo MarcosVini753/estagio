@@ -38,9 +38,9 @@ A migração é incremental. Os fluxos do Usuário da Sala, Monitor da Sala e Su
 - usar Monitor da Sala, não Servidor da Biblioteca;
 - separar estado operacional de estado efetivo;
 - permitir reserva de slots consecutivos para horário futuro de hoje ou para amanhã;
-- informar a janela de entrada por reserva, de três minutos antes do início até três minutos depois;
-- permitir uso imediato somente hoje, com duração escolhida antes da entrada;
-- exibir fim planejado e prazo de saída três minutos depois;
+- liberar a ação de entrada conforme a janela operacional interna, sem exibir seus limites ao Usuário da Sala;
+- permitir uso imediato somente hoje, com saída planejada escolhida antes da entrada;
+- exibir fim planejado, sem expor o prazo operacional de saída;
 - impedir intervalo que atravesse reserva ou fechamento;
 - impedir horários passados;
 - substituir agregados simulados por sessões e alocações;
@@ -51,6 +51,6 @@ A migração é incremental. Os fluxos do Usuário da Sala, Monitor da Sala e Su
 
 ## Estado atual
 
-O seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca estão implementados no app Django `web`. Os fluxos usam dados e serviços reais do backend, preservam navegação convencional como alternativa a HTMX e Alpine.js e mantêm o perfil de demonstração visível.
+O seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca estão implementados no app Django `web`. Os fluxos usam dados e serviços reais do backend, preservam navegação convencional como alternativa a HTMX e Alpine.js e mostram o papel selecionado somente quando isso dá contexto ao fluxo.
 
 O Administrador continua exibindo uma página coerente de indisponibilidade. A CI compila os assets versionados e executa o E2E contra a aplicação Django real, com PostgreSQL, migrations e seed, cobrindo os três perfis migrados em mobile e desktop.

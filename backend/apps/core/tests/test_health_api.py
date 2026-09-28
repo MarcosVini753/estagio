@@ -14,10 +14,11 @@ class HealthAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_home_exposes_profile_selection_and_demo_warning(self):
+    def test_home_exposes_profile_selection_without_demo_warning(self):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Escolha seu perfil")
         self.assertContains(response, 'value="ROOM_USER"')
         self.assertContains(response, 'value="ROOM_MONITOR"')
-        self.assertContains(response, "Autorização simulada")
+        self.assertNotContains(response, "Autorização simulada")

@@ -112,12 +112,15 @@ class NextAvailableSlotSerializer(serializers.Serializer):
 
 class ImmediateUsageSerializer(serializers.Serializer):
     can_start_now = serializers.BooleanField()
-    max_slot_count = serializers.IntegerField(min_value=0)
     max_planned_ends_at = serializers.DateTimeField(allow_null=True)
     limited_by = serializers.ChoiceField(
         choices=IMMEDIATE_USAGE_LIMIT_CHOICES,
         allow_null=True,
     )
+
+
+class ImmediateUsageDetailSerializer(ImmediateUsageSerializer):
+    planned_end_options = serializers.ListField(child=serializers.DateTimeField())
 
 
 class ComputerAvailabilityItemSerializer(serializers.Serializer):
@@ -159,6 +162,6 @@ class ComputerSlotsResponseSerializer(serializers.Serializer):
     date = serializers.DateField()
     is_today = serializers.BooleanField()
     slot_duration_minutes = serializers.IntegerField()
-    immediate_usage = ImmediateUsageSerializer()
+    immediate_usage = ImmediateUsageDetailSerializer()
     room = RoomAvailabilitySerializer()
     slots = AvailabilitySlotSerializer(many=True)

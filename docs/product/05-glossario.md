@@ -42,7 +42,7 @@ Registro da visita de um usuário. Mantém o intervalo planejado solicitado e, s
 
 ## Slot
 
-Unidade fixa de 15 minutos usada para compor a duração consecutiva de reservas e usos imediatos.
+Unidade fixa de 15 minutos usada para compor a duração consecutiva de reservas e a grade de fins planejados do uso imediato.
 
 ## Intervalo planejado
 
@@ -62,7 +62,7 @@ Intervalo em que determinado computador foi utilizado dentro de uma sessão. Uma
 
 ## Uso imediato
 
-Início de sessão hoje, em computador disponível, com quantidade de slots escolhida antes da entrada. Não cria reserva para hoje.
+Início de sessão hoje, em computador disponível, com fim planejado escolhido na grade fixa antes da entrada. O horário real de entrada não é arredondado e o fluxo não cria uma reserva.
 
 ## Turno
 
@@ -100,9 +100,9 @@ Registro de problema técnico ou operacional associado opcionalmente a computado
 
 Projeção gerencial diária, mensal ou anual usada pelo Supervisor.
 
-## Perfil de teste
+## Perfil de acesso
 
-Papel selecionado na tela inicial do MVP para simular autorização. Não representa autenticação ou identidade comprovada.
+Papel selecionado na tela inicial do MVP para controlar as funcionalidades disponíveis. Não representa autenticação ou identidade comprovada.
 
 ## MVP
 

@@ -101,7 +101,7 @@ Os snapshots preservam vínculo e unidade no momento da reserva ou entrada. Regi
 
 Estados: `ACTIVE`, `FINISHED`, `CANCELLED`.
 
-O intervalo planejado representa a duração solicitada; `started_at` e `ended_at` representam uso real. Em sessão de reserva, o intervalo e o prazo são copiados da reserva. Em uso imediato, o início planejado é a entrada e o fim soma a quantidade solicitada de slots de 15 minutos.
+O intervalo planejado representa o compromisso de uso; `started_at` e `ended_at` representam uso real. Em sessão de reserva, o intervalo e o prazo são copiados da reserva. Em uso imediato, o início planejado é a entrada e o fim é a marca escolhida na grade global de 15 minutos.
 
 Constraints exigem uma sessão ativa por referência de usuário, início planejado anterior ao fim e prazo não anterior ao fim planejado. Sessão `ACTIVE` não possui saída nem perfil de saída; `FINISHED` e `CANCELLED` possuem ambos. Uso imediato não pode começar antes do início planejado; sessão vinculada a reserva pode começar até três minutos antes dele. O serviço limita o check-in de uma reserva até `check_in_deadline_at`.
 

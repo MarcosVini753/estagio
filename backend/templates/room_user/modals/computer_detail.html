@@ -19,13 +19,13 @@
       {% if day == "today" and immediate_options and not active_session %}
         <section class="dialog-section">
           <h3>Usar agora</h3>
-          <p>Escolha a duração antes de registrar a entrada.</p>
+          <p>Escolha a saída planejada antes de registrar a entrada.</p>
           <form method="post" action="{% url 'web:session-start' %}" hx-post="{% url 'web:session-start' %}" hx-target="#app-dialog-content" hx-swap="innerHTML">
             {% csrf_token %}
             <input type="hidden" name="computer_id" value="{{ computer.pk }}">
-            <label class="field"><span>Duração solicitada</span>
-              <select name="slot_count" required>
-                {% for option in immediate_options %}<option value="{{ option.slot_count }}">{{ option.minutes }} min · uso até {{ option.planned_ends_label }} · saída até {{ option.exit_deadline_label }}</option>{% endfor %}
+            <label class="field"><span>Saída planejada</span>
+              <select name="planned_ends_at" required>
+                {% for option in immediate_options %}<option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>{{ option.planned_ends_label }}</option>{% endfor %}
               </select>
             </label>
             <button class="button button-primary button-full" type="submit">Confirmar entrada</button>
@@ -71,7 +71,7 @@
             <input type="hidden" name="starts_at" value="{{ selected_starts_at }}">
             <label class="field"><span>Duração consecutiva</span>
               <select name="slot_count" required>
-                {% for option in reservation_options %}<option value="{{ option.slot_count }}">{{ option.minutes }} min · {{ option.starts_label }}–{{ option.ends_label }} · entrada de {{ option.check_in_starts_label }} até {{ option.check_in_deadline_label }} · saída até {{ option.exit_deadline_label }}</option>{% endfor %}
+                {% for option in reservation_options %}<option value="{{ option.slot_count }}">{{ option.minutes }} min · {{ option.starts_label }}–{{ option.ends_label }}</option>{% endfor %}
               </select>
             </label>
             <button class="button button-primary button-full" type="submit">Confirmar reserva</button>

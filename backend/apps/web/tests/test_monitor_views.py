@@ -101,7 +101,8 @@ class RoomMonitorWebTest(TestCase):
         self.assertContains(response, session.user_reference)
         self.assertContains(response, self.computer.code)
         self.assertContains(response, "Funcionamento de hoje")
-        self.assertContains(response, "Autorização simulada")
+        self.assertNotContains(response, "Autorização simulada")
+        self.assertNotContains(response, "dados fictícios")
         self.assertContains(partial, 'id="staff-content"')
         self.assertNotContains(partial, "<!doctype html>")
 

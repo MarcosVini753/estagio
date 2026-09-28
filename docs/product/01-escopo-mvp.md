@@ -1,6 +1,6 @@
 # Escopo do MVP
 
-## Seleção de perfil de teste
+## Seleção de perfil
 
 A aplicação permite escolher:
 
@@ -9,7 +9,7 @@ A aplicação permite escolher:
 - Supervisor da Biblioteca;
 - Administrador do Sistema.
 
-A seleção controla menus e autorizações simuladas. Não existe autenticação real.
+A seleção controla menus e autorizações conforme o perfil escolhido. Não existe autenticação real nesta etapa.
 
 ## Usuário da Sala
 
@@ -17,13 +17,13 @@ A seleção controla menus e autorizações simuladas. Não existe autenticaçã
 - consultar o status e as janelas de funcionamento da sala;
 - visualizar avisos operacionais ativos antes e depois de escolher o perfil;
 - consultar computadores e horários;
-- iniciar uso imediato hoje escolhendo uma duração em slots de 15 minutos;
+- iniciar uso imediato hoje escolhendo a saída planejada na grade de 15 minutos;
 - reservar um ou mais slots consecutivos para horário futuro de hoje ou de amanhã;
 - consultar e cancelar suas reservas simuladas;
 - registrar entrada e saída;
 - visualizar sessão ativa;
 - trocar de computador preservando histórico;
-- visualizar horário planejado e prazo de saída da sessão;
+- visualizar horários reais e fim planejado da sessão;
 - informar problema.
 
 ## Monitor da Sala
@@ -68,4 +68,4 @@ O papel existe arquiteturalmente, mas contas, grupos, permissões e login reais 
 
 ## Critério de conclusão
 
-O MVP estará funcional quando permitir selecionar perfil, consultar hoje e amanhã com explicação do funcionamento da sala, reservar somente intervalos consecutivos dentro do calendário operacional, iniciar uma sessão com duração solicitada sem invadir reservas ou fechamento, reconciliar prazos operacionais, encerrar sessão, trocar computador pelo intervalo restante, registrar ocorrência, configurar horários regulares ou temporários com impacto auditado, exibir avisos internos e visualizar relatórios derivados dos registros operacionais.
+O MVP estará funcional quando permitir selecionar perfil, consultar hoje e amanhã com explicação do funcionamento da sala, reservar somente intervalos consecutivos dentro do calendário operacional, iniciar uma sessão escolhendo o fim planejado sem invadir reservas ou fechamento, reconciliar prazos operacionais, encerrar sessão, trocar computador pelo intervalo restante, registrar ocorrência, configurar horários regulares ou temporários com impacto auditado, exibir avisos internos e visualizar relatórios derivados dos registros operacionais.

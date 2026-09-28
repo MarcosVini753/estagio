@@ -55,7 +55,7 @@ from .pagination import paginate
 from .presenters import (
     computer_rows,
     flatten_serializer_errors,
-    immediate_duration_options,
+    immediate_end_options,
     normalize_search,
     reservation_duration_options,
     slot_rows,
@@ -291,13 +291,21 @@ def computers(request):
     )
 
 
-def _computer_detail_context(request, *, computer, day, selected_starts_at=""):
+def _computer_detail_context(
+    request,
+    *,
+    computer,
+    day,
+    selected_starts_at="",
+    selected_planned_ends_at="",
+):
     today = timezone.localdate()
     target_date = today if day == "today" else today + timedelta(days=1)
     summary, slots_by_computer = get_computers_availability(
         target_date=target_date,
         computers=[computer],
         user_reference=get_demo_user_reference(request),
+        include_planned_end_options=True,
     )
     row = computer_rows(summary=summary, computers=[computer], query="")[0]
     raw_slots = slots_by_computer[computer.pk]
@@ -313,7 +321,10 @@ def _computer_detail_context(request, *, computer, day, selected_starts_at=""):
         "reservation_options": reservation_duration_options(
             raw_slots, selected_starts_at
         ),
-        "immediate_options": immediate_duration_options(row["immediate_usage"]),
+        "immediate_options": immediate_end_options(
+            row["immediate_usage"],
+            selected_planned_ends_at=selected_planned_ends_at,
+        ),
         "active_session": active_session,
         "active_allocation": active_allocation,
     }
@@ -336,6 +347,7 @@ def _computer_action_error_response(
     form_error: str,
     status: int,
     selected_starts_at: str = "",
+    selected_planned_ends_at: str = "",
 ):
     try:
         computer = Computer.objects.get(pk=computer_id)
@@ -352,6 +364,7 @@ def _computer_action_error_response(
             computer=computer,
             day=day,
             selected_starts_at=selected_starts_at,
+            selected_planned_ends_at=selected_planned_ends_at,
         )
     except APIException:
         context = {"computer": computer, "day": day}
@@ -369,6 +382,7 @@ def computer_detail(request, pk):
             computer=computer,
             day=day,
             selected_starts_at=request.GET.get("starts_at", ""),
+            selected_planned_ends_at=request.GET.get("planned_ends_at", ""),
         )
     except APIException as error:
         context = {
@@ -529,7 +543,7 @@ def _agenda_context(request, *, screen_error=""):
     visible = list(page.object_list)
     for reservation in visible:
         reservation.status_label = reservation.get_status_display()
-        reservation.check_in_starts_at = reservation.starts_at - timedelta(
+        check_in_starts_at = reservation.starts_at - timedelta(
             minutes=EARLY_CHECK_IN_TOLERANCE_MINUTES
         )
         reservation.can_cancel_ui = (
@@ -538,9 +552,7 @@ def _agenda_context(request, *, screen_error=""):
         )
         reservation.can_check_in_ui = (
             reservation.status == Reservation.Status.CONFIRMED
-            and reservation.check_in_starts_at
-            <= now
-            <= reservation.check_in_deadline_at
+            and check_in_starts_at <= now <= reservation.check_in_deadline_at
         )
     context = _screen_base_context(request, screen="agenda", query=query)
     context.update(
@@ -595,7 +607,7 @@ def start_session(request):
     serializer = UsageSessionStartSerializer(
         data={
             "computer_id": request.POST.get("computer_id"),
-            "slot_count": request.POST.get("slot_count"),
+            "planned_ends_at": request.POST.get("planned_ends_at"),
         }
     )
     if not serializer.is_valid():
@@ -603,6 +615,7 @@ def start_session(request):
             request,
             computer_id=request.POST.get("computer_id"),
             day="today",
+            selected_planned_ends_at=request.POST.get("planned_ends_at", ""),
             form_error=flatten_serializer_errors(serializer.errors),
             status=400,
         )
@@ -620,6 +633,7 @@ def start_session(request):
             request,
             computer_id=serializer.validated_data["computer_id"],
             day="today",
+            selected_planned_ends_at=request.POST.get("planned_ends_at", ""),
             form_error=_exception_message(error),
             status=error.status_code,
         )

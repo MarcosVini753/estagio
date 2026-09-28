@@ -10,7 +10,7 @@ Navegador
 ├── HTMX para interações com o servidor
 ├── Alpine.js para estado local de interface
 ├── Tailwind CSS para apresentação
-├── seletor de perfil de teste
+├── seletor de perfil
 └── documentação OpenAPI
         │
         ▼

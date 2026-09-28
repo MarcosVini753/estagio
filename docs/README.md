@@ -26,7 +26,8 @@ Esta pasta concentra a documentação funcional, arquitetural, operacional e his
 4. [Disponibilidade e agendamento](architecture/03-disponibilidade-e-agendamento.md)
 5. [API](architecture/04-api.md)
 6. [Integração contínua](development/ci.md)
-7. [Estado da implementação](architecture/08-estado-implementacao.md)
+7. [Casos de teste interligados por perfil](development/casos-de-teste-perfis.md)
+8. [Estado da implementação](architecture/08-estado-implementacao.md)
 
 ### Quero manter ou evoluir
 

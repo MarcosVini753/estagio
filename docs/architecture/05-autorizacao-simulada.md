@@ -7,10 +7,10 @@ Permitir que o MVP demonstre diferentes perfis sem implementar autenticação re
 ## Fluxo
 
 1. o visitante abre a aplicação;
-2. escolhe um perfil de teste;
+2. escolhe um perfil de acesso;
 3. o sistema armazena o perfil na sessão Django e, para Usuário da Sala, referência, vínculo e unidade fictícios;
 4. menus, páginas e endpoints aplicam políticas compatíveis com o perfil escolhido;
-5. o usuário pode trocar de perfil para testar outro fluxo.
+5. o usuário pode trocar de perfil para acessar outro fluxo.
 
 ## Perfis
 
@@ -60,4 +60,4 @@ A autenticação real substituirá a escolha de perfil. Os perfis conceituais po
 
 ## Critério de aceitação
 
-A seleção de perfil deve ser claramente identificada na interface como simulação. O seletor inicial informa que o ambiente não possui autenticação real, e as telas funcionais identificam de forma persistente o perfil de teste atual.
+A seleção de perfil deve apresentar os perfis disponíveis e permitir a troca entre eles. A interface mostra o papel selecionado quando isso dá contexto ao fluxo, sem qualificá-lo como perfil de teste ou simulação. A ausência de autenticação real permanece uma restrição técnica e operacional do MVP, documentada neste módulo e na ADR 0005.
