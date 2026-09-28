@@ -2,7 +2,6 @@ from django.db.models import Exists, OuterRef
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.access.services import get_demo_profile, get_demo_user_reference
 from apps.configuration.models import (
     BookingPolicy,
     CalendarException,
@@ -16,7 +15,6 @@ from apps.configuration.selectors import (
     get_active_room_notices,
     get_booking_policy_for_date,
 )
-from apps.core.enums import DemoProfile
 from apps.operations.models import UseSession
 
 from .common import (
@@ -27,7 +25,6 @@ from .common import (
 
 
 def _screen_context(request, *, screen, query="", search_url_name=None):
-    profile = get_demo_profile(request)
     title, section_title, search_placeholder = SCREEN_META[screen]
     return {
         "area": "supervisor",
@@ -40,11 +37,10 @@ def _screen_context(request, *, screen, query="", search_url_name=None):
         "nav_items": [
             {**item, "url": reverse(item["url_name"])} for item in SUPERVISOR_NAV_ITEMS
         ],
-        "current_profile_label": DemoProfile(profile).label,
-        "current_user_reference": get_demo_user_reference(request),
         "active_notices": get_active_room_notices(),
         "area_switch_url": reverse("web:monitor-dashboard"),
         "area_switch_label": "Painel operacional",
+        "area_switch_action_label": "Abrir painel operacional",
     }
 
 

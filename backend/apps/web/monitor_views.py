@@ -126,8 +126,6 @@ def _screen_context(request, *, screen, query="", search_url_name=None):
         "search_url": reverse(search_url_name) if search_url_name else "",
         "query": query,
         "nav_items": nav_items,
-        "current_profile_label": DemoProfile(profile).label,
-        "current_user_reference": get_demo_user_reference(request),
         "active_notices": get_active_room_notices(),
         "area_switch_url": (
             reverse("web:supervisor-dashboard")
@@ -135,6 +133,7 @@ def _screen_context(request, *, screen, query="", search_url_name=None):
             else ""
         ),
         "area_switch_label": "Gestão da biblioteca",
+        "area_switch_action_label": "Abrir gestão da biblioteca",
     }
 
 

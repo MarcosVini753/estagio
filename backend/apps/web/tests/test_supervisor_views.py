@@ -63,6 +63,16 @@ class LibrarySupervisorWebTest(TestCase):
         monitor = self.client.get("/supervisor/")
         self.assertRedirects(monitor, "/")
 
+    def test_dashboard_hides_demo_identity_and_links_to_operational_panel(self):
+        self.select_supervisor()
+
+        response = self.client.get("/supervisor/")
+
+        self.assertContains(response, "Abrir painel operacional")
+        self.assertContains(response, 'href="/monitor/"')
+        self.assertNotContains(response, "Supervisor da Biblioteca")
+        self.assertNotContains(response, "demo-library-supervisor")
+
     def test_supervisor_can_create_and_edit_computer_inventory(self):
         self.select_supervisor()
 
@@ -575,3 +585,14 @@ class LibrarySupervisorWebTest(TestCase):
         self.assertContains(page, "Próxima versão agendada")
         self.assertContains(page, self.tomorrow.strftime("%d/%m/%Y"))
         self.assertContains(page, 'value="45"')
+
+    def test_report_parameters_explain_that_they_do_not_change_operations(self):
+        self.select_supervisor()
+
+        response = self.client.get("/supervisor/funcionamento/?section=policies")
+
+        self.assertContains(
+            response,
+            "não alteram os registros operacionais",
+        )
+        self.assertNotContains(response, "Exportadores continuam fora desta etapa")

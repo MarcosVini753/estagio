@@ -121,8 +121,21 @@ class RoomMonitorWebTest(TestCase):
         self.assertNotContains(response, "Autorização simulada")
         self.assertNotContains(response, "Ambiente de demonstração")
         self.assertNotContains(response, "Use apenas dados fictícios")
+        self.assertNotContains(response, "Monitor da Sala")
+        self.assertNotContains(response, "demo-room-monitor")
+        self.assertNotContains(response, "Abrir gestão da biblioteca")
         self.assertContains(partial, 'id="staff-content"')
         self.assertNotContains(partial, "<!doctype html>")
+
+    def test_supervisor_can_return_to_management_from_operational_dashboard(self):
+        self.select_supervisor()
+
+        response = self.client.get("/monitor/")
+
+        self.assertContains(response, "Abrir gestão da biblioteca")
+        self.assertContains(response, 'href="/supervisor/"')
+        self.assertNotContains(response, "Supervisor da Biblioteca")
+        self.assertNotContains(response, "demo-library-supervisor")
 
     def test_changing_computer_state_exposes_session_and_reservation_impact(self):
         session = self.create_session()

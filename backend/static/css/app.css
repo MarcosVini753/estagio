@@ -1535,6 +1535,14 @@ svg {
   gap: 0.75rem;
 }
 
+.staff-page-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .staff-page-heading h2,
 .staff-section-heading h2 {
   margin-bottom: 0;
@@ -2045,10 +2053,10 @@ a.staff-list-row:hover {
   .staff-header {
     grid-area: staff-header;
     display: grid;
-    grid-template-columns: minmax(18rem, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "top profile"
-      "search profile";
+      "top"
+      "search";
     align-items: center;
     gap: 0.65rem 1rem;
     border-bottom-color: var(--line);
@@ -2075,17 +2083,6 @@ a.staff-list-row:hover {
     right: 2rem;
     background: var(--surface-muted);
     color: var(--text);
-  }
-
-  .staff-header .profile-strip {
-    grid-area: profile;
-    margin: 0 3.8rem 0 0;
-    background: var(--surface-muted);
-    color: var(--text);
-  }
-
-  .staff-header .profile-strip span {
-    color: var(--muted);
   }
 
   .staff-header .search-box {
