@@ -127,4 +127,5 @@ Estados: `OPEN`, `IN_REVIEW`, `RESOLVED`, `CANCELLED`.
 
 ## Relatórios
 
-O app `reports` não possui modelo agregado. Relatórios serão selectors, projeções e exportadores sobre os registros acima.
+O app `reports` não possui modelo agregado. Relatórios são selectors, projeções
+e exportadores sobre os registros acima.

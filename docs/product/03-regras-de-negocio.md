@@ -86,6 +86,9 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - O turno principal da visita é calculado a partir do horário de entrada.
 - Correções administrativas exigem justificativa e auditoria.
 - A saída antecipada é permitida. A sessão vencida tem a saída registrada automaticamente pela reconciliação no prazo de saída, com motivo `TIME_LIMIT_REACHED`.
+- Leituras operacionais autorizadas reconciliam primeiro somente os usuários, computadores ou período consultados. O processo periódico mantém a mesma regra quando não há acessos.
+- Em relatórios, uma alocação ainda aberta que começou antes do fim do período exige reconciliação da sessão vencida, mesmo quando seu prazo de saída é anterior ao início do período.
+- Confirmar a saída depois de um encerramento automático devolve o estado já finalizado sem repetir gravação ou auditoria.
 - Não existe extensão de sessão neste P0.
 
 ## Alocações e troca de computador
@@ -114,6 +117,20 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 - O relatório mensal deve reproduzir dias nas linhas, turnos nas colunas e totais no rodapé.
 - Total de visitas significa quantidade de sessões, não quantidade de alocações.
 - Taxa de ocupação usa tempo alocado dividido pelo tempo operacional disponível.
+- O tempo disponível é calculado por computador, intersectando as janelas do
+  calendário com períodos históricos em estado `AVAILABLE`, e termina no
+  instante atual quando o período ainda não acabou.
+- Computador com sequência histórica de estado contraditória não participa da
+  taxa e deve aparecer como ressalva do relatório.
+- Sem tempo disponível elegível, a taxa é desconhecida (`null`), não zero.
+- Horário de maior uso mede alocações reais em blocos de 15 minutos. Como o
+  sistema não registra fila nem tentativas recusadas, essa métrica não deve ser
+  apresentada como demanda não atendida.
+- O relatório anual contém os 12 meses; pessoas distintas e médias são
+  recalculadas pelos registros do ano, sem somar deduplicações nem tirar média
+  das médias mensais.
+- Indicadores aceitam datas inicial e final inclusivas em intervalo de até 366
+  dias.
 - Domingo regular e demais dias fechados possuem zero tempo operacional; no sábado regular, o denominador termina às 13h.
 - Períodos de manutenção e inatividade devem ser excluídos do tempo operacional disponível quando houver histórico suficiente.
 

@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
@@ -24,6 +25,7 @@ from apps.operations.services import (
     start_usage_session,
     switch_computer,
 )
+from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 
 from .serializers import (
     ComputerSwitchSerializer,
@@ -43,6 +45,18 @@ OPERATIONAL_PROFILES = [
 ]
 
 
+def _reconcile_read(request, *, now=None):
+    current = now or timezone.now()
+    reference = get_demo_user_reference(request)
+    scope = (
+        ReconcileScope(user_references=(reference,))
+        if get_demo_profile(request) == DemoProfile.ROOM_USER and reference
+        else None
+    )
+    reconcile_deadlines(now=current, scope=scope)
+    return current
+
+
 class ReservationListCreateAPIView(GenericAPIView):
     permission_classes = [HasDemoProfile]
     serializer_class = ReservationSerializer
@@ -60,6 +74,7 @@ class ReservationListCreateAPIView(GenericAPIView):
         responses={200: ReservationSerializer(many=True)}, tags=["reservations"]
     )
     def get(self, request):
+        _reconcile_read(request)
         reservations = Reservation.objects.order_by("-starts_at", "-pk")
         page = self.paginate_queryset(reservations)
         return self.get_paginated_response(ReservationSerializer(page, many=True).data)
@@ -95,6 +110,7 @@ class MyReservationListAPIView(GenericAPIView):
         responses={200: ReservationSerializer(many=True)}, tags=["reservations"]
     )
     def get(self, request):
+        _reconcile_read(request)
         reservations = Reservation.objects.filter(
             user_reference=get_demo_user_reference(request)
         ).order_by("-starts_at", "-pk")
@@ -130,6 +146,7 @@ class CurrentUsageSessionAPIView(APIView):
 
     @extend_schema(responses={200: UseSessionSerializer}, tags=["usage-sessions"])
     def get(self, request):
+        _reconcile_read(request)
         session = (
             UseSession.objects.filter(
                 user_reference=get_demo_user_reference(request),
@@ -149,6 +166,7 @@ class ActiveUsageSessionListAPIView(APIView):
         responses={200: UseSessionSerializer(many=True)}, tags=["usage-sessions"]
     )
     def get(self, request):
+        _reconcile_read(request)
         sessions = UseSession.objects.filter(
             status=UseSession.Status.ACTIVE
         ).prefetch_related("allocations")
@@ -165,6 +183,7 @@ class UsageSessionHistoryAPIView(GenericAPIView):
         responses={200: UseSessionSerializer(many=True)}, tags=["usage-sessions"]
     )
     def get(self, request):
+        _reconcile_read(request)
         sessions = UseSession.objects.exclude(status=UseSession.Status.ACTIVE)
         if get_demo_profile(request) == DemoProfile.ROOM_USER:
             sessions = sessions.filter(user_reference=get_demo_user_reference(request))
@@ -247,13 +266,13 @@ class UsageSessionFinishAPIView(APIView):
         get_object_or_404(UseSession, pk=pk)
         serializer = UsageSessionFinishSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        session = finish_usage_session(
+        result = finish_usage_session(
             session_id=pk,
             actor_profile=get_demo_profile(request),
             actor_reference=get_demo_user_reference(request),
             **serializer.validated_data,
         )
-        return Response(UseSessionSerializer(session).data)
+        return Response(UseSessionSerializer(result.session).data)
 
 
 class UsageSessionCorrectionAPIView(APIView):

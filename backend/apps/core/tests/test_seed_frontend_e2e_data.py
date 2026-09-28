@@ -10,6 +10,7 @@ class SeedFrontendE2EDataTest(TestCase):
     def run_seed(self):
         call_command(
             "seed_frontend_e2e_data",
+            "--at=2026-09-15T08:00:00-05:00",
             verbosity=0,
             stdout=StringIO(),
         )

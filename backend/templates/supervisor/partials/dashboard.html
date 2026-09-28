@@ -1,6 +1,6 @@
 <section class="staff-page-heading">
   <div><p class="section-kicker">Administração operacional</p><h2>{{ section_title }}</h2></div>
-  <a class="button button-primary" href="{% url 'web:monitor-dashboard' %}">Abrir painel operacional</a>
+  <a class="button button-primary" href="{{ area_switch_url }}">{{ area_switch_action_label }}</a>
 </section>
 
 <section class="metric-grid" aria-label="Resumo gerencial">

@@ -1,8 +1,6 @@
-from functools import wraps
-
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -20,16 +18,22 @@ from apps.occurrences.api.serializers import (
 )
 from apps.occurrences.models import Occurrence
 from apps.occurrences.services import create_occurrence, transition_occurrence
-from apps.operations.api.serializers import UsageSessionCorrectionSerializer
+from apps.operations.api.serializers import (
+    UsageSessionCorrectionSerializer,
+    UsageSessionFinishSerializer,
+)
 from apps.operations.availability import get_computers_availability
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
-from apps.operations.services import correct_usage_session
+from apps.operations.services import correct_usage_session, finish_usage_session
 from apps.operations.services.computer_state import (
     change_computer_operational_state,
 )
 
-from .http import is_htmx as _is_htmx
+from .http import redirect_response as _redirect
+from .http import render_staff_screen as _render_screen
+from .http import require_profiles
 from .http import service_error_message as _exception_message
+from .operational_state import reconcile_operational_state
 from .pagination import paginate
 from .presenters import computer_rows, flatten_serializer_errors, normalize_search
 
@@ -74,19 +78,13 @@ MONITOR_SCREEN_META = {
 }
 
 
-def operational_profile_required(view):
-    @wraps(view)
-    def wrapped(request, *args, **kwargs):
-        if get_demo_profile(request) not in OPERATIONAL_PROFILES:
-            messages.warning(
-                request,
-                "Selecione o perfil Monitor da Sala ou um perfil superior para "
-                "acessar esta área.",
-            )
-            return redirect("web:home")
-        return view(request, *args, **kwargs)
-
-    return wrapped
+operational_profile_required = require_profiles(
+    allowed_profiles=OPERATIONAL_PROFILES,
+    message=(
+        "Selecione o perfil Monitor da Sala ou um perfil superior para acessar "
+        "esta área."
+    ),
+)
 
 
 def _allocations_queryset():
@@ -128,8 +126,6 @@ def _screen_context(request, *, screen, query="", search_url_name=None):
         "search_url": reverse(search_url_name) if search_url_name else "",
         "query": query,
         "nav_items": nav_items,
-        "current_profile_label": DemoProfile(profile).label,
-        "current_user_reference": get_demo_user_reference(request),
         "active_notices": get_active_room_notices(),
         "area_switch_url": (
             reverse("web:supervisor-dashboard")
@@ -137,31 +133,13 @@ def _screen_context(request, *, screen, query="", search_url_name=None):
             else ""
         ),
         "area_switch_label": "Gestão da biblioteca",
+        "area_switch_action_label": "Abrir gestão da biblioteca",
     }
 
 
-def _render_screen(request, *, content_template, context, status=200):
-    context = {**context, "content_template": content_template}
-    if request.headers.get("HX-Target") == "staff-content":
-        template = "staff/partials/content.html"
-    elif _is_htmx(request):
-        template = "staff/partials/app.html"
-    else:
-        template = "staff/page.html"
-    return render(request, template, context, status=status)
-
-
-def _redirect(request, name, **kwargs):
-    url = reverse(name, kwargs=kwargs or None)
-    if _is_htmx(request):
-        response = render(request, "staff/partials/empty.html", status=200)
-        response["HX-Redirect"] = url
-        return response
-    return redirect(name, **kwargs)
-
-
 def _dashboard_context(request, *, screen_error=""):
-    today = timezone.localdate()
+    current = reconcile_operational_state()
+    today = timezone.localdate(current)
     try:
         operating_day = resolve_operating_day(today)
     except APIException as error:
@@ -202,15 +180,17 @@ def dashboard(request):
 
 
 def _computers_context(request, *, screen_error=""):
+    current = reconcile_operational_state()
     query = request.GET.get("q", "").strip()
     computers = list(Computer.objects.all())
     rows = []
     room = None
     try:
         room, _ = get_computers_availability(
-            target_date=timezone.localdate(),
+            target_date=timezone.localdate(current),
             computers=computers,
             user_reference=None,
+            now=current,
         )
         rows = computer_rows(summary=room, computers=computers, query=query)
         active_sessions = {
@@ -459,6 +439,7 @@ def transition_occurrence_view(request, pk):
 
 
 def _history_context(request):
+    reconcile_operational_state()
     query = request.GET.get("q", "").strip()
     sessions = _sessions_queryset().exclude(status=UseSession.Status.ACTIVE)
     if query:
@@ -504,13 +485,23 @@ def _datetime_input(value):
     return timezone.localtime(value).strftime("%Y-%m-%dT%H:%M") if value else ""
 
 
-def _history_detail_context(request, session, *, form_error="", form_data=None):
+def _history_detail_context(
+    request,
+    session,
+    *,
+    form_error="",
+    form_data=None,
+    finish_error="",
+    finish_reason="",
+):
     session = _decorate_sessions([session])[0]
     context = _screen_context(request, screen="history")
     context.update(
         {
             "session": session,
             "form_error": form_error,
+            "finish_error": finish_error,
+            "finish_reason": finish_reason,
             "form_data": form_data
             or {
                 "started_at": _datetime_input(session.started_at),
@@ -525,6 +516,7 @@ def _history_detail_context(request, session, *, form_error="", form_data=None):
 
 
 def _history_session(pk, *, include_active=False):
+    reconcile_operational_state()
     sessions = _sessions_queryset()
     if not include_active:
         sessions = sessions.exclude(status=UseSession.Status.ACTIVE)
@@ -541,6 +533,62 @@ def history_detail(request, pk):
             _history_session(pk, include_active=True),
         ),
     )
+
+
+@operational_profile_required
+@require_POST
+def finish_active_session(request, pk):
+    session = _history_session(pk, include_active=True)
+    serializer = UsageSessionFinishSerializer(
+        data={"reason": request.POST.get("reason", "")}
+    )
+    if not serializer.is_valid():
+        return _render_screen(
+            request,
+            content_template="monitor/partials/history_detail.html",
+            context=_history_detail_context(
+                request,
+                session,
+                finish_error=flatten_serializer_errors(serializer.errors),
+                finish_reason=request.POST.get("reason", ""),
+            ),
+            status=400,
+        )
+    try:
+        result = finish_usage_session(
+            session_id=session.pk,
+            actor_profile=get_demo_profile(request),
+            actor_reference=get_demo_user_reference(request),
+            **serializer.validated_data,
+        )
+    except APIException as error:
+        session = _history_session(pk, include_active=True)
+        return _render_screen(
+            request,
+            content_template="monitor/partials/history_detail.html",
+            context=_history_detail_context(
+                request,
+                session,
+                finish_error=_exception_message(error),
+                finish_reason=request.POST.get("reason", ""),
+            ),
+            status=error.status_code,
+        )
+
+    if result.already_finished:
+        messages.info(request, "A sessão já havia sido encerrada automaticamente.")
+    elif result.automatic:
+        messages.info(
+            request,
+            "A sessão atingiu o prazo e foi encerrada automaticamente.",
+        )
+    else:
+        messages.success(
+            request,
+            "Saída administrativa registrada. A ocupação foi encerrada; consulte "
+            "Computadores para a situação efetiva atual.",
+        )
+    return _redirect(request, "web:monitor-history-detail", pk=session.pk)
 
 
 @operational_profile_required

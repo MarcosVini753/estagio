@@ -9,7 +9,7 @@ export DJANGO_ALLOWED_HOSTS DJANGO_CSRF_TRUSTED_ORIGINS
 export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_HOST POSTGRES_PORT
 endif
 
-.PHONY: install db-up db-down migrate migrations seed seed-e2e seed-reports run check test lint format-check frontend-build frontend-check frontend-e2e
+.PHONY: install db-up db-down migrate migrations seed seed-reports reconcile reconcile-watch run check test lint format-check frontend-build frontend-check frontend-e2e
 
 install:
 	$(PYTHON) -m pip install -r requirements/dev.txt
@@ -17,7 +17,7 @@ install:
 	$(NPM) run build
 
 db-up:
-	docker compose up -d db
+	docker compose up -d --wait db
 
 db-down:
 	docker compose down
@@ -31,11 +31,14 @@ migrations:
 seed:
 	$(MANAGE) seed_demo_data
 
-seed-e2e:
-	$(MANAGE) seed_frontend_e2e_data
-
 seed-reports:
 	$(MANAGE) seed_report_demo_data --reset
+
+reconcile:
+	$(MANAGE) reconcile_operational_deadlines
+
+reconcile-watch:
+	$(MANAGE) reconcile_operational_deadlines --watch
 
 run:
 	$(MANAGE) runserver 0.0.0.0:8000
@@ -62,4 +65,4 @@ frontend-check:
 	$(NPM) run check:frontend
 
 frontend-e2e:
-	$(NPM) run test:e2e
+	cd backend && RUN_FRONTEND_E2E=1 $(PYTHON) manage.py test apps.web.tests.test_frontend_e2e --noinput

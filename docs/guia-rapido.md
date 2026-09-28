@@ -55,5 +55,10 @@ make migrate && make seed && make run
 
 A aplicação fica em `http://localhost:8000/` e a documentação da API em `http://localhost:8000/api/docs/`.
 
+Para preencher Diário, Mensal, Anual e Indicadores com uma linha do tempo
+fictícia, execute `make seed-reports` somente em banco descartável. Na área do
+Supervisor, os três botões de download geram CSV, planilha XLSX e PDF a partir
+dos mesmos números exibidos na tela.
+
 Se a porta `5432` já estiver ocupada, ajuste `POSTGRES_PORT` no `.env` para uma
 porta livre, como `5433`. O Compose e os comandos `make` usarão o mesmo valor.

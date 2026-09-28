@@ -46,7 +46,11 @@ class LibrarySupervisorWebTest(TestCase):
 
     def select_supervisor(self):
         response = self.client.post("/", {"profile": "LIBRARY_SUPERVISOR"})
-        self.assertRedirects(response, "/supervisor/")
+        self.assertRedirects(
+            response,
+            "/supervisor/",
+            fetch_redirect_response=False,
+        )
 
     def weekly_windows(self, value="08:00-12:00,13:00-18:00"):
         return {f"windows_{weekday}": value for weekday in Weekday.values}
@@ -58,6 +62,16 @@ class LibrarySupervisorWebTest(TestCase):
         self.client.post("/", {"profile": "ROOM_MONITOR"})
         monitor = self.client.get("/supervisor/")
         self.assertRedirects(monitor, "/")
+
+    def test_dashboard_hides_demo_identity_and_links_to_operational_panel(self):
+        self.select_supervisor()
+
+        response = self.client.get("/supervisor/")
+
+        self.assertContains(response, "Abrir painel operacional")
+        self.assertContains(response, 'href="/monitor/"')
+        self.assertNotContains(response, "Supervisor da Biblioteca")
+        self.assertNotContains(response, "demo-library-supervisor")
 
     def test_supervisor_can_create_and_edit_computer_inventory(self):
         self.select_supervisor()
@@ -90,6 +104,7 @@ class LibrarySupervisorWebTest(TestCase):
         page = self.client.get("/supervisor/computadores/?q=acessível")
         self.assertContains(page, "PC-02")
         self.assertContains(page, "Próximo à entrada")
+        self.assertNotContains(page, "Ambiente de demonstração")
 
     def test_supervisor_manages_shifts_without_changing_calendar(self):
         self.select_supervisor()
@@ -267,7 +282,7 @@ class LibrarySupervisorWebTest(TestCase):
         page = self.client.get("/supervisor/funcionamento/?section=shifts")
         response = self.client.post(
             f"/supervisor/turnos/{shift.pk}/editar/",
-            {},
+            {"intent": "deactivate"},
         )
 
         self.assertContains(page, "Apenas a desativação é permitida")
@@ -303,6 +318,7 @@ class LibrarySupervisorWebTest(TestCase):
         response = self.client.post(
             f"/supervisor/turnos/{shift.pk}/editar/",
             {
+                "intent": "edit",
                 "name": "Nome adulterado",
                 "start_time": "08:00",
                 "end_time": "12:00",
@@ -312,17 +328,19 @@ class LibrarySupervisorWebTest(TestCase):
             },
         )
 
-        self.assertRedirects(
+        self.assertContains(
             response,
-            "/supervisor/funcionamento/?section=shifts",
+            "Apenas a desativação é permitida",
+            status_code=400,
         )
+        self.assertContains(response, 'value="Nome adulterado"', status_code=400)
         shift.refresh_from_db()
         self.assertEqual(shift.name, "Noite histórica")
         self.assertEqual(shift.start_time, time(18))
         self.assertEqual(shift.end_time, time(22))
         self.assertEqual(shift.display_order, 3)
         self.assertEqual(shift.valid_from, self.today - timedelta(days=5))
-        self.assertFalse(shift.is_active)
+        self.assertTrue(shift.is_active)
 
     def test_exception_preview_and_confirmation_cancel_affected_booking(self):
         self.select_supervisor()
@@ -448,3 +466,133 @@ class LibrarySupervisorWebTest(TestCase):
         self.assertTrue(
             AuditEvent.objects.filter(action="REPORT_CONFIGURATION_UPDATED").exists()
         )
+
+    def test_supervisor_can_open_all_report_views_with_server_side_filters(self):
+        self.select_supervisor()
+        cases = [
+            (
+                {"report": "daily", "date": self.today.isoformat()},
+                "Relatório diário",
+                "Calendário efetivo",
+            ),
+            (
+                {
+                    "report": "monthly",
+                    "year": self.today.year,
+                    "month": self.today.month,
+                },
+                "Relatório mensal",
+                "Minutos operacionais",
+            ),
+            (
+                {"report": "annual", "year": self.today.year + 1},
+                "Relatório anual",
+                "Meses de",
+            ),
+            (
+                {
+                    "report": "indicators",
+                    "starts_on": self.today.replace(day=1).isoformat(),
+                    "ends_on": self.today.isoformat(),
+                },
+                "Indicadores gerenciais",
+                "Uso por computador",
+            ),
+        ]
+
+        for query, heading, table_title in cases:
+            with self.subTest(report=query["report"]):
+                response = self.client.get("/supervisor/relatorios/", query)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, heading)
+                self.assertContains(response, table_title)
+                self.assertContains(response, "Baixar esta visão")
+                self.assertContains(response, "format=CSV")
+                self.assertContains(response, 'method="get"')
+
+    def test_report_filters_support_htmx_and_preserve_invalid_values(self):
+        self.select_supervisor()
+        partial = self.client.get(
+            "/supervisor/relatorios/",
+            {"report": "annual", "year": self.today.year + 1},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="staff-content",
+        )
+        invalid = self.client.get(
+            "/supervisor/relatorios/",
+            {
+                "report": "indicators",
+                "starts_on": "2025-01-01",
+                "ends_on": "2026-01-02",
+            },
+        )
+
+        self.assertEqual(partial.status_code, 200)
+        self.assertContains(partial, 'id="staff-content"')
+        self.assertNotContains(partial, "<!doctype html>")
+        self.assertEqual(invalid.status_code, 400)
+        self.assertContains(
+            invalid,
+            "O período pode possuir no máximo 366 dias.",
+            status_code=400,
+        )
+        self.assertContains(invalid, 'value="2025-01-01"', status_code=400)
+
+    def test_booking_policy_versioning_shows_both_current_and_future_version_with_dates(
+        self,
+    ):
+        self.select_supervisor()
+        current_policy = BookingPolicy.objects.get()
+        current_policy.valid_from = self.today
+        current_policy.cancellation_limit_minutes = 0
+        current_policy.max_future_reservations_per_user = 1
+        current_policy.save(
+            update_fields=[
+                "valid_from",
+                "cancellation_limit_minutes",
+                "max_future_reservations_per_user",
+            ]
+        )
+        create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.today, time(9)),
+            ends_at=self.aware(self.today, time(10)),
+            booking_policy=current_policy,
+            created_by_profile="ROOM_USER",
+        )
+
+        response = self.client.post(
+            "/supervisor/configuracoes/",
+            {
+                "kind": "booking",
+                "cancellation_limit_minutes": "45",
+                "max_future_reservations_per_user": "2",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            "/supervisor/funcionamento/?section=policies",
+        )
+        self.assertEqual(BookingPolicy.objects.count(), 2)
+        future_policy = BookingPolicy.objects.order_by("valid_from").last()
+        self.assertEqual(future_policy.valid_from, self.tomorrow)
+        self.assertEqual(future_policy.cancellation_limit_minutes, 45)
+
+        page = self.client.get("/supervisor/funcionamento/?section=policies")
+        self.assertContains(page, "Versão vigente hoje")
+        self.assertContains(page, "Próxima versão agendada")
+        self.assertContains(page, self.tomorrow.strftime("%d/%m/%Y"))
+        self.assertContains(page, 'value="45"')
+
+    def test_report_parameters_explain_that_they_do_not_change_operations(self):
+        self.select_supervisor()
+
+        response = self.client.get("/supervisor/funcionamento/?section=policies")
+
+        self.assertContains(
+            response,
+            "não alteram os registros operacionais",
+        )
+        self.assertNotContains(response, "Exportadores continuam fora desta etapa")

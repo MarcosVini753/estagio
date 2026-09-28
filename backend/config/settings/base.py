@@ -108,6 +108,9 @@ REST_FRAMEWORK = {
     "UNAUTHENTICATED_USER": None,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "apps.core.api.exceptions.api_exception_handler",
+    # ``format`` belongs to the reports export contract (CSV, XLSX or PDF).
+    # Disable DRF's optional renderer override so both concerns do not collide.
+    "URL_FORMAT_OVERRIDE": None,
 }
 
 SPECTACULAR_SETTINGS = {

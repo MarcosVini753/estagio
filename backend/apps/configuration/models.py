@@ -2,11 +2,15 @@ import uuid
 from datetime import date
 
 from django.contrib.postgres.constraints import ExclusionConstraint
-from django.contrib.postgres.fields import DateRangeField, RangeOperators
+from django.contrib.postgres.fields import (
+    DateRangeField,
+    DateTimeRangeField,
+    RangeOperators,
+)
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import F, Func, Q, Value
+from django.db.models import DateTimeField, ExpressionWrapper, F, Func, Q, Value
 
 from apps.core.enums import DemoProfile
 from apps.core.models import TimeStampedModel
@@ -20,6 +24,23 @@ class Weekday(models.IntegerChoices):
     FRIDAY = 4, "Sexta-feira"
     SATURDAY = 5, "Sábado"
     SUNDAY = 6, "Domingo"
+
+
+SHIFT_WINDOW_ANCHOR_DATE = date(2000, 1, 1)
+
+
+def _shift_window_bound(field: str) -> ExpressionWrapper:
+    """Converte o horário do turno em instante de um dia fixo.
+
+    O PostgreSQL não possui tipo de intervalo para `time`, então a janela é
+    comparada como `tsrange` ancorado em uma data constante. A data existe
+    apenas para a verificação de sobreposição: não é armazenada nem exposta.
+    """
+
+    return ExpressionWrapper(
+        Value(SHIFT_WINDOW_ANCHOR_DATE) + F(field),
+        output_field=DateTimeField(),
+    )
 
 
 class Shift(TimeStampedModel):
@@ -43,6 +64,32 @@ class Shift(TimeStampedModel):
                 condition=Q(valid_until__isnull=True)
                 | Q(valid_until__gte=F("valid_from")),
                 name="shift_valid_period",
+            ),
+            ExclusionConstraint(
+                name="shift_no_overlap_active",
+                expressions=[
+                    (
+                        Func(
+                            _shift_window_bound("start_time"),
+                            _shift_window_bound("end_time"),
+                            Value("[)"),
+                            function="TSRANGE",
+                            output_field=DateTimeRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                    (
+                        Func(
+                            F("valid_from"),
+                            F("valid_until"),
+                            Value("[]"),
+                            function="DATERANGE",
+                            output_field=DateRangeField(),
+                        ),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(is_active=True),
             ),
         ]
 

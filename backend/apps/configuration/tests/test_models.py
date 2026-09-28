@@ -3,6 +3,7 @@ from datetime import date, datetime, time
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
 from apps.configuration.models import (
     BookingPolicy,
@@ -15,6 +16,7 @@ from apps.configuration.models import (
     Weekday,
 )
 from apps.configuration.selectors import get_booking_policy_for_date
+from apps.configuration.services.shifts import _raise_shift_conflict
 
 
 class ConfigurationModelTest(TestCase):
@@ -131,3 +133,65 @@ class ConfigurationModelTest(TestCase):
                     valid_from=date(2026, 1, 1),
                     created_by_profile="LIBRARY_SUPERVISOR",
                 )
+
+
+class ShiftOverlapConstraintTest(TestCase):
+    def values(self, **overrides):
+        values = {
+            "name": "Turno",
+            "start_time": time(8),
+            "end_time": time(12),
+            "display_order": 1,
+            "valid_from": date(2026, 1, 1),
+        }
+        values.update(overrides)
+        return values
+
+    def test_database_rejects_overlapping_active_shift(self):
+        Shift.objects.create(**self.values())
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Shift.objects.create(**self.values(name="Sobreposto", start_time=time(10)))
+
+    def test_adjacent_windows_remain_valid(self):
+        Shift.objects.create(**self.values())
+        Shift.objects.create(
+            **self.values(name="Seguinte", start_time=time(12), end_time=time(17))
+        )
+
+        self.assertEqual(Shift.objects.count(), 2)
+
+    def test_disjoint_validity_versions_remain_valid(self):
+        Shift.objects.create(**self.values(valid_until=date(2026, 2, 28)))
+        Shift.objects.create(
+            **self.values(name="Nova versão", valid_from=date(2026, 3, 1))
+        )
+
+        self.assertEqual(Shift.objects.count(), 2)
+
+    def test_inactive_shift_does_not_conflict(self):
+        Shift.objects.create(**self.values())
+        inactive = Shift.objects.create(**self.values(name="Inativo", is_active=False))
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Shift.objects.filter(pk=inactive.pk).update(is_active=True)
+
+    def test_constraint_violation_becomes_domain_error(self):
+        with self.assertRaises(DRFValidationError) as context:
+            _raise_shift_conflict(
+                IntegrityError(
+                    "conflicting key value violates exclusion constraint "
+                    '"shift_no_overlap_active"'
+                )
+            )
+
+        self.assertIn(
+            "O turno sobrepõe outro turno ativo.",
+            str(context.exception.detail),
+        )
+
+    def test_unrelated_integrity_errors_are_not_converted(self):
+        error = IntegrityError('violates check constraint "shift_start_before_end"')
+
+        with self.assertRaises(IntegrityError):
+            _raise_shift_conflict(error)

@@ -108,7 +108,11 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(allocation.computer, self.computer)
         self.assertEqual(allocation.sequence, 1)
 
-        current_response = self.client.get("/api/usage-sessions/current/")
+        with patch(
+            "apps.operations.api.views.timezone.now",
+            return_value=self.current,
+        ):
+            current_response = self.client.get("/api/usage-sessions/current/")
         self.assertEqual(current_response.status_code, 200)
         self.assertEqual(current_response.data["id"], session.pk)
         self.assertEqual(len(current_response.data["allocations"]), 1)
@@ -745,7 +749,7 @@ class UsageSessionAPITest(APITestCase):
             ComputerAllocation.EndReason.SESSION_FINISHED,
         )
 
-    def test_finish_at_exit_deadline_is_accepted(self):
+    def test_finish_at_exit_deadline_returns_automatic_closure(self):
         self.start()
         session = UseSession.objects.get()
 
@@ -760,7 +764,39 @@ class UsageSessionAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         session.refresh_from_db()
+        allocation = session.allocations.get()
         self.assertEqual(session.ended_at, self.aware(time(9, 3)))
+        self.assertEqual(session.exit_recorded_by_profile, "SYSTEM_ADMIN")
+        self.assertEqual(
+            allocation.end_reason,
+            ComputerAllocation.EndReason.TIME_LIMIT_REACHED,
+        )
+
+    def test_finish_is_idempotent_after_automatic_closure(self):
+        self.start()
+        session = UseSession.objects.get()
+
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(9, 3)),
+        ):
+            first = self.client.post(
+                f"/api/usage-sessions/{session.pk}/finish/",
+                format="json",
+            )
+        with patch(
+            "apps.operations.services.usage_sessions.timezone.now",
+            return_value=self.aware(time(9, 4)),
+        ):
+            repeated = self.client.post(
+                f"/api/usage-sessions/{session.pk}/finish/",
+                format="json",
+            )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(repeated.status_code, 200)
+        self.assertEqual(repeated.data["status"], UseSession.Status.FINISHED)
+        self.assertEqual(session.allocations.count(), 1)
 
     def test_operational_finish_requires_reason_and_creates_audit_event(self):
         self.start()
@@ -805,15 +841,19 @@ class UsageSessionAPITest(APITestCase):
             entry_recorded_by_profile="ROOM_USER",
         )
 
-        room_active = self.client.get("/api/usage-sessions/active/")
-        room_history = self.client.get("/api/usage-sessions/history/")
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
-        operational_active = self.client.get("/api/usage-sessions/active/")
-        operational_history = self.client.get("/api/usage-sessions/history/")
+        with patch(
+            "apps.operations.api.views.timezone.now",
+            return_value=self.current,
+        ):
+            room_active = self.client.get("/api/usage-sessions/active/")
+            room_history = self.client.get("/api/usage-sessions/history/")
+            self.client.post(
+                "/api/demo/select-profile/",
+                {"profile": "ROOM_MONITOR"},
+                format="json",
+            )
+            operational_active = self.client.get("/api/usage-sessions/active/")
+            operational_history = self.client.get("/api/usage-sessions/history/")
 
         self.assertEqual(room_active.status_code, 403)
         self.assertEqual(room_history.data["results"], [])

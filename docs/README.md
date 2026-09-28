@@ -29,6 +29,13 @@ Esta pasta concentra a documentação funcional, arquitetural, operacional e his
 7. [Casos de teste interligados por perfil](development/casos-de-teste-perfis.md)
 8. [Estado da implementação](architecture/08-estado-implementacao.md)
 
+### Quero apresentar o projeto
+
+1. [Roteiro didático de apresentação](development/roteiro-apresentacao.md)
+2. [Guia rápido](guia-rapido.md)
+3. [Visão geral do produto](product/00-visao-geral.md)
+4. [Diagramas](diagrams/README.md)
+
 ### Quero manter ou evoluir
 
 1. [Decisões arquiteturais (ADRs)](adr/README.md)
@@ -45,7 +52,7 @@ docs/
 ├── product/                # escopo, atores, regras, fluxos e glossário
 ├── architecture/           # arquitetura, módulos, domínio, API e relatórios
 │   └── diagrams/           # C4, módulos e ERD
-├── development/            # setup, CI e uso de agentes
+├── development/            # setup, CI, apresentação e uso de agentes
 ├── adr/                    # decisões arquiteturais
 └── diagrams/               # casos de uso e atividades em PlantUML
 ```

@@ -333,7 +333,7 @@ Se a entrada ocorrer às 08h21, a próxima opção pode ser 08h30. O início rea
 
 Entrada com reserva recebe `computer_id` e `reservation_id`; enviar também `planned_ends_at` é erro 400. A sessão herda snapshots, intervalo e deadlines da reserva. A entrada pode ocorrer até três minutos antes ou depois do início, sem deslocar o fim planejado.
 
-Troca encerra a alocação atual e cria a próxima na mesma sessão depois de validar o destino até `planned_ends_at`; é rejeitada durante a tolerância de saída. Saída antecipada ou exatamente no prazo é aceita. Saída operacional de terceiro exige justificativa e auditoria. Sessões vencidas têm a saída registrada automaticamente em `exit_deadline_at` com alocação `TIME_LIMIT_REACHED`.
+Troca encerra a alocação atual e cria a próxima na mesma sessão depois de validar o destino até `planned_ends_at`; é rejeitada durante a tolerância de saída. Saída antecipada ou exatamente no prazo é aceita. Saída operacional de terceiro exige justificativa e auditoria. Sessões vencidas têm a saída registrada automaticamente em `exit_deadline_at` com alocação `TIME_LIMIT_REACHED`. Repetir a confirmação de saída depois desse encerramento automático retorna a sessão finalizada, sem duplicar gravação ou auditoria; outras tentativas sobre sessão inativa continuam retornando conflito.
 
 O comando periódico é:
 
@@ -341,7 +341,13 @@ O comando periódico é:
 python manage.py reconcile_operational_deadlines
 ```
 
-Ele deve ser agendado externamente a cada minuto, registra automaticamente a saída e encerra sessões com `now >= exit_deadline_at` e cancela reservas vencidas quando `now > check_in_deadline_at`. Entrada e troca também reconciliam os computadores envolvidos antes de prosseguir; na entrada, isso inclui computadores com sessão ativa ou reserva vencida do próprio usuário.
+Sem `--watch`, o comando executa uma rodada. Com `--watch`, repete a cada 60 segundos e continua após falhas transitórias. Ele registra automaticamente a saída e encerra sessões com `now >= exit_deadline_at` e cancela reservas vencidas quando `now > check_in_deadline_at`.
+
+Depois de autorizar e validar a requisição, consultas de disponibilidade,
+reservas, sessões, painéis operacionais e relatórios também reconciliam o escopo
+que observarão. Entrada, troca e manutenção reutilizam o mesmo serviço antes de
+prosseguir. O processo periódico continua necessário para intervalos sem
+acesso.
 
 ```text
 POST /api/usage-sessions/{id}/correct/
@@ -363,22 +369,42 @@ Usuário da Sala consulta apenas as próprias ocorrências. Perfis operacionais 
 ### Relatórios
 
 ```text
+GET /api/reports/daily/?date=YYYY-MM-DD
 GET /api/reports/monthly/?year=YYYY&month=M
+GET /api/reports/annual/?year=YYYY
+GET /api/reports/indicators/?starts_on=YYYY-MM-DD&ends_on=YYYY-MM-DD
 ```
 
-O relatório mensal é restrito ao Supervisor e Administrador. A resposta contém todos os dias do mês, `calendar_status`, `calendar_source`, `operating_minutes`, colunas por `Shift.series_key`, totais por turno e as métricas de visitas, pessoas distintas, reservas totais e `reservations_by_status`, ocorrências, computadores utilizados, minutos operacionais, minutos alocados e tempo médio das sessões finalizadas. Sessões sem turno são agrupadas em `NOT_INFORMED`.
+Todos são restritos ao Supervisor e Administrador e compartilham `period`,
+`summary`, `occupancy` e `warnings`. O diário acrescenta calendário efetivo e
+turnos; o mensal mantém todos os dias, origem, situação, minutos operacionais e
+matriz por `Shift.series_key`; o anual retorna sempre os 12 meses; indicadores
+agrupam por turno lógico, vínculo, unidade, computador, dia e bloco de 15
+minutos. Sessões sem turno são agrupadas em `NOT_INFORMED`.
 
-## Endpoints planejados
+As datas de indicadores são inclusivas, a inicial não pode superar a final e o
+intervalo máximo é de 366 dias. A taxa usa alocações reais sobre a interseção do
+calendário com períodos históricos `AVAILABLE`, limitada por `now`. Sem
+denominador, `rate_percent` é `null`; computadores cujo histórico de mudança de
+estado é incoerente são excluídos e identificados em `warnings`.
 
-### Relatórios
+Os downloads usam a mesma projeção dos endpoints JSON:
 
 ```text
-GET /api/reports/daily/
-GET /api/reports/annual/
-GET /api/reports/occupancy/
+GET /api/reports/daily/export/?date=YYYY-MM-DD&format=CSV|XLSX|PDF
+GET /api/reports/monthly/export/?year=YYYY&month=M&format=CSV|XLSX|PDF
+GET /api/reports/annual/export/?year=YYYY&format=CSV|XLSX|PDF
+GET /api/reports/indicators/export/?starts_on=YYYY-MM-DD&ends_on=YYYY-MM-DD&format=CSV|XLSX|PDF
 ```
 
-O relatório semanal permanece como evolução futura e não possui endpoint definido na Etapa 4.
+Quando `format` é omitido, a resposta usa
+`ReportConfiguration.default_format`. CSV usa UTF-8 com BOM e `;`; XLSX separa
+resumo e agrupamentos; PDF gera tabelas multipágina. Os nomes seguem
+`relatorio-diario-AAAA-MM-DD`, `relatorio-mensal-AAAA-MM`,
+`relatorio-anual-AAAA` e `indicadores-DATA-a-DATA`. Arquivos não incluem
+referências individuais de usuários.
+
+O relatório semanal permanece fora do escopo e não possui endpoint.
 
 ## Formato de erro
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita parcialmente. A semântica de `NO_SHOW` foi substituída pela ADR 0021, a regra de check-in antecipado pela ADR 0024 e a duração solicitada do uso imediato pela ADR 0025; intervalos planejados e deadlines permanecem vigentes.
+Aceita parcialmente. A semântica de `NO_SHOW` foi substituída pela ADR 0021, a regra de check-in antecipado pela ADR 0024 e a duração solicitada do uso imediato pela ADR 0025. A ADR 0026 amplia a reconciliação para as leituras operacionais; intervalos planejados e deadlines permanecem vigentes.
 
 ## Contexto
 
@@ -22,7 +22,7 @@ Check-in antecipado não é permitido. Uma reserva aceita entrada desde `starts_
 
 Não existe extensão de sessão nesta etapa. Trocas de computador verificam todo o intervalo planejado restante e são proibidas depois de `planned_ends_at`.
 
-Sessões são encerradas logicamente em `exit_deadline_at`, com a alocação marcada como `TIME_LIMIT_REACHED`. Reservas confirmadas são canceladas administrativamente quando o instante corrente ultrapassa `check_in_deadline_at` (ver ADR 0021). A reconciliação ocorre antes de entradas e trocas no computador e por comando periódico executável a cada minuto.
+Sessões são encerradas logicamente em `exit_deadline_at`, com a alocação marcada como `TIME_LIMIT_REACHED`. Reservas confirmadas são canceladas administrativamente quando o instante corrente ultrapassa `check_in_deadline_at` (ver ADR 0021). Conforme a ADR 0026, a reconciliação ocorre antes de mutações e consultas operacionais e também pelo comando periódico executável a cada minuto.
 
 ## Alternativas consideradas
 

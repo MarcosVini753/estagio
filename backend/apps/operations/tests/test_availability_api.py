@@ -56,6 +56,22 @@ class AvailabilityAPITest(APITestCase):
             timezone.get_current_timezone(),
         )
 
+    def test_availability_api_includes_is_open_now_in_room_payload(self):
+        with patch(
+            "apps.operations.availability.timezone.now",
+            return_value=self.aware(self.today, time(8, 0)),
+        ):
+            response = self.client.get(
+                f"/api/computers/availability/?date={self.today}"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["room"]["is_open_now"])
+        self.assertEqual(
+            response.data["room"]["operating_windows"],
+            [{"opens_at": "07:00:00", "closes_at": "10:00:00"}],
+        )
+
     def test_slots_show_reservation_and_available_intervals(self):
         create_reservation(
             user_reference="another-user",

@@ -2,3 +2,5 @@ Django>=5.2.17,<5.3
 djangorestframework>=3.17,<3.18
 drf-spectacular>=0.30,<0.31
 psycopg[binary]>=3.3,<3.4
+XlsxWriter>=3.2,<3.3
+reportlab>=5.0,<6

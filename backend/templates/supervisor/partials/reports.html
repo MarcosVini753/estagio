@@ -1,15 +1,97 @@
 <section class="staff-page-heading">
-  <div><p class="section-kicker">Projeção derivada dos registros</p><h2>Relatório mensal</h2></div>
+  <div>
+    <p class="section-kicker">Relatórios e indicadores derivados dos registros</p>
+    <h2>{{ report_title }}</h2>
+  </div>
 </section>
 
-<form class="report-filter staff-card" method="get" action="{% url 'web:supervisor-reports' %}">
-  <label class="field"><span>Mês</span><select name="month">{% for value, label in month_choices %}<option value="{{ value }}" {% if report_month == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><label class="field"><span>Ano</span><input type="number" min="1" max="9998" name="year" value="{{ report_year }}" required></label><button class="button button-primary" type="submit">Gerar análise</button>
+<nav class="report-tabs" aria-label="Visões de relatório">
+  {% for item in report_navigation %}
+    <a
+      class="report-tab {% if item.is_current %}report-tab-active{% endif %}"
+      href="{{ item.url }}"
+      {% if item.is_current %}aria-current="page"{% endif %}
+      hx-get="{{ item.url }}"
+      hx-target="#staff-content"
+      hx-swap="outerHTML"
+      hx-push-url="true">{{ item.label }}</a>
+  {% endfor %}
+</nav>
+
+<form
+  class="report-filter staff-card"
+  method="get"
+  action="{% url 'web:supervisor-reports' %}"
+  hx-get="{% url 'web:supervisor-reports' %}"
+  hx-target="#staff-content"
+  hx-swap="outerHTML"
+  hx-push-url="true">
+  <input type="hidden" name="report" value="{{ report_kind }}">
+  {% if report_kind == "daily" %}
+    <label class="field"><span>Data</span><input type="date" name="date" value="{{ report_filters.date }}" required></label>
+  {% elif report_kind == "monthly" %}
+    <label class="field"><span>Mês</span><select name="month">{% for value, label in month_choices %}<option value="{{ value }}" {% if report_filters.month == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="field"><span>Ano</span><input type="number" min="1" max="9998" name="year" value="{{ report_filters.year }}" required></label>
+  {% elif report_kind == "annual" %}
+    <label class="field"><span>Ano</span><input type="number" min="1" max="9998" name="year" value="{{ report_filters.year }}" required></label>
+  {% else %}
+    <label class="field"><span>Data inicial</span><input type="date" name="starts_on" value="{{ report_filters.starts_on }}" required></label>
+    <label class="field"><span>Data final</span><input type="date" name="ends_on" value="{{ report_filters.ends_on }}" required></label>
+  {% endif %}
+  <button class="button button-primary" type="submit">Atualizar {{ report_kind_label|lower }}</button>
 </form>
 
-<div class="notice" role="note"><strong>Formatos disponíveis nesta etapa</strong><span>A visualização mensal HTML está implementada. Relatórios diário e anual e os exportadores serão entregues nas etapas próprias. Preferência de exportação: {{ report_configuration.get_default_format_display }}.</span></div>
+<div class="notice" role="note">
+  <strong>Leitura e exportação usam a mesma projeção</strong>
+  <span>Preferência de exportação: {{ report_configuration.get_default_format_display }}. Os indicadores medem uso observado; o sistema não registra procura recusada.</span>
+</div>
 
 {% if report %}
-  <section class="metric-grid report-metrics"><article class="metric-card"><span>Visitas</span><strong>{{ report.summary.visits }}</strong></article><article class="metric-card"><span>Pessoas distintas</span><strong>{{ report.summary.distinct_users }}</strong></article><article class="metric-card"><span>Reservas</span><strong>{{ report.summary.reservations }}</strong></article>{% if report_configuration.include_occurrences %}<article class="metric-card"><span>Ocorrências</span><strong>{{ report.summary.occurrences }}</strong></article>{% endif %}<article class="metric-card"><span>Computadores usados</span><strong>{{ report.summary.computers_used }}</strong></article><article class="metric-card"><span>Minutos alocados</span><strong>{{ report.summary.allocated_minutes }}</strong></article><article class="metric-card"><span>Permanência média</span><strong>{{ report.summary.average_stay_minutes }} min</strong></article><article class="metric-card"><span>Minutos operacionais</span><strong>{{ report.summary.operating_minutes }}</strong></article></section>
-  <div class="report-table-wrapper"><table class="report-table"><caption>Dias de {{ report_month|stringformat:"02d" }}/{{ report_year }}</caption><thead><tr><th>Dia</th><th>Calendário</th>{% if report_configuration.group_by_shift %}{% for shift in report.shifts %}<th>{{ shift.name }}</th>{% endfor %}<th>Não informado</th>{% endif %}<th>Total</th></tr></thead><tbody>{% for day in report.days %}<tr><th>{{ day.day|stringformat:"02d" }}</th><td>{{ day.calendar_status }}<small>{{ day.calendar_source }}</small></td>{% if report_configuration.group_by_shift %}{% for key, value in day.visits_by_shift.items %}<td>{{ value }}</td>{% endfor %}{% endif %}<td><strong>{{ day.total }}</strong></td></tr>{% endfor %}</tbody></table></div>
-  {% if report.warnings.active_session_ids or report.warnings.sessions_without_shift %}<div class="flash flash-warning" role="status">Atenção: o relatório contém {{ report.warnings.active_session_ids|length }} sessão(ões) ainda ativa(s) e {{ report.warnings.sessions_without_shift|length }} sem turno identificado.</div>{% endif %}
+  <section class="report-toolbar" aria-label="Exportar relatório">
+    <div><strong>Baixar esta visão</strong><small>Os arquivos não incluem referências individuais de usuários.</small></div>
+    <div class="report-export-actions">
+      {% for link in export_links %}<a class="button {% if link.is_default %}button-primary{% else %}button-ghost{% endif %}" href="{{ link.url }}" download>{{ link.label }}{% if link.is_default %} (preferido){% endif %}</a>{% endfor %}
+    </div>
+  </section>
+
+  <section class="metric-grid report-metrics" aria-label="Resumo do relatório">
+    <article class="metric-card"><span>Visitas</span><strong>{{ report.summary.visits }}</strong></article>
+    <article class="metric-card"><span>Pessoas distintas</span><strong>{{ report.summary.distinct_users }}</strong></article>
+    <article class="metric-card"><span>Reservas</span><strong>{{ report.summary.reservations }}</strong></article>
+    {% if report_configuration.include_occurrences %}<article class="metric-card"><span>Ocorrências</span><strong>{{ report.summary.occurrences }}</strong></article>{% endif %}
+    <article class="metric-card"><span>Computadores usados</span><strong>{{ report.summary.computers_used }}</strong></article>
+    <article class="metric-card"><span>Minutos alocados</span><strong>{{ report.summary.allocated_minutes }}</strong></article>
+    <article class="metric-card"><span>Permanência média</span><strong>{{ report.summary.average_stay_minutes }} min</strong></article>
+    <article class="metric-card"><span>Taxa de ocupação</span><strong>{% if report.occupancy.rate_percent != None %}{{ report.occupancy.rate_percent }}%{% else %}Não calculável{% endif %}</strong><small>{{ report.occupancy.available_minutes }} min de capacidade elegível</small></article>
+  </section>
+
+  {% if report_kind == "daily" %}
+    <section class="staff-card report-context">
+      <div><p class="section-kicker">Calendário efetivo</p><h3>{{ report.calendar.status_label }}</h3><p>{{ report.calendar.source_label }}{% if report.calendar.reason %} · {{ report.calendar.reason }}{% endif %}</p></div>
+      <div class="room-windows">{% for window in report.calendar.windows %}<span>{{ window.opens_at }}–{{ window.closes_at }}</span>{% empty %}<span>Sem funcionamento</span>{% endfor %}</div>
+    </section>
+    {% if report_configuration.group_by_shift %}
+      <div class="report-table-wrapper"><table class="report-table"><caption>Visitas por turno em {{ report.period.date }}</caption><thead><tr><th>Turno</th><th>Visitas</th></tr></thead><tbody>{% for shift in report.shifts %}<tr><th>{{ shift.name }}</th><td>{% for key, value in report.visits_by_shift.items %}{% if key == shift.series_key %}{{ value }}{% endif %}{% endfor %}</td></tr>{% endfor %}<tr><th>Não informado</th><td>{% for key, value in report.visits_by_shift.items %}{% if key == "NOT_INFORMED" %}{{ value }}{% endif %}{% endfor %}</td></tr></tbody></table></div>
+    {% endif %}
+  {% elif report_kind == "monthly" %}
+    <div class="report-table-wrapper"><table class="report-table"><caption>Dias de {{ report_filters.month|stringformat:"02d" }}/{{ report_filters.year }}</caption><thead><tr><th>Dia</th><th>Calendário</th><th>Minutos operacionais</th>{% if report_configuration.group_by_shift %}{% for shift in report.shifts %}<th>{{ shift.name }}</th>{% endfor %}<th>Não informado</th>{% endif %}<th>Total</th></tr></thead><tbody>{% for day in report.days %}<tr><th>{{ day.day|stringformat:"02d" }}</th><td>{{ day.calendar_status_label }}<small>{{ day.calendar_source_label }}</small></td><td>{{ day.operating_minutes }}</td>{% if report_configuration.group_by_shift %}{% for key, value in day.visits_by_shift.items %}<td>{{ value }}</td>{% endfor %}{% endif %}<td><strong>{{ day.total }}</strong></td></tr>{% endfor %}</tbody></table></div>
+  {% elif report_kind == "annual" %}
+    <div class="report-table-wrapper"><table class="report-table"><caption>Meses de {{ report.period.year }}</caption><thead><tr><th>Mês</th><th>Visitas</th><th>Pessoas distintas</th><th>Minutos alocados</th><th>Taxa de ocupação</th>{% if report_configuration.group_by_shift %}{% for shift in report.shifts %}<th>{{ shift.name }}</th>{% endfor %}<th>Não informado</th>{% endif %}</tr></thead><tbody>{% for month in report.months %}<tr><th>{{ month.month|stringformat:"02d" }}</th><td>{{ month.summary.visits }}</td><td>{{ month.summary.distinct_users }}</td><td>{{ month.summary.allocated_minutes }}</td><td>{% if month.occupancy.rate_percent != None %}{{ month.occupancy.rate_percent }}%{% else %}—{% endif %}</td>{% if report_configuration.group_by_shift %}{% for key, value in month.visits_by_shift.items %}<td>{{ value }}</td>{% endfor %}{% endif %}</tr>{% endfor %}</tbody></table></div>
+  {% else %}
+    {% if report_configuration.group_by_shift %}<div class="report-table-wrapper"><table class="report-table"><caption>Uso por turno lógico</caption><thead><tr><th>Turno</th><th>Visitas</th><th>Minutos alocados</th></tr></thead><tbody>{% for row in report.by_shift %}<tr><th>{{ row.label }}</th><td>{{ row.visits }}</td><td>{{ row.allocated_minutes }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+    <div class="report-table-wrapper"><table class="report-table"><caption>Uso por vínculo</caption><thead><tr><th>Vínculo</th><th>Visitas</th><th>Pessoas distintas</th><th>Minutos alocados</th></tr></thead><tbody>{% for row in report.by_affiliation %}<tr><th>{{ row.label }}</th><td>{{ row.visits }}</td><td>{{ row.distinct_users }}</td><td>{{ row.allocated_minutes }}</td></tr>{% empty %}<tr><td colspan="4">Sem uso no período.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="report-table-wrapper"><table class="report-table"><caption>Uso por unidade institucional</caption><thead><tr><th>Unidade</th><th>Visitas</th><th>Pessoas distintas</th><th>Minutos alocados</th></tr></thead><tbody>{% for row in report.by_institutional_unit %}<tr><th>{{ row.label }}</th><td>{{ row.visits }}</td><td>{{ row.distinct_users }}</td><td>{{ row.allocated_minutes }}</td></tr>{% empty %}<tr><td colspan="4">Sem uso no período.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="report-table-wrapper"><table class="report-table"><caption>Uso por computador</caption><thead><tr><th>Computador</th><th>Visitas</th><th>Minutos alocados</th><th>Minutos disponíveis</th><th>Taxa</th>{% if report_configuration.include_occurrences %}<th>Ocorrências</th>{% endif %}</tr></thead><tbody>{% for row in report.by_computer %}<tr><th>{{ row.code }}<small>{{ row.description }}</small></th><td>{{ row.visits }}</td><td>{{ row.allocated_minutes }}</td><td>{{ row.available_minutes }}</td><td>{% if row.occupancy_rate_percent != None %}{{ row.occupancy_rate_percent }}%{% else %}—{% endif %}</td>{% if report_configuration.include_occurrences %}<td>{{ row.occurrences }}</td>{% endif %}</tr>{% empty %}<tr><td colspan="6">Sem computadores elegíveis no período.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="report-table-wrapper"><table class="report-table"><caption>Uso por dia</caption><thead><tr><th>Data</th><th>Visitas</th><th>Minutos alocados</th><th>Minutos disponíveis</th><th>Taxa</th></tr></thead><tbody>{% for row in report.by_day %}<tr><th>{{ row.date }}</th><td>{{ row.visits }}</td><td>{{ row.allocated_minutes }}</td><td>{{ row.available_minutes }}</td><td>{% if row.occupancy_rate_percent != None %}{{ row.occupancy_rate_percent }}%{% else %}—{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+    <div class="report-table-wrapper"><table class="report-table"><caption>Ocupação observada por bloco de 15 minutos</caption><thead><tr><th>Início</th><th>Minutos alocados</th><th>Minutos disponíveis</th><th>Taxa</th></tr></thead><tbody>{% for row in report.by_time_slot %}<tr><th>{{ row.starts_at }}</th><td>{{ row.allocated_minutes }}</td><td>{{ row.available_minutes }}</td><td>{% if row.occupancy_rate_percent != None %}{{ row.occupancy_rate_percent }}%{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="4">Sem capacidade operacional no período.</td></tr>{% endfor %}</tbody></table></div>
+  {% endif %}
+
+  {% if report.warnings.active_session_ids or report.warnings.sessions_without_shift or report.warnings.computers_without_reliable_state_history %}
+    <div class="flash flash-warning report-warning" role="status">
+      <strong>O relatório contém ressalvas.</strong>
+      {% if report.warnings.active_session_ids %}<span>{{ report.warnings.active_session_ids|length }} sessão(ões) ainda ativa(s).</span>{% endif %}
+      {% if report.warnings.sessions_without_shift %}<span>{{ report.warnings.sessions_without_shift|length }} sessão(ões) classificada(s) como “Não informado”.</span>{% endif %}
+      {% if report.warnings.computers_without_reliable_state_history %}<span>Computadores excluídos da taxa por histórico operacional inconsistente: {{ report.warnings.computers_without_reliable_state_history|join:", " }}.</span>{% endif %}
+    </div>
+  {% endif %}
 {% endif %}

@@ -346,7 +346,8 @@ class RoomStatusAPIView(APIView):
     def get(self, request):
         query = RoomStatusQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
-        return Response(room_status_payload(query.validated_data["date"]))
+        payload = room_status_payload(query.validated_data["date"])
+        return Response(RoomStatusSerializer(payload).data)
 
 
 class ActiveRoomNoticeListAPIView(APIView):

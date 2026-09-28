@@ -12,7 +12,7 @@ from apps.computers.services import (
     validate_operational_state_change,
 )
 from apps.operations.models import ComputerAllocation, Reservation, UseSession
-from apps.operations.services.deadlines import reconcile_computer_deadlines
+from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 from apps.operations.services.reservations import cancel_locked_reservation
 
 
@@ -20,6 +20,17 @@ from apps.operations.services.reservations import cancel_locked_reservation
 class ComputerStateChangeResult:
     computer: Computer
     impact: dict
+
+
+def _candidate_has_open_allocation(candidate: Computer) -> bool:
+    # A ocupação real manda: enquanto a alocação estiver aberta o computador
+    # permanece ocupado, inclusive na tolerância de saída, quando o horário
+    # planejado já passou. Sem esta checagem o banco rejeitaria a alocação
+    # duplicada e toda a operação seria revertida.
+    return ComputerAllocation.objects.filter(
+        computer=candidate,
+        ended_at__isnull=True,
+    ).exists()
 
 
 def _candidate_is_available_for_session(
@@ -32,13 +43,7 @@ def _candidate_is_available_for_session(
         return False
     if starts_at >= session.planned_ends_at:
         return False
-    if ComputerAllocation.objects.filter(
-        computer=candidate,
-        ended_at__isnull=True,
-        session__status=UseSession.Status.ACTIVE,
-        session__planned_starts_at__lt=session.planned_ends_at,
-        session__planned_ends_at__gt=starts_at,
-    ).exists():
+    if _candidate_has_open_allocation(candidate):
         return False
     return not (
         Reservation.objects.filter(
@@ -58,13 +63,7 @@ def _candidate_is_available_for_reservation(
 ) -> bool:
     if candidate.operational_state != Computer.OperationalState.AVAILABLE:
         return False
-    if ComputerAllocation.objects.filter(
-        computer=candidate,
-        ended_at__isnull=True,
-        session__status=UseSession.Status.ACTIVE,
-        session__planned_starts_at__lt=reservation.ends_at,
-        session__planned_ends_at__gt=reservation.starts_at,
-    ).exists():
+    if _candidate_has_open_allocation(candidate):
         return False
     return (
         not Reservation.objects.filter(
@@ -241,8 +240,6 @@ def change_computer_operational_state(
     now: datetime | None = None,
 ) -> ComputerStateChangeResult:
     current = now or timezone.now()
-    reconcile_computer_deadlines(computer_id, current)
-
     computers = list(Computer.objects.select_for_update().order_by("pk"))
     source = next(computer for computer in computers if computer.pk == computer_id)
     normalized_reason = validate_operational_state_change(
@@ -261,6 +258,16 @@ def change_computer_operational_state(
             Computer.OperationalState.MAINTENANCE,
             Computer.OperationalState.INACTIVE,
         }
+    )
+    # Todas as mutações que disputam computadores seguem a mesma ordem:
+    # computadores, sessões/alocações e reservas. Candidatos só precisam ser
+    # reconciliados quando realmente participarão de uma realocação.
+    observed_computers = computers if becomes_unavailable else [source]
+    reconcile_deadlines(
+        now=current,
+        scope=ReconcileScope(
+            computer_ids=tuple(computer.pk for computer in observed_computers)
+        ),
     )
     if becomes_unavailable:
         candidates = [computer for computer in computers if computer.pk != source.pk]

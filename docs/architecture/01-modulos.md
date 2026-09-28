@@ -10,11 +10,14 @@ Camada de apresentação HTML, sem models próprios, responsável por:
 - proteção das rotas do Usuário da Sala, Monitor e Supervisor pelo contexto salvo na sessão;
 - páginas e partials HTMX para os fluxos próprios, operacionais e gerenciais;
 - painel do Monitor com sessões ativas, estados dos computadores, ocorrências e correções de histórico;
-- gestão do Supervisor para inventário, turnos, calendários, exceções, avisos, parâmetros e relatório mensal;
+- gestão do Supervisor para inventário, turnos, calendários, exceções, avisos,
+  parâmetros, relatórios e indicadores;
 - presenters e adaptação de erros de serviço para formulários e mensagens;
 - progressive enhancement e respostas completas quando HTMX ou JavaScript não estiverem disponíveis.
 
 O app reutiliza serializers de entrada, selectors e serviços dos módulos de domínio. Não chama a API HTTP internamente e não contém regras de disponibilidade, duração ou transição de estado.
+
+Helpers compartilhados tratam somente autorização simulada, negociação de página/partial HTMX, redirects e mensagens de erro. Contextos e fluxos permanecem separados por área. As views do Supervisor são divididas entre painel, relatórios, inventário, configurações e calendários; regras transacionais continuam nos serviços dos domínios correspondentes.
 
 ## `core`
 
@@ -61,6 +64,8 @@ Entidades:
 - `RoomNotice`;
 - `BookingPolicy`;
 - `ReportConfiguration`.
+
+Os serviços são organizados por política, turno, calendário, exceção e aviso. Somente cálculo de impacto e cancelamento compartilhado fica em módulo interno comum; o pacote mantém uma superfície pública estável em `apps.configuration.services`.
 
 ## `computers`
 
@@ -114,15 +119,15 @@ Entidade:
 
 Responsável por consultas analíticas e exportações:
 
-- relatório diário;
-- mensal;
-- anual;
-- ocupação;
+- relatório diário, mensal e anual;
+- indicadores e taxa de ocupação;
 - uso por computador;
 - uso por curso, setor e vínculo;
 - reservas e cancelamentos.
 
-Deve possuir principalmente selectors, projections e exporters. Não deve criar lançamentos manuais de totais.
+Possui selectors de carregamento em lote, o pacote coeso `projections`, uma
+camada única de geração e exportadores CSV, XLSX e PDF. Não cria lançamentos
+manuais de totais.
 O relatório semanal permanece como evolução futura, fora da Etapa 4.
 
 ## `audit`

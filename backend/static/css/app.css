@@ -607,6 +607,12 @@ svg {
   background: var(--danger-soft);
 }
 
+.room-status-special,
+.room-status-special_hours {
+  border-color: #f7d088;
+  background: var(--warning-soft);
+}
+
 .room-windows {
   display: grid;
   justify-items: end;
@@ -615,6 +621,20 @@ svg {
   font-size: 0.77rem;
   font-weight: 800;
   text-align: right;
+}
+
+.version-summary {
+  margin-top: 0.65rem;
+  margin-bottom: 0.65rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--surface-soft, rgba(0, 0, 0, 0.02));
+}
+
+.version-summary-future {
+  border-color: #f7d088;
+  background: var(--warning-soft);
 }
 
 .active-session-callout {
@@ -1114,6 +1134,60 @@ svg {
   gap: 0.7rem;
 }
 
+.report-tabs {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.report-tab {
+  min-height: 44px;
+  display: inline-flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.6rem 0.9rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.report-tab-active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.report-toolbar,
+.report-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.report-toolbar small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+}
+
+.report-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.report-warning {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .report-filter .button {
   align-self: end;
 }
@@ -1167,6 +1241,13 @@ svg {
   display: block;
   color: var(--muted);
   font-size: 0.62rem;
+}
+
+.report-table th small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 600;
 }
 
 .problem-form {
@@ -1451,6 +1532,14 @@ svg {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.staff-page-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.75rem;
 }
 
@@ -1964,10 +2053,10 @@ a.staff-list-row:hover {
   .staff-header {
     grid-area: staff-header;
     display: grid;
-    grid-template-columns: minmax(18rem, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "top profile"
-      "search profile";
+      "top"
+      "search";
     align-items: center;
     gap: 0.65rem 1rem;
     border-bottom-color: var(--line);
@@ -1994,17 +2083,6 @@ a.staff-list-row:hover {
     right: 2rem;
     background: var(--surface-muted);
     color: var(--text);
-  }
-
-  .staff-header .profile-strip {
-    grid-area: profile;
-    margin: 0 3.8rem 0 0;
-    background: var(--surface-muted);
-    color: var(--text);
-  }
-
-  .staff-header .profile-strip span {
-    color: var(--muted);
   }
 
   .staff-header .search-box {

@@ -98,7 +98,13 @@ Registro de problema técnico ou operacional associado opcionalmente a computado
 
 ## Relatório consolidado
 
-Projeção gerencial diária, mensal ou anual usada pelo Supervisor.
+Projeção gerencial diária, mensal ou anual usada pelo Supervisor e disponível
+em JSON, HTML, CSV, XLSX e PDF.
+
+## Indicador gerencial
+
+Agregação por turno lógico, vínculo, unidade, computador, dia ou bloco de 15
+minutos. Mede uso registrado; não representa procura recusada.
 
 ## Perfil de acesso
 

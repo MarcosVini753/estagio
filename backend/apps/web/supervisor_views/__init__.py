@@ -8,8 +8,9 @@ from .configuration import (
     update_notice_state,
     update_shift,
 )
-from .dashboard import dashboard, reports
+from .dashboard import dashboard
 from .inventory import computers, update_computer
+from .reports import reports
 
 __all__ = [
     "computers",

@@ -82,7 +82,8 @@
 - troca validada até o fim planejado e bloqueada durante a tolerância;
 - disponibilidade futura limitada por `planned_ends_at` e estado atual por `exit_deadline_at`;
 - resposta `immediate_usage` resumida e opções de fim planejado no detalhe do computador;
-- reconciliação oportunista e comando periódico que registra saídas automáticas e cancelamentos por check-in expirado;
+- reconciliação escopada antes de mutações e consultas operacionais autorizadas, com um único instante por operação;
+- comando periódico em rodada única ou modo contínuo de 60 segundos, com serviço dedicado no Compose;
 - migração em três fases com bloqueio explícito de sessões legadas ativas;
 - testes de constraints, APIs, deadlines, backfill e corridas entre reserva, entrada e troca;
 - protótipo, ADR, documentação e diagramas sincronizados.
@@ -96,7 +97,7 @@
 - `BookingPolicy` é versionada por vigência e cada reserva referencia a versão aplicada;
 - `AVAILABLE -> MAINTENANCE/INACTIVE` transfere ou encerra sessão ativa e realoca ou cancela reservas atomicamente;
 - resposta do endpoint de estado descreve o impacto e as corridas usam locks determinísticos;
-- Monitor continua sem acesso ao relatório mensal.
+- Monitor continua sem acesso a relatórios, indicadores ou exportações.
 
 ## Concluído na entrega do frontend do Usuário da Sala
 
@@ -131,13 +132,33 @@
 - paginação fixa de 25 itens nas listagens extensas da API e das interfaces, com busca da Agenda e do Histórico executada no banco;
 - constraints de coerência entre estados e metadados de cancelamento, saída e encerramento, precedidas por migration de validação explícita do legado;
 - serviços de configuração e views do Supervisor expostos em módulos coesos, preservando imports públicos, URLs e regras transacionais.
+- autorização de perfil, respostas HTMX, redirects e apresentação de erros compartilhados sem mover regras de domínio para a camada web;
+- resolução mensal do calendário em lote, protegida por orçamento máximo de seis consultas;
+- E2E executado por `StaticLiveServerTestCase`, banco isolado, relógio controlado e dados descartáveis criados pelos serviços.
+
+## Concluído na entrega dos relatórios consolidados
+
+- projeções diária, mensal, anual e de indicadores sobre uma base comum;
+- reconciliação com um único instante e carregamento em lote antes das projeções;
+- calendário efetivo, turnos lógicos e `NOT_INFORMED` no relatório diário;
+- 12 meses fixos, deduplicação anual e médias recalculadas sobre dados brutos;
+- indicadores por turno, vínculo, unidade, computador, dia e bloco de 15 minutos;
+- taxa de ocupação calculada sobre calendário e histórico `AVAILABLE`, com corte
+  em `now` e aviso para computadores com sequência histórica inconsistente;
+- API JSON completa para as quatro visões, restrita a Supervisor e Administrador;
+- exportação CSV, XLSX e PDF da mesma projeção, sem referências individuais;
+- interface responsiva do Supervisor com filtros server-side, HTMX progressivo,
+  URLs navegáveis, tabelas acessíveis e downloads;
+- testes de contratos, permissões, limites temporais, documentos reais,
+  orçamento de consultas e navegação com e sem JavaScript.
 
 ## Não implementado
 
-- demais projeções e exportadores de relatórios;
 - interface funcional própria do Administrador;
 - autenticação real.
 
 ## Próxima fatia recomendada
 
-Implementar o relatório diário e reutilizar calendário e projeção mensal nas exportações futuras.
+Validar os relatórios com uma massa histórica representativa e medir consultas,
+memória e legibilidade dos documentos antes de considerar cache ou novas
+visualizações.

@@ -40,6 +40,11 @@ urlpatterns = [
         name="monitor-history-correct",
     ),
     path(
+        "monitor/historico/<int:pk>/encerrar/",
+        monitor_views.finish_active_session,
+        name="monitor-session-finish",
+    ),
+    path(
         "supervisor/",
         supervisor_views.dashboard,
         name="supervisor-dashboard",

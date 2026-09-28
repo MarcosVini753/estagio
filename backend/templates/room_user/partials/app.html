@@ -45,7 +45,7 @@
         hx-trigger="submit, input changed delay:350ms from:input[type='search']">
         <span class="search-icon">{% include "components/icon.html" with name="search" %}</span>
         <input type="search" name="q" value="{{ query }}" placeholder="{{ search_placeholder }}" aria-label="{{ search_placeholder }}">
-        {% if screen == "computers" %}<input type="hidden" name="day" value="{{ day }}">{% endif %}
+        {% if screen == "computers" %}<input type="hidden" id="search-day-input" name="day" value="{{ day }}">{% endif %}
       </form>
     {% endif %}
   </header>

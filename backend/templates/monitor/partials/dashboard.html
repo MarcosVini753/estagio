@@ -3,7 +3,10 @@
     <p class="section-kicker">Acompanhamento em tempo real</p>
     <h2>{{ section_title }}</h2>
   </div>
-  <span class="live-indicator"><span aria-hidden="true"></span> Atualização operacional</span>
+  <div class="staff-page-heading-actions">
+    {% if area_switch_url %}<a class="button button-primary" href="{{ area_switch_url }}">{{ area_switch_action_label }}</a>{% endif %}
+    <span class="live-indicator"><span aria-hidden="true"></span> Atualização operacional</span>
+  </div>
 </section>
 
 <section class="metric-grid" aria-label="Resumo operacional">

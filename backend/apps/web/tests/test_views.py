@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.computers.models import Computer
 from apps.configuration.models import (
     BookingPolicy,
+    CalendarException,
     OperatingSchedule,
     RoomNotice,
     Weekday,
@@ -72,8 +73,9 @@ class RoomUserWebTest(TestCase):
         self.assertContains(response, 'value="SYSTEM_ADMIN"')
         self.assertNotContains(response, "Autorização simulada")
         self.assertNotContains(response, "perfil de teste")
-        self.assertNotContains(response, "demonstração")
-        self.assertNotContains(response, "fictícia")
+        self.assertNotContains(response, "Ambiente de demonstração")
+        self.assertNotContains(response, "A escolha de perfil não é autenticação")
+        self.assertNotContains(response, "Use apenas dados fictícios")
 
         invalid = self.client.post("/", {"profile": "ROOM_USER"})
         self.assertEqual(invalid.status_code, 400)
@@ -149,12 +151,14 @@ class RoomUserWebTest(TestCase):
         self.assertContains(today_response, "Computador 01")
         self.assertContains(today_response, "Hoje")
         self.assertContains(today_response, "Usuário da Sala")
+        self.assertContains(today_response, 'id="search-day-input"', count=1)
         self.assertNotContains(today_response, "Perfil de teste")
-        self.assertNotContains(today_response, "Ambiente demonstrativo")
+        self.assertNotContains(today_response, "Ambiente de demonstração")
         self.assertNotContains(tomorrow_response, "Computador 01")
         self.assertContains(tomorrow_response, "Computador 02")
         self.assertContains(tomorrow_response, "horários disponíveis")
         self.assertContains(partial, 'id="screen-content"')
+        self.assertContains(partial, 'hx-swap-oob="outerHTML"')
         self.assertNotContains(partial, "<!doctype html>")
         self.assertContains(detail, "15 min")
         self.assertContains(detail, "30 min")
@@ -340,7 +344,7 @@ class RoomUserWebTest(TestCase):
             before_window = self.client.get("/sala/agenda/")
 
         self.assertNotContains(before_window, "Registrar entrada")
-        self.assertContains(before_window, 'hx-trigger="every 15s"')
+        self.assertContains(before_window, 'hx-trigger="every 15s, refreshAgenda"')
         self.assertContains(before_window, 'hx-target="#agenda-content"')
 
         with patch(
@@ -391,7 +395,11 @@ class RoomUserWebTest(TestCase):
                 f"/sala/sessao/{active_session.pk}/trocar/",
                 {"computer_id": self.other_computer.pk},
             )
-        session_page = self.client.get("/sala/sessao/")
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.fixed_now + timedelta(minutes=10),
+        ):
+            session_page = self.client.get("/sala/sessao/")
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
@@ -492,7 +500,11 @@ class RoomUserWebTest(TestCase):
                 },
             )
         active_session = UseSession.objects.get(status=UseSession.Status.ACTIVE)
-        session_page = self.client.get("/sala/sessao/")
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            session_page = self.client.get("/sala/sessao/")
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
@@ -602,13 +614,17 @@ class RoomUserWebTest(TestCase):
         active_session = UseSession.objects.get()
         allocation = active_session.allocations.get()
 
-        response = self.client.post(
-            "/sala/problemas/",
-            {
-                "computer_id": self.computer.pk,
-                "description": "O mouse não está funcionando.",
-            },
-        )
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.fixed_now,
+        ):
+            response = self.client.post(
+                "/sala/problemas/",
+                {
+                    "computer_id": self.computer.pk,
+                    "description": "O mouse não está funcionando.",
+                },
+            )
 
         self.assertRedirects(response, "/sala/problemas/")
         occurrence = active_session.occurrences.get()
@@ -623,3 +639,88 @@ class RoomUserWebTest(TestCase):
         own_problems = self.client.get("/sala/problemas/")
         self.assertContains(own_problems, "O mouse não está funcionando.")
         self.assertNotContains(own_problems, "Ocorrência de outra pessoa.")
+
+    def test_search_preserves_selected_day_parameter_via_oob_swap(self):
+        self.select_room_user()
+        with patch("django.utils.timezone.now", return_value=self.fixed_now):
+            tomorrow_screen = self.client.get(
+                "/sala/computadores/?day=tomorrow",
+                HTTP_HX_REQUEST="true",
+                HTTP_HX_TARGET="screen-content",
+            )
+        self.assertContains(tomorrow_screen, 'name="day" value="tomorrow"')
+        self.assertContains(tomorrow_screen, 'hx-swap-oob="outerHTML"')
+
+        with patch("django.utils.timezone.now", return_value=self.fixed_now):
+            search_tomorrow = self.client.get(
+                f"/sala/computadores/?day=tomorrow&q={self.computer.code}"
+            )
+        self.assertContains(search_tomorrow, self.computer.code)
+        self.assertContains(search_tomorrow, 'name="day" value="tomorrow"')
+
+    def test_room_status_presentation_handles_special_hours_and_after_closing(self):
+        self.select_room_user()
+        CalendarException.objects.create(
+            date=self.today,
+            exception_type=CalendarException.ExceptionType.SPECIAL_HOURS,
+            opens_at=time(8),
+            closes_at=time(12),
+            description="Horário especial de teste.",
+        )
+
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.aware(self.today, time(9)),
+        ):
+            open_special = self.client.get("/sala/computadores/?day=today")
+
+        self.assertContains(open_special, "Sala aberta (horário especial)")
+        self.assertContains(open_special, "08:00–12:00")
+        self.assertNotContains(open_special, "Sala fechada")
+
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.aware(self.today, time(21, 30)),
+        ):
+            after_hours = self.client.get("/sala/computadores/?day=today")
+
+        self.assertContains(after_hours, "Sala fechada")
+        self.assertNotContains(after_hours, "Sala aberta")
+
+    def test_agenda_disables_cancellation_when_within_cancellation_limit_minutes(
+        self,
+    ):
+        self.select_room_user()
+        policy = BookingPolicy.objects.order_by("-valid_from").first()
+        if policy:
+            policy.cancellation_limit_minutes = 30
+            policy.save(update_fields=["cancellation_limit_minutes", "updated_at"])
+        else:
+            policy = BookingPolicy.objects.create(
+                cancellation_limit_minutes=30,
+                valid_from=self.today - timedelta(days=1),
+            )
+        reservation = create_reservation(
+            user_reference="aluno-si-001",
+            computer=self.computer,
+            starts_at=self.aware(self.tomorrow, time(9)),
+            ends_at=self.aware(self.tomorrow, time(10)),
+            booking_policy=policy,
+            created_by_profile="ROOM_USER",
+        )
+
+        with patch(
+            "django.utils.timezone.now",
+            return_value=self.aware(self.tomorrow, time(8, 45)),
+        ):
+            agenda = self.client.get("/sala/agenda/")
+            response = self.client.post(f"/sala/reservas/{reservation.pk}/cancelar/")
+
+        self.assertNotContains(
+            agenda,
+            f'action="/sala/reservas/{reservation.pk}/cancelar/"',
+        )
+        self.assertContains(agenda, "Prazo de cancelamento encerrado às 08:30")
+        self.assertEqual(response.status_code, 409)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.CONFIRMED)

@@ -155,23 +155,5 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install chromium
 
-      - name: Prepare database
-        run: |
-          cd backend
-          python manage.py migrate --noinput
-          python manage.py seed_demo_data
-          python manage.py seed_frontend_e2e_data
-
-      - name: Start Django server
-        run: |
-          cd backend
-          python manage.py runserver 127.0.0.1:8000 --noreload --insecure > /tmp/frontend-django.log 2>&1 &
-          echo $! > /tmp/frontend-django.pid
-          curl --retry 10 --retry-delay 1 --retry-connrefused --fail http://127.0.0.1:8000/ > /dev/null
-
       - name: Run browser smoke flow
-        run: npm run test:e2e
-
-      - name: Stop Django server
-        if: always()
-        run: kill "$(cat /tmp/frontend-django.pid)" 2>/dev/null || true
+        run: cd backend && RUN_FRONTEND_E2E=1 python manage.py test apps.web.tests.test_frontend_e2e --noinput

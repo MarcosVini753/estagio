@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework.response import Response
@@ -13,6 +14,7 @@ from apps.operations.availability import (
     get_computers_availability,
 )
 from apps.operations.services.computer_state import change_computer_operational_state
+from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 
 from .serializers import (
     AvailabilityDateQuerySerializer,
@@ -103,10 +105,21 @@ class ComputerAvailabilityAPIView(APIView):
     def get(self, request):
         query = AvailabilityDateQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
+        computers = list(Computer.objects.all())
+        current = timezone.now()
+        reference = get_demo_user_reference(request)
+        reconcile_deadlines(
+            now=current,
+            scope=ReconcileScope(
+                computer_ids=tuple(computer.pk for computer in computers),
+                user_references=(reference,) if reference else None,
+            ),
+        )
         payload, _ = get_computers_availability(
             target_date=query.validated_data["date"],
-            computers=Computer.objects.all(),
-            user_reference=get_demo_user_reference(request),
+            computers=computers,
+            user_reference=reference,
+            now=current,
         )
         return Response(ComputerAvailabilityResponseSerializer(payload).data)
 
@@ -124,10 +137,20 @@ class ComputerSlotsAPIView(APIView):
         query = AvailabilityDateQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
         computer = get_object_or_404(Computer, pk=pk)
+        current = timezone.now()
+        reference = get_demo_user_reference(request)
+        reconcile_deadlines(
+            now=current,
+            scope=ReconcileScope(
+                computer_ids=(computer.pk,),
+                user_references=(reference,) if reference else None,
+            ),
+        )
         payload = get_computer_slots(
             target_date=query.validated_data["date"],
             computer=computer,
-            user_reference=get_demo_user_reference(request),
+            user_reference=reference,
+            now=current,
         )
         payload["computer"] = ComputerSerializer(computer).data
         return Response(ComputerSlotsResponseSerializer(payload).data)

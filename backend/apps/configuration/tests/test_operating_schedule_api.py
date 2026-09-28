@@ -360,7 +360,7 @@ class OperatingScheduleAPITest(APITestCase):
 
         with (
             patch(
-                "apps.configuration.services._implementation.create_room_notice",
+                "apps.configuration.services.calendars.create_room_notice",
                 side_effect=RuntimeError("notice unavailable"),
             ),
             self.assertRaises(RuntimeError),

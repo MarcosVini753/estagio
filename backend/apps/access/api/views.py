@@ -29,10 +29,6 @@ class DemoContextAPIView(APIView):
                 "affiliation_type": get_demo_affiliation_type(request),
                 "institutional_unit": get_demo_institutional_unit(request),
                 "available_profiles": profiles_payload(),
-                "warning": (
-                    "Autorização simulada; não representa "
-                    "autenticação ou identidade real."
-                ),
             }
         )
 
@@ -53,7 +49,6 @@ class DemoSelectProfileAPIView(APIView):
                 "user_reference": get_demo_user_reference(request),
                 "affiliation_type": get_demo_affiliation_type(request),
                 "institutional_unit": get_demo_institutional_unit(request),
-                "warning": "Perfil selecionado apenas para demonstração.",
             },
             status=status.HTTP_200_OK,
         )
