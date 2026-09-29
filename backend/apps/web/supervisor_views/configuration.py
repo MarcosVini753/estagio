@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
 
-from apps.access.services import get_demo_profile
+from apps.access.services import get_actor_profile
 from apps.configuration.api.serializers import (
     BookingPolicyUpdateSerializer,
     RoomNoticeCreateSerializer,
@@ -75,7 +75,7 @@ def shifts(request):
     try:
         create_shift(
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
     except APIException as error:
         return _configuration_error(
@@ -118,7 +118,7 @@ def update_shift(request, pk):
         update_shift_service(
             shift_id=shift.pk,
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
     except APIException as error:
         return _configuration_error(
@@ -148,7 +148,7 @@ def replace_shift_view(request, pk):
     try:
         replace_shift(
             shift_id=pk,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             **serializer.validated_data,
         )
     except APIException as error:
@@ -188,7 +188,7 @@ def notices(request):
     try:
         create_room_notice(
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
     except APIException as error:
         return _configuration_error(
@@ -217,7 +217,7 @@ def update_notice_state(request, pk):
     update_room_notice(
         notice_id=notice.pk,
         values=serializer.validated_data,
-        actor_profile=get_demo_profile(request),
+        actor_profile=get_actor_profile(request),
     )
     messages.success(
         request,
@@ -270,7 +270,7 @@ def configurations(request):
     if kind == "booking":
         policy = update_current_booking_policy(
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
         if policy.valid_from > timezone.localdate():
             formatted_date = policy.valid_from.strftime("%d/%m/%Y")
@@ -283,7 +283,7 @@ def configurations(request):
     else:
         update_report_configuration(
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
     messages.success(request, success_message)
     return _configuration_redirect(request, "policies")

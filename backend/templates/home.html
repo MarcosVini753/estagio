@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Escolher perfil — Sala de Informática{% endblock %}
+{% block title %}Entrar — Sala de Informática{% endblock %}
 {% block body %}
-<main class="profile-page" x-data="{ selected: '{{ form_data.profile|default:''|escapejs }}' }">
+<main class="profile-page">
   <section class="profile-hero">
     <p class="eyebrow">Biblioteca UFAC</p>
     <h1>Sala de Informática</h1>
-    <p>Escolha o perfil que deseja acessar.</p>
+    <p>Acesse com seu CPF ou matrícula e sua senha.</p>
   </section>
 
-  <section class="profile-panel" aria-labelledby="profile-title">
+  <section class="profile-panel" aria-labelledby="login-title">
     {% for notice in active_notices %}
       <article class="notice notice-{{ notice.notice_type|lower }}" role="{% if notice.notice_type == 'CLOSURE' %}alert{% else %}status{% endif %}">
         <strong>{{ notice.title }}</strong>
@@ -23,53 +23,29 @@
     <div class="profile-heading">
       <div>
         <p class="eyebrow eyebrow-dark">Acesso</p>
-        <h2 id="profile-title">Escolha seu perfil</h2>
+        <h2 id="login-title">Entrar no sistema</h2>
       </div>
-      <span class="current-profile">Perfil atual: {{ current_profile_label }}</span>
+      <span class="current-profile">Ambiente de demonstração</span>
     </div>
 
-    {% if form_error %}<div class="form-error" role="alert">{{ form_error }}</div>{% endif %}
+    <p class="notice notice-info" role="note">Use apenas dados fictícios. A senha de demonstração é compartilhada no ambiente local.</p>
 
-    <form method="post" class="profile-form">
+    <form method="post" class="profile-form" autocomplete="on">
       {% csrf_token %}
-      <fieldset class="profile-grid">
-        <legend class="sr-only">Perfis disponíveis</legend>
-        {% for profile in profiles %}
-          <label class="profile-option" :class="{ 'profile-option-active': selected === '{{ profile.value }}' }">
-            <input type="radio" name="profile" value="{{ profile.value }}" x-model="selected" {% if form_data.profile == profile.value %}checked{% endif %} required>
-            <span class="profile-icon" aria-hidden="true">{% if profile.is_room_user %}U{% else %}{{ profile.label|first }}{% endif %}</span>
-            <span>
-              <strong>{{ profile.label }}</strong>
-              <small>{% if profile.value == "ROOM_USER" %}Disponibilidade, reservas, sessão e problemas{% elif profile.value == "ROOM_MONITOR" %}Sessões, computadores, ocorrências e histórico{% elif profile.value == "LIBRARY_SUPERVISOR" %}Inventário, funcionamento, parâmetros e relatórios{% else %}Interface funcional em uma próxima entrega{% endif %}</small>
-            </span>
-          </label>
-        {% endfor %}
-      </fieldset>
-
-      <section class="identity-fields" x-show="selected === 'ROOM_USER'">
-        <h3>Identificação do Usuário da Sala</h3>
-        <div class="form-grid">
-          <label class="field">
-            <span>Referência</span>
-            <input name="user_reference" maxlength="100" value="{{ form_data.user_reference|default:'' }}" placeholder="Ex.: aluno-si-001" :required="selected === 'ROOM_USER'">
-          </label>
-          <label class="field">
-            <span>Vínculo</span>
-            <select name="affiliation_type" :required="selected === 'ROOM_USER'">
-              <option value="">Selecione</option>
-              {% for value, label in affiliation_types %}
-                <option value="{{ value }}" {% if form_data.affiliation_type == value %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="field field-wide">
-            <span>Unidade institucional</span>
-            <input name="institutional_unit" maxlength="255" value="{{ form_data.institutional_unit|default:'' }}" placeholder="Ex.: Sistemas de Informação" :required="selected === 'ROOM_USER'">
-          </label>
-        </div>
-      </section>
-
-      <button class="button button-primary button-full" type="submit">Continuar</button>
+      {% if form.non_field_errors %}
+        <div class="form-error" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="form-grid">
+        <label class="field field-wide" for="id_username">
+          <span>CPF ou matrícula</span>
+          {{ form.username }}
+        </label>
+        <label class="field field-wide" for="id_password">
+          <span>Senha</span>
+          {{ form.password }}
+        </label>
+      </div>
+      <button class="button button-primary button-full" type="submit">Entrar</button>
     </form>
   </section>
 </main>

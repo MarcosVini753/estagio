@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.utils import timezone
 
-from apps.access.services import get_demo_user_reference
+from apps.access.services import get_actor_reference
 from apps.operations.services.deadlines import ReconcileScope, reconcile_deadlines
 
 
@@ -15,7 +15,7 @@ def reconcile_room_user_state(
     """Reconcilia somente os dados observados pela leitura do usuário."""
 
     current = now or timezone.now()
-    reference = get_demo_user_reference(request)
+    reference = get_actor_reference(request)
     reconcile_deadlines(
         now=current,
         scope=ReconcileScope(

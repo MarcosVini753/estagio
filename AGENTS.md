@@ -28,15 +28,15 @@ Em caso de conflito, a ordem acima prevalece. ADRs registram decisões; os docum
 - Trocar de computador não cria nova sessão nem apaga histórico.
 - Relatórios são projeções; não criar lançamentos manuais de relatório.
 - O ator operacional é `Monitor da Sala`.
-- O Administrador do Sistema existe arquiteturalmente, mas não possui autenticação real nesta etapa.
+- O Administrador do Sistema existe arquiteturalmente, mas não possui conta nem login nesta etapa.
 
-## Autorização da primeira versão
+## Autenticação e autorização da primeira versão
 
-- Não existe autenticação real no MVP inicial.
-- A interface apresenta uma tela para escolher o perfil de teste.
-- O perfil selecionado é armazenado na sessão Django e controla autorizações simuladas.
-- Não adicionar senha, Django Admin, JWT, OAuth, SSO ou integração institucional sem novo ADR.
-- O modo de demonstração não oferece segurança e só pode usar dados fictícios em ambiente local ou controlado.
+- A aplicação autentica contas operacionais por sessão Django usando CPF ou matrícula e senha.
+- O perfil autorizado vem da conta vinculada ao usuário Django; nunca aceite perfil ou identidade enviados pelo navegador como prova de autorização.
+- Não há autocadastro, autenticação institucional, SSO, JWT, OAuth ou conta para `SYSTEM_ADMIN` nesta etapa.
+- Contas e credenciais compartilhadas de demonstração são exclusivas de ambiente local ou controlado e não podem ser usadas com dados reais.
+- Senhas devem ser armazenadas pelo mecanismo de hash do Django; nunca persista nem registre senha em texto puro.
 
 ## Direção técnica
 

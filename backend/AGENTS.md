@@ -7,7 +7,7 @@ Estas instruções complementam o `AGENTS.md` da raiz.
 - Configurações ficam em `backend/config/settings/`.
 - Regras transacionais devem ficar em serviços de domínio quando forem implementadas.
 - Consultas analíticas e projeções devem ficar em selectors ou módulos equivalentes.
-- Não implementar autenticação real; usar o contexto de demonstração armazenado na sessão.
+- A autenticação usa contas Django, identificadores CPF/matrícula e sessão; perfil e identidade vêm de `AccessAccount`, nunca de `demo_*` na sessão ou do payload.
 - Reservas podem ser criadas para horários futuros de hoje ou para amanhã.
 - Não persistir `OCCUPIED` ou `RESERVED` em `Computer`.
 - Não criar modelo de relatório agregado.

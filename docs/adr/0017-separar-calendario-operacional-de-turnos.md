@@ -54,4 +54,4 @@ Avisos operacionais usam `RoomNotice`, uma comunicação interna geral com perí
 - o domínio ganha três entidades de calendário e uma de aviso;
 - alterações administrativas exigem transação e bloqueio de reservas;
 - uma configuração incompleta impede cálculo silencioso e retorna erro explícito;
-- a primeira implementação de avisos é apenas informativa e usa perfis simulados.
+- a primeira implementação de avisos é apenas informativa; alterações são feitas por contas autenticadas com o perfil de Supervisor.

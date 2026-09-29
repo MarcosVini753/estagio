@@ -77,9 +77,12 @@ Mantenha esse terminal aberto; `Ctrl+C` encerra o servidor. Depois, valide:
 - health check: <http://localhost:8000/api/health/>;
 - OpenAPI: <http://localhost:8000/api/docs/>.
 
-O seletor inicial permite entrar com perfis fictícios. Usuário da Sala, Monitor
-da Sala e Supervisor da Biblioteca possuem áreas funcionais; a seleção não é
-autenticação real.
+O login inicial pede CPF ou matrícula e senha. Depois de `make seed`, use as
+contas fictícias documentadas no README; elas são compartilhadas somente para
+ambiente local/controlado. Usuário da Sala, Monitor e Supervisor possuem áreas
+funcionais. O perfil não pode ser escolhido pelo navegador e não existe conta
+para Administrador. A senha é armazenada como hash, mas essas credenciais não
+servem para dados reais nem representam integração institucional.
 
 ## Configuração de ambiente
 
@@ -183,7 +186,7 @@ git diff --check
 
 ## Funcionalidades disponíveis
 
-- seleção de perfil de demonstração;
+- login por CPF ou matrícula e senha;
 - área funcional do Usuário da Sala com computadores, agenda, sessão e problemas;
 - health check;
 - computadores e estado operacional com histórico;
@@ -198,12 +201,16 @@ git diff --check
 - interface gerencial com filtros e exportações CSV, XLSX e PDF.
 
 Para explorar a área com dados históricos, execute `make seed-reports` em um
-banco descartável, selecione **Supervisor da Biblioteca** e abra
+banco descartável, entre com a conta de **Supervisor da Biblioteca** e abra
 `/supervisor/relatorios/`. A visão mensal é a inicial; as abas mantêm os filtros
 na URL e os downloads respeitam a preferência configurada pelo Supervisor.
 
 ## Seeds de demonstração
 
 `seed_demo_data` é incremental e não destrutivo: cria computadores canônicos ausentes, cria os três turnos somente quando não existe nenhum turno e cria o calendário regular somente quando não existe nenhuma versão regular. Reexecuções nunca restauram descrições, notas, estados operacionais, turnos editados/desativados nem versões encerradas. O reset explícito de `seed_report_demo_data --reset` mantém seu comportamento próprio e deve ser usado apenas em banco descartável de desenvolvimento.
+
+O comando `create_access_account` provisiona outras contas sem autocadastro:
+informe perfil, nome e CPF e/ou matrícula; a senha é solicitada duas vezes sem
+eco no terminal. Não use credenciais compartilhadas nem dados reais neste MVP.
 
 Consulte [../architecture/08-estado-implementacao.md](../architecture/08-estado-implementacao.md) para o detalhamento do que já foi entregue.

@@ -1,8 +1,11 @@
 from datetime import date, time
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from apps.access.models import LoginIdentifier
+from apps.access.services import create_access_account, normalize_identifier_for_kind
 from apps.computers.models import Computer
 from apps.configuration.models import (
     BookingPolicy,
@@ -13,9 +16,47 @@ from apps.configuration.models import (
     Shift,
     Weekday,
 )
-from apps.core.enums import DemoProfile
+from apps.core.enums import AffiliationType, DemoProfile
 
 BASE_VALID_FROM = date(2025, 1, 1)
+DEMO_PASSWORD = "Senha123."
+DEMO_ACCOUNTS = (
+    {
+        "cpf": "999.999.999-91",
+        "profile": DemoProfile.ROOM_USER,
+        "display_name": "Usuário da Sala",
+        "affiliation_type": AffiliationType.STUDENT,
+        "institutional_unit": "Sistemas de Informação",
+    },
+    {
+        "cpf": "999.999.999-92",
+        "profile": DemoProfile.ROOM_MONITOR,
+        "display_name": "Monitor da Sala",
+    },
+    {
+        "cpf": "999.999.999-93",
+        "profile": DemoProfile.LIBRARY_SUPERVISOR,
+        "display_name": "Supervisor da Biblioteca",
+    },
+)
+
+
+def ensure_demo_access_accounts():
+    for values in DEMO_ACCOUNTS:
+        normalized_cpf = normalize_identifier_for_kind(
+            LoginIdentifier.Kind.CPF,
+            values["cpf"],
+        )
+        if LoginIdentifier.objects.filter(normalized_value=normalized_cpf).exists():
+            continue
+        create_access_account(
+            profile=values["profile"],
+            display_name=values["display_name"],
+            password=DEMO_PASSWORD,
+            identifiers=[(LoginIdentifier.Kind.CPF, values["cpf"])],
+            affiliation_type=values.get("affiliation_type"),
+            institutional_unit=values.get("institutional_unit", ""),
+        )
 
 
 def ensure_regular_operating_schedule():
@@ -63,6 +104,9 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        if settings.DEMO_ACCOUNTS_ENABLED:
+            ensure_demo_access_accounts()
+
         for number in range(1, 9):
             Computer.objects.get_or_create(
                 code=f"PC-{number:02d}",

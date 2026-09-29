@@ -1,10 +1,12 @@
 from datetime import time, timedelta
 from io import StringIO
 
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from apps.access.models import AccessAccount, LoginIdentifier
 from apps.computers.models import Computer
 from apps.configuration.models import OperatingSchedule, Shift, Weekday
 from apps.configuration.services import replace_operating_schedule, replace_shift
@@ -118,3 +120,41 @@ class SeedDemoDataTest(TestCase):
             shift.valid_until,
             timezone.localdate() - timedelta(days=1),
         )
+
+    def test_seed_creates_three_demo_accounts_without_resetting_them(self):
+        self.run_seed()
+        accounts = AccessAccount.objects.select_related("user").order_by("profile")
+
+        self.assertEqual(accounts.count(), 3)
+        expected = {
+            "99999999991": "ROOM_USER",
+            "99999999992": "ROOM_MONITOR",
+            "99999999993": "LIBRARY_SUPERVISOR",
+        }
+        for cpf, profile in expected.items():
+            identifier = LoginIdentifier.objects.select_related("account__user").get(
+                normalized_value=cpf
+            )
+            self.assertEqual(identifier.kind, LoginIdentifier.Kind.CPF)
+            self.assertEqual(identifier.account.profile, profile)
+            self.assertTrue(identifier.account.user.check_password("Senha123."))
+
+        monitor = AccessAccount.objects.get(profile="ROOM_MONITOR")
+        monitor.display_name = "Monitor personalizado"
+        monitor.user.set_password("SenhaNova123!")
+        monitor.user.save(update_fields=["password"])
+        monitor.save(update_fields=["display_name"])
+        self.run_seed()
+
+        monitor.refresh_from_db()
+        monitor.user.refresh_from_db()
+        self.assertEqual(monitor.display_name, "Monitor personalizado")
+        self.assertTrue(monitor.user.check_password("SenhaNova123!"))
+        self.assertEqual(get_user_model().objects.count(), 3)
+
+    @override_settings(DEMO_ACCOUNTS_ENABLED=False)
+    def test_seed_does_not_create_demo_accounts_when_disabled(self):
+        self.run_seed()
+
+        self.assertEqual(AccessAccount.objects.count(), 0)
+        self.assertEqual(Computer.objects.count(), 8)

@@ -12,23 +12,51 @@ A API começa em `/api/` e não inclui versão nas URLs. Mudanças incompatívei
 - erros com `code`, `detail` e `fields`;
 - OpenAPI gerado com `drf-spectacular`;
 - operações de domínio expostas como actions explícitas;
-- endpoints protegidos pelo perfil de demonstração armazenado na sessão.
+- endpoints autenticados por sessão Django e autorizados pelo perfil da conta.
+- mutações protegidas por CSRF; o login exige CSRF mesmo antes de autenticar.
 
 ## Endpoints implementados
 
 > Salvo indicação contrária, todo endpoint acessível ao Monitor da Sala também é acessível ao Supervisor da Biblioteca.
 
-### Sistema e demonstração
+### Sistema e autenticação
 
 ```text
 GET  /api/health/
-GET  /api/demo/context/
-POST /api/demo/select-profile/
+POST /api/auth/login/
+POST /api/auth/logout/
+GET  /api/auth/me/
 ```
 
-A seleção de perfil simula autorização e não autentica uma identidade real.
+`POST /api/auth/login/` recebe `identifier` (CPF com ou sem pontuação ou
+matrícula) e `password`. Um sucesso retorna `200` e o contexto da conta, sem
+CPF, matrícula, referência interna ou senha:
 
-`POST /api/demo/select-profile/` exige `user_reference`, `affiliation_type` e `institutional_unit` para `ROOM_USER`. `GET /api/demo/context/` devolve os valores selecionados; perfis operacionais devolvem apenas a referência fictícia fixa.
+```json
+{
+  "profile": "ROOM_USER",
+  "display_name": "Nome de exibição",
+  "affiliation_type": "STUDENT",
+  "institutional_unit": "Sistemas de Informação"
+}
+```
+
+CPF pontuado e sem pontuação são normalizados para o mesmo identificador. A
+busca também permite matrícula numérica de 11 dígitos, sem confundi-la com um
+CPF: a consulta usa o valor normalizado globalmente único. Credenciais
+incorretas ou conta inativa retornam `400 INVALID_CREDENTIALS` com mensagem
+genérica que não revela se a conta existe. Campos ausentes ou malformados
+retornam o erro de validação padrão.
+
+Como a API usa `SessionAuthentication`, clientes devem obter o cookie CSRF e o
+token pela página de login (`GET /`) antes do `POST /api/auth/login/`, enviando
+o token no cabeçalho `X-CSRFToken`. Depois do login, o cookie de sessão
+autentica chamadas subsequentes. `POST /api/auth/logout/` encerra a sessão e
+retorna `204`; `GET /api/auth/me/` devolve o perfil, nome de exibição, vínculo e
+unidade institucional da conta atual. Ambos exigem conta autenticada e respondem
+`403` para visitante anônimo. Rotas antigas `/api/demo/context/` e
+`/api/demo/select-profile/` foram removidas; chaves `demo_*` em sessões antigas
+nunca autorizam requisições.
 
 ### Computadores
 
@@ -40,7 +68,7 @@ PATCH /api/computers/{id}/
 PATCH /api/computers/{id}/operational-state/
 ```
 
-Leitura é permitida para qualquer perfil selecionado. Cadastro e edição são permitidos ao Supervisor e Administrador. A alteração de estado operacional também é permitida ao Monitor da Sala e sempre registra histórico.
+Leitura é permitida às contas autenticadas nos perfis operacionais previstos. Cadastro e edição são permitidos ao Supervisor. A alteração de estado operacional também é permitida ao Monitor da Sala e sempre registra histórico.
 
 Ao receber `MAINTENANCE` ou `INACTIVE` para um computador `AVAILABLE`, o endpoint transfere ou encerra a sessão ativa, realoca ou cancela reservas confirmadas e altera o estado na mesma transação. A resposta explicita o impacto:
 
@@ -197,7 +225,7 @@ GET   /api/booking-policy/
 PATCH /api/booking-policy/
 ```
 
-Leitura é permitida para os perfis selecionados. Escrita é permitida ao Supervisor e Administrador. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política encerra a versão anterior e cria outra; uma versão iniciada hoje e já ligada a reservas é preservada, e a nova começa amanhã. Versões de hoje ou futuras ainda sem reservas podem ser ajustadas. A política expõe somente limite de cancelamento e máximo de reservas futuras; duração de 15 minutos e tolerâncias de três minutos são regras fixas.
+Leitura exige conta autenticada. Escrita é permitida ao Supervisor. Cada turno expõe `series_key`; versões do mesmo turno lógico compartilham essa chave. Um turno já referenciado por sessão aceita apenas desativação via `PATCH`; `replace/` recebe `effective_from`, nome, horários e ordem, encerra a versão atual no dia anterior e retorna a nova versão com o mesmo `series_key`. A vigência deve começar após hoje, sem sobrepor outro turno ativo. Atualizar a política encerra a versão anterior e cria outra; uma versão iniciada hoje e já ligada a reservas é preservada, e a nova começa amanhã. Versões de hoje ou futuras ainda sem reservas podem ser ajustadas. A política expõe somente limite de cancelamento e máximo de reservas futuras; duração de 15 minutos e tolerâncias de três minutos são regras fixas.
 
 Criação, preview e edição de `CalendarException` aceitam somente hoje ou datas futuras. Tentativas históricas retornam HTTP 400 com `CALENDAR_EXCEPTION_DATE_INVALID`; consultas históricas continuam permitidas.
 
@@ -267,7 +295,7 @@ GET   /api/room-notices/{id}/
 PATCH /api/room-notices/{id}/
 ```
 
-`room-status` e `room-notices/active` são públicos e funcionam antes da escolha de perfil. Os demais endpoints de aviso são restritos ao Supervisor e Administrador.
+`room-status` e `room-notices/active` são públicos e funcionam antes do login. Os demais endpoints de aviso são restritos ao Supervisor.
 
 ```json
 {
@@ -375,7 +403,7 @@ GET /api/reports/annual/?year=YYYY
 GET /api/reports/indicators/?starts_on=YYYY-MM-DD&ends_on=YYYY-MM-DD
 ```
 
-Todos são restritos ao Supervisor e Administrador e compartilham `period`,
+Todos exigem conta de Supervisor e compartilham `period`,
 `summary`, `occupancy` e `warnings`. O diário acrescenta calendário efetivo e
 turnos; o mensal mantém todos os dias, origem, situação, minutos operacionais e
 matriz por `Shift.series_key`; o anual retorna sempre os 12 meses; indicadores

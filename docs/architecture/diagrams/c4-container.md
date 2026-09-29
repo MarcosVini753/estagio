@@ -13,7 +13,8 @@ Django REST Framework]
     admin[Django Admin futuro]
 
     browser --> web
-    web --> api
+    browser --> api
+    web --> services
     api --> services
     api --> reports
     services --> db
@@ -23,7 +24,7 @@ Django REST Framework]
 
 ## Responsabilidades
 
-- Django Web: entrega páginas, assets e seletor de perfil.
+- Django Web: entrega páginas, assets e formulário de login/logout.
 - API: contrato REST para operações e consultas, exposto sob `/api/`.
 - Serviços: garantem invariantes e transações.
 - Projeções: calculam relatórios sem persistir totais manuais.

@@ -26,13 +26,13 @@ A frase que guia toda a apresentação pode ser:
 
 Explique estes limites com naturalidade se surgirem perguntas:
 
-- a escolha de perfil é uma **autorização simulada**, não login nem segurança
-  real; o ambiente usa apenas dados fictícios;
+- o login local usa CPF ou matrícula e senha; não há integração institucional
+  nem uso autorizado de dados reais;
 - a consulta de disponibilidade é limitada a hoje e amanhã;
 - não existe fila de espera;
 - relatórios são projeções de reservas, sessões, alocações, ocorrências,
   calendário e estados operacionais já registrados;
-- a interface funcional própria do Administrador e autenticação real são
+- a interface e conta do Administrador e autenticação institucional são
   evoluções futuras.
 
 Essas limitações não diminuem a entrega. Elas demonstram que o escopo foi
@@ -212,7 +212,7 @@ Monitor acompanha a operação e o Supervisor consulta o resultado consolidado.
 
 | Momento | Tempo | Demonstração | Mensagem |
 | --- | ---: | --- | --- |
-| Abertura e perfil | 5:00–5:30 | seletor de perfil e aviso de demonstração | papéis são simulados e dados são fictícios; |
+| Abertura e acesso | 5:00–5:30 | login de demonstração e aviso de ambiente fictício | a conta define o perfil; credenciais compartilhadas servem apenas para demonstração; |
 | Usuário | 5:30–7:20 | disponibilidade, reserva ou uso, agenda/sessão | a pessoa consegue se orientar sem conhecer as regras internas; |
 | Monitor | 7:20–8:45 | painel, estado operacional ou ocorrência | a operação é acompanhada sem alterar dados arbitrariamente; |
 | Supervisor | 8:45–10:45 | relatórios e exportação | os indicadores derivam dos registros reais; |
@@ -253,7 +253,7 @@ estados calculados diretamente.
 
 **Sequência sugerida:**
 
-1. Troque para **Monitor da Sala** pelo seletor de perfil.
+1. Saia da conta anterior e entre com o CPF de demonstração do **Monitor da Sala**.
 2. Abra o painel ou a listagem de computadores e sessões ativas.
 3. Mostre uma ocorrência ou altere o estado persistido de um computador para
    manutenção, se a massa de demonstração permitir.
@@ -369,7 +369,7 @@ e a demonstração usam os mesmos termos e dados fictícios.
 - ler textos longos nos slides;
 - mostrar todas as telas, endpoints ou migrations;
 - diminuir diagramas até ficarem ilegíveis;
-- dizer que existe autenticação real, fila de espera ou demanda reprimida;
+- dizer que existe integração institucional/SSO, fila de espera ou demanda reprimida;
 - chamar `OCCUPIED` e `RESERVED` de estados persistidos;
 - afirmar que relatórios são preenchidos manualmente;
 - depender exclusivamente de uma ação que exige uma janela de horário atual.
@@ -400,11 +400,11 @@ calendário, disponibilidade histórica e alocações reais; quando o histórico
 estado de um computador é incoerente, o sistema o exclui daquela métrica e
 apresenta um aviso.
 
-### Por que não há login real?
+### Por que não há integração institucional?
 
-O MVP valida o fluxo de negócio com perfis simulados e dados fictícios. Login,
-contas e permissões institucionais exigem uma decisão arquitetural e medidas de
-segurança próprias, planejadas como evolução futura.
+O MVP já autentica contas locais por CPF ou matrícula e senha. Ainda não há
+integração com identidade institucional, autocadastro ou uso de dados reais;
+essas etapas exigem provisionamento, segurança e decisões próprias.
 
 ## Checklist de ensaio
 

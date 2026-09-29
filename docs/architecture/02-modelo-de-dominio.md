@@ -8,7 +8,36 @@
 - datas timezone-aware em `America/Rio_Branco`;
 - estados com `TextChoices`;
 - PostgreSQL como banco-alvo;
-- referências de usuário fictícias no MVP sem autenticação.
+- referências operacionais estáveis, sem relação com CPF/matrícula;
+- contas autenticadas pelo usuário padrão do Django; senha mantida como hash.
+
+## Acesso e identidade
+
+### `AccessAccount`
+
+Vínculo um-para-um com o usuário Django; armazena `profile`, `display_name`,
+`user_reference` opaca e única e, somente para Usuário da Sala,
+`affiliation_type` e `institutional_unit`. Uma constraint impede o perfil
+`SYSTEM_ADMIN` e combinações inconsistentes de vínculo/unidade. A referência é
+usada em novos registros operacionais; não é CPF nem dado de login.
+
+### `LoginIdentifier`
+
+`account`, `kind` (`CPF` ou `MATRICULA`) e `normalized_value`. O valor
+normalizado é único globalmente, e uma conta possui no máximo um identificador
+de cada tipo. CPF pontuado e sem pontuação resultam no mesmo valor. A
+autenticação consulta o valor normalizado, sem exigir que toda matrícula tenha
+formato ou comprimento específicos. O serviço de provisionamento exige ao menos
+um identificador para cada conta.
+
+O login usa `django.contrib.auth` e sessão padrão do Django. A sessão expira ao
+fechar o navegador por padrão; logout encerra a sessão imediatamente. A API
+exige CSRF inclusive no login anônimo.
+
+Contas de demonstração são criadas pelo seed apenas em local/teste e não são
+redefinidas em reexecuções. Dados operacionais anteriores não são atribuídos
+automaticamente às novas contas: mantêm-se em relatórios, mas não aparecem como
+reservas, sessões ou ocorrências “minhas”.
 
 ## Configuração
 

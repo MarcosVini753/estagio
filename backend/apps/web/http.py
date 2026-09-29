@@ -5,7 +5,10 @@ from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from apps.access.services import get_demo_profile
+from apps.access.services import (
+    get_actor_account,
+    get_actor_profile,
+)
 
 
 def is_htmx(request) -> bool:
@@ -22,14 +25,18 @@ def service_error_message(error) -> str:
 
 
 def require_profiles(*, allowed_profiles, message):
-    """Protect an HTML view using the profile stored in the demo session."""
+    """Protect an HTML view using the authenticated account's role."""
 
     allowed_profiles = frozenset(allowed_profiles)
 
     def decorator(view):
         @wraps(view)
         def wrapped(request, *args, **kwargs):
-            if get_demo_profile(request) not in allowed_profiles:
+            account = get_actor_account(request)
+            if account is None:
+                messages.warning(request, "Entre para acessar esta área.")
+                return redirect("web:home")
+            if get_actor_profile(request) not in allowed_profiles:
                 messages.warning(request, message)
                 return redirect("web:home")
             return view(request, *args, **kwargs)
@@ -40,7 +47,13 @@ def require_profiles(*, allowed_profiles, message):
 
 
 def render_room_screen(request, *, content_template, context, status=200):
-    context = {**context, "content_template": content_template}
+    account = get_actor_account(request)
+    context = {
+        **context,
+        "content_template": content_template,
+        "current_profile_label": account.get_profile_display(),
+        "current_user_display_name": account.display_name,
+    }
     if request.headers.get("HX-Target") == "screen-content":
         template = "room_user/partials/screen.html"
     elif is_htmx(request):
@@ -51,7 +64,13 @@ def render_room_screen(request, *, content_template, context, status=200):
 
 
 def render_staff_screen(request, *, content_template, context, status=200):
-    context = {**context, "content_template": content_template}
+    account = get_actor_account(request)
+    context = {
+        **context,
+        "content_template": content_template,
+        "current_profile_label": account.get_profile_display(),
+        "current_user_display_name": account.display_name,
+    }
     if request.headers.get("HX-Target") == "staff-content":
         template = "staff/partials/content.html"
     elif is_htmx(request):

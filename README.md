@@ -8,8 +8,8 @@ O sistema já implementa reservas, sessões de uso, troca de computador, saída,
 ocorrências, calendário operacional, indisponibilidade de computador e
 relatórios diário, mensal, anual e de indicadores, com exportação CSV, XLSX e
 PDF. Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca possuem
-interfaces funcionais e responsivas; o Administrador continua selecionável no
-MVP, mas sua interface própria ainda não está disponível. Consulte
+interfaces funcionais e responsivas; o Administrador não possui conta nem tela
+de login. Consulte
 [docs/architecture/08-estado-implementacao.md](docs/architecture/08-estado-implementacao.md)
 para o detalhamento.
 
@@ -20,7 +20,7 @@ para o detalhamento.
 - reservas para horários futuros de hoje ou para amanhã;
 - fila de espera fora do escopo;
 - ator operacional denominado Monitor da Sala;
-- autorização real fora do MVP;
+- login local por sessão; integração institucional/SSO fora do MVP;
 - computadores persistem apenas `AVAILABLE`, `MAINTENANCE` e `INACTIVE`;
 - `OCCUPIED` e `RESERVED` são calculados;
 - troca de computador preserva a sessão e cria nova alocação;
@@ -74,6 +74,39 @@ Depois, abra:
 
 Mantenha o terminal de `make run` aberto. Para pará-lo, use `Ctrl+C`.
 
+### Entrar no ambiente local
+
+Após `make seed`, use uma destas contas fictícias. Todas usam a senha
+`Senha123.`:
+
+| Perfil | CPF de demonstração |
+|---|---|
+| Usuário da Sala | `999.999.999-91` |
+| Monitor da Sala | `999.999.999-92` |
+| Supervisor da Biblioteca | `999.999.999-93` |
+
+Os CPFs são identificadores especiais de demonstração, com dígitos verificadores
+inválidos; não são identidades reais. O seed os cria somente em configurações
+local e de teste, não redefine contas já alteradas e não deve ser usado com
+dados reais. O login também aceita CPF sem pontuação e matrícula cadastrada.
+Não existe cadastro público nem conta para Administrador do Sistema.
+
+Para provisionar uma conta operacional adicional, execute o comando no backend;
+ele solicita a senha duas vezes sem exibi-la no terminal:
+
+```bash
+cd backend
+python manage.py create_access_account \
+  --profile ROOM_MONITOR \
+  --name "Nome do monitor" \
+  --matricula MAT-2026-001
+```
+
+Perfis aceitos: `ROOM_USER`, `ROOM_MONITOR` e `LIBRARY_SUPERVISOR`. Para Usuário
+da Sala, informe também `--affiliation-type` e `--institutional-unit`; os tipos
+de vínculo aceitos são `STUDENT`, `PROFESSOR` e `TECHNICAL_STAFF`. Uma conta
+pode ter `--cpf`, `--matricula` ou ambos.
+
 ### O que os comandos de dados fazem
 
 - `make migrate`: aplica as migrations pendentes. Execute após atualizar o
@@ -85,8 +118,8 @@ Mantenha o terminal de `make run` aberto. Para pará-lo, use `Ctrl+C`.
   executa um reset explícito dos próprios dados de relatório; use-o somente em
   banco descartável de desenvolvimento.
 
-Depois de `make seed-reports`, selecione **Supervisor da Biblioteca**, abra
-**Relatórios** e alterne entre Diário, Mensal, Anual e Indicadores. Os filtros
+Depois de `make seed-reports`, entre com a conta de **Supervisor da Biblioteca**,
+abra **Relatórios** e alterne entre Diário, Mensal, Anual e Indicadores. Os filtros
 funcionam com ou sem JavaScript e os botões CSV, Planilha e PDF baixam a mesma
 projeção exibida na tela.
 

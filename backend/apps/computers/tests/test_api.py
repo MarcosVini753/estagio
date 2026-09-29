@@ -1,26 +1,18 @@
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.computers.models import Computer, ComputerOperationalStateChange
 
 
 class ComputerAPITest(APITestCase):
-    def select_profile(self, profile):
-        payload = {"profile": profile}
-        if profile == "ROOM_USER":
-            payload.update(
-                {
-                    "user_reference": "aluno-si-001",
-                    "affiliation_type": "STUDENT",
-                    "institutional_unit": "Sistemas de Informação",
-                }
-            )
-        self.client.post(
-            "/api/demo/select-profile/",
-            payload,
-            format="json",
+    def login_profile(self, profile):
+        login_test_account(
+            self.client,
+            profile,
+            user_reference=("aluno-si-001" if profile == "ROOM_USER" else None),
         )
 
-    def test_requires_selected_demo_profile(self):
+    def test_requires_authenticated_account(self):
         response = self.client.get("/api/computers/")
 
         self.assertEqual(response.status_code, 403)
@@ -28,7 +20,7 @@ class ComputerAPITest(APITestCase):
 
     def test_room_user_can_list_but_cannot_create_computer(self):
         Computer.objects.create(code="PC-01")
-        self.select_profile("ROOM_USER")
+        self.login_profile("ROOM_USER")
 
         list_response = self.client.get("/api/computers/")
         create_response = self.client.post(
@@ -42,7 +34,7 @@ class ComputerAPITest(APITestCase):
         self.assertEqual(create_response.status_code, 403)
 
     def test_supervisor_can_create_computer(self):
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/computers/",
@@ -60,7 +52,7 @@ class ComputerAPITest(APITestCase):
 
     def test_room_monitor_changes_operational_state_and_creates_history(self):
         computer = Computer.objects.create(code="PC-01")
-        self.select_profile("ROOM_MONITOR")
+        self.login_profile("ROOM_MONITOR")
 
         response = self.client.patch(
             f"/api/computers/{computer.pk}/operational-state/",
@@ -80,7 +72,7 @@ class ComputerAPITest(APITestCase):
 
     def test_reason_is_required_to_make_computer_unavailable(self):
         computer = Computer.objects.create(code="PC-01")
-        self.select_profile("ROOM_MONITOR")
+        self.login_profile("ROOM_MONITOR")
 
         response = self.client.patch(
             f"/api/computers/{computer.pk}/operational-state/",

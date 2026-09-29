@@ -3,6 +3,7 @@ from datetime import datetime, time, timedelta
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.access.tests.helpers import login_test_account
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import (
@@ -15,6 +16,7 @@ from apps.configuration.models import (
     Weekday,
 )
 from apps.configuration.tests.factories import create_operating_schedule
+from apps.core.enums import DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.operations.models import Reservation
 from apps.operations.tests.factories import create_reservation, create_use_session
@@ -45,12 +47,7 @@ class LibrarySupervisorWebTest(TestCase):
         )
 
     def select_supervisor(self):
-        response = self.client.post("/", {"profile": "LIBRARY_SUPERVISOR"})
-        self.assertRedirects(
-            response,
-            "/supervisor/",
-            fetch_redirect_response=False,
-        )
+        login_test_account(self.client, DemoProfile.LIBRARY_SUPERVISOR)
 
     def weekly_windows(self, value="08:00-12:00,13:00-18:00"):
         return {f"windows_{weekday}": value for weekday in Weekday.values}
@@ -59,7 +56,7 @@ class LibrarySupervisorWebTest(TestCase):
         anonymous = self.client.get("/supervisor/")
         self.assertRedirects(anonymous, "/")
 
-        self.client.post("/", {"profile": "ROOM_MONITOR"})
+        login_test_account(self.client, DemoProfile.ROOM_MONITOR)
         monitor = self.client.get("/supervisor/")
         self.assertRedirects(monitor, "/")
 

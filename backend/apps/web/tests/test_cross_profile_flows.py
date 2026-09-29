@@ -1,5 +1,6 @@
 from django.test import TestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.computers.models import Computer
 from apps.core.enums import DemoProfile
 from apps.occurrences.models import Occurrence
@@ -14,25 +15,26 @@ class CrossProfileOccurrenceFlowTest(TestCase):
         self.description = "Teclado com falha no fluxo entre perfis."
         self.resolution_notes = "Teclado substituído pela equipe da biblioteca."
 
-    def select_room_user(self, reference):
-        response = self.client.post(
-            "/",
-            {
-                "profile": DemoProfile.ROOM_USER,
-                "user_reference": reference,
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
+    def login_room_user(self, reference):
+        login_test_account(
+            self.client,
+            DemoProfile.ROOM_USER,
+            user_reference=reference,
         )
-        self.assertRedirects(response, "/sala/computadores/")
 
-    def select_operational_profile(self, profile, destination):
-        response = self.client.post("/", {"profile": profile})
-        self.assertRedirects(response, destination)
+    def login_operational_profile(self, profile, destination):
+        login_test_account(self.client, profile)
+        self.assertEqual(
+            destination,
+            {
+                DemoProfile.ROOM_MONITOR: "/monitor/",
+                DemoProfile.LIBRARY_SUPERVISOR: "/supervisor/",
+            }[profile],
+        )
 
     def test_occurrence_lifecycle_preserves_scope_and_returns_to_room_user(self):
         owner_reference = "aluno-fluxo-001"
-        self.select_room_user(owner_reference)
+        self.login_room_user(owner_reference)
 
         created = self.client.post(
             "/sala/problemas/",
@@ -46,11 +48,11 @@ class CrossProfileOccurrenceFlowTest(TestCase):
         self.assertEqual(occurrence.reported_by_reference, owner_reference)
         self.assertEqual(occurrence.status, Occurrence.Status.OPEN)
 
-        self.select_room_user("aluno-fluxo-002")
+        self.login_room_user("aluno-fluxo-002")
         other_user_page = self.client.get("/sala/problemas/")
         self.assertNotContains(other_user_page, self.description)
 
-        self.select_operational_profile(DemoProfile.ROOM_MONITOR, "/monitor/")
+        self.login_operational_profile(DemoProfile.ROOM_MONITOR, "/monitor/")
         monitoring_page = self.client.get("/monitor/ocorrencias/")
         self.assertContains(monitoring_page, self.description)
         in_review = self.client.post(
@@ -59,7 +61,7 @@ class CrossProfileOccurrenceFlowTest(TestCase):
         )
         self.assertRedirects(in_review, "/monitor/ocorrencias/")
 
-        self.select_operational_profile(
+        self.login_operational_profile(
             DemoProfile.LIBRARY_SUPERVISOR,
             "/supervisor/",
         )
@@ -80,7 +82,7 @@ class CrossProfileOccurrenceFlowTest(TestCase):
         )
         self.assertEqual(occurrence.resolution_notes, self.resolution_notes)
 
-        self.select_room_user(owner_reference)
+        self.login_room_user(owner_reference)
         owner_page = self.client.get("/sala/problemas/")
         self.assertContains(owner_page, self.description)
         self.assertContains(owner_page, "Resolvida")

@@ -1,6 +1,7 @@
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.computers.models import Computer
 from apps.occurrences.models import Occurrence
 from apps.operations.models import ComputerAllocation
@@ -22,26 +23,17 @@ class OccurrenceAPITest(APITestCase):
             computer=self.computer,
             sequence=1,
         )
-        self.select_room_user()
+        self.login_room_user()
 
-    def select_room_user(self, reference="aluno-si-001"):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": reference,
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
-            format="json",
+    def login_room_user(self, reference="aluno-si-001"):
+        login_test_account(
+            self.client,
+            "ROOM_USER",
+            user_reference=reference,
         )
 
-    def select_operational_profile(self):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+    def login_operational_profile(self):
+        login_test_account(self.client, "ROOM_MONITOR")
 
     def test_room_user_creates_occurrence_linked_to_current_allocation(self):
         response = self.client.post(
@@ -121,7 +113,7 @@ class OccurrenceAPITest(APITestCase):
 
         list_response = self.client.get("/api/occurrences/")
         hidden_detail = self.client.get(f"/api/occurrences/{other.pk}/")
-        self.select_operational_profile()
+        self.login_operational_profile()
         operational_list = self.client.get("/api/occurrences/")
 
         self.assertEqual(
@@ -160,7 +152,7 @@ class OccurrenceAPITest(APITestCase):
             reported_by_reference="aluno-si-001",
             description="Monitor com falha.",
         )
-        self.select_operational_profile()
+        self.login_operational_profile()
 
         review_response = self.client.patch(
             f"/api/occurrences/{occurrence.pk}/",
@@ -189,7 +181,7 @@ class OccurrenceAPITest(APITestCase):
             reported_by_reference="aluno-si-001",
             description="Monitor com falha.",
         )
-        self.select_operational_profile()
+        self.login_operational_profile()
 
         direct_resolution = self.client.patch(
             f"/api/occurrences/{occurrence.pk}/",

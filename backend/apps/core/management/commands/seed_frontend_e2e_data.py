@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
+from apps.access.models import AccessAccount, LoginIdentifier
 from apps.computers.models import Computer
 from apps.core.enums import AffiliationType, DemoProfile
 from apps.operations.models import Reservation, UseSession
@@ -13,15 +14,18 @@ from apps.operations.services import (
     start_usage_session,
 )
 
-E2E_USER_REFERENCE = "e2e-modal-user"
-
 
 @transaction.atomic
 def seed_frontend_e2e_data(*, now: datetime) -> None:
     """Cria o cenário descartável usando as mesmas regras da aplicação."""
 
-    UseSession.objects.filter(user_reference=E2E_USER_REFERENCE).delete()
-    Reservation.objects.filter(user_reference=E2E_USER_REFERENCE).delete()
+    room_user = AccessAccount.objects.get(
+        identifiers__kind=LoginIdentifier.Kind.CPF,
+        identifiers__normalized_value="99999999991",
+    )
+    user_reference = room_user.user_reference
+    UseSession.objects.filter(user_reference=user_reference).delete()
+    Reservation.objects.filter(user_reference=user_reference).delete()
 
     start_usage_session(
         computer_id=Computer.objects.get(code="PC-01").pk,
@@ -30,7 +34,7 @@ def seed_frontend_e2e_data(*, now: datetime) -> None:
             timezone.get_current_timezone(),
         ),
         actor_profile=DemoProfile.ROOM_USER,
-        actor_reference=E2E_USER_REFERENCE,
+        actor_reference=user_reference,
         affiliation_type=AffiliationType.STUDENT,
         institutional_unit="Sistemas de Informação",
         now=now,
@@ -45,7 +49,7 @@ def seed_frontend_e2e_data(*, now: datetime) -> None:
         computer_id=Computer.objects.get(code="PC-02").pk,
         starts_at=starts_at,
         slot_count=1,
-        user_reference=E2E_USER_REFERENCE,
+        user_reference=user_reference,
         affiliation_type=AffiliationType.STUDENT,
         institutional_unit="Sistemas de Informação",
         created_by_profile=DemoProfile.ROOM_USER,

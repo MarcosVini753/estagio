@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita
+Substituída pela ADR 0027
 
 ## Contexto
 
@@ -31,3 +31,10 @@ Exibir uma tela para seleção do perfil de teste e armazenar o perfil escolhido
 - o sistema não pode tratar o perfil como identidade;
 - dados reais não devem ser utilizados;
 - antes de produção será necessário novo ADR e revisão integral de autorização.
+
+## Histórico
+
+Esta decisão descreve a etapa inicial e não é mais o comportamento vigente. A
+ADR 0027 substitui a seleção pública de perfil por contas autenticadas por
+CPF/matrícula e senha, mantendo o alerta de que as credenciais de demonstração
+não podem ser usadas com dados reais.

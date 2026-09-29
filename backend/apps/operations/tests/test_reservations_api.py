@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, OperatingSchedule, Shift, Weekday
@@ -40,7 +41,7 @@ class ReservationAPITest(APITestCase):
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
         )
-        self.select_room_user("aluno-si-001")
+        self.login_room_user("aluno-si-001")
 
     def aware(self, target_date, target_time):
         return timezone.make_aware(
@@ -53,16 +54,11 @@ class ReservationAPITest(APITestCase):
         friday = self.today + timedelta(days=days_until_friday)
         return friday, friday + timedelta(days=1), friday + timedelta(days=2)
 
-    def select_room_user(self, reference):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": reference,
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
-            format="json",
+    def login_room_user(self, reference):
+        login_test_account(
+            self.client,
+            "ROOM_USER",
+            user_reference=reference,
         )
 
     def create_payload(self, computer=None, starts_at=None, slot_count=4):
@@ -102,11 +98,7 @@ class ReservationAPITest(APITestCase):
         self.assertEqual(reservation.booking_policy_id, BookingPolicy.objects.get().pk)
 
     def test_operational_profile_cannot_create_reservation(self):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
         response = self.client.post(
             "/api/reservations/",
@@ -564,7 +556,7 @@ class ReservationAPITest(APITestCase):
             ends_at=self.aware(self.tomorrow, time(9, 0)),
             created_by_profile="ROOM_USER",
         )
-        self.select_room_user("aluno-si-002")
+        self.login_room_user("aluno-si-002")
 
         response = self.client.post(
             f"/api/reservations/{reservation.pk}/cancel/",
@@ -581,11 +573,7 @@ class ReservationAPITest(APITestCase):
             ends_at=self.aware(self.tomorrow, time(9, 0)),
             created_by_profile="ROOM_USER",
         )
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
         response = self.client.post(
             f"/api/reservations/{reservation.pk}/cancel/",
@@ -607,11 +595,7 @@ class ReservationAPITest(APITestCase):
             ends_at=self.aware(self.tomorrow, time(9, 0)),
             created_by_profile="ROOM_USER",
         )
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
         response = self.client.post(
             f"/api/reservations/{reservation.pk}/cancel/",

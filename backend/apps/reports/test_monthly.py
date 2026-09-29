@@ -6,6 +6,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.computers.models import Computer
 from apps.configuration.models import (
     CalendarException,
@@ -28,12 +29,8 @@ def report_datetime(month, day, hour=0, minute=0):
 
 
 class MonthlyReportAPITest(APITestCase):
-    def select_profile(self, profile="LIBRARY_SUPERVISOR"):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": profile},
-            format="json",
-        )
+    def login_profile(self, profile="LIBRARY_SUPERVISOR"):
+        login_test_account(self.client, profile)
 
     def create_session(
         self,
@@ -197,7 +194,7 @@ class MonthlyReportAPITest(APITestCase):
             opens_at="09:00",
             closes_at="12:00",
         )
-        self.select_profile()
+        self.login_profile()
 
         report_now = report_datetime(2, 12, 19)
         with patch("apps.reports.api.views.timezone.now", return_value=report_now):
@@ -270,7 +267,7 @@ class MonthlyReportAPITest(APITestCase):
             ended_at=report_datetime(2, 20, 9),
             shift=new,
         )
-        self.select_profile()
+        self.login_profile()
 
         response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
@@ -304,7 +301,7 @@ class MonthlyReportAPITest(APITestCase):
             started_at=report_datetime(3, 1),
             ended_at=report_datetime(3, 1, 0, 15),
         )
-        self.select_profile()
+        self.login_profile()
 
         response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 
@@ -313,11 +310,11 @@ class MonthlyReportAPITest(APITestCase):
         self.assertEqual(response.data["summary"]["allocated_minutes"], 30)
 
     def test_permissions_query_validation_and_interval_helper(self):
-        self.select_profile("ROOM_MONITOR")
+        self.login_profile("ROOM_MONITOR")
         forbidden = self.client.get("/api/reports/monthly/?year=2026&month=2")
-        self.select_profile()
+        self.login_profile()
         invalid = self.client.get("/api/reports/monthly/?year=2026&month=13")
-        self.select_profile("SYSTEM_ADMIN")
+        self.login_profile("LIBRARY_SUPERVISOR")
         allowed = self.client.get("/api/reports/monthly/?year=2028&month=2")
 
         minutes = overlap_minutes(
@@ -344,7 +341,7 @@ class MonthlyReportAPITest(APITestCase):
             },
             name="Recesso de fevereiro",
         )
-        self.select_profile()
+        self.login_profile()
 
         response = self.client.get("/api/reports/monthly/?year=2026&month=2")
 

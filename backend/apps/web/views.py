@@ -3,23 +3,21 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.db.models import Prefetch, Q
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from rest_framework.exceptions import APIException
 
-from apps.access.api.serializers import DemoProfileSelectionSerializer
 from apps.access.services import (
-    get_demo_affiliation_type,
-    get_demo_institutional_unit,
-    get_demo_profile,
-    get_demo_user_reference,
-    select_demo_profile,
+    get_actor_affiliation_type,
+    get_actor_institutional_unit,
+    get_actor_profile,
+    get_actor_reference,
 )
 from apps.computers.models import Computer
 from apps.configuration.selectors import get_active_room_notices
-from apps.core.enums import AffiliationType, DemoProfile
+from apps.core.enums import DemoProfile
 from apps.occurrences.api.serializers import OccurrenceCreateSerializer
 from apps.occurrences.models import Occurrence
 from apps.occurrences.services import create_occurrence
@@ -92,12 +90,12 @@ SCREEN_META = {
 
 _room_user_required = require_profiles(
     allowed_profiles={DemoProfile.ROOM_USER},
-    message="Selecione o perfil Usuário da Sala para acessar esta área.",
+    message="Entre com uma conta de Usuário da Sala para acessar esta área.",
 )
 
 
 def _active_session(request, now=None, *, reconcile=True):
-    reference = get_demo_user_reference(request)
+    reference = get_actor_reference(request)
     if not reference:
         return None
     current = now or timezone.now()
@@ -152,87 +150,8 @@ def _screen_base_context(request, *, screen: str, query: str = ""):
         "nav_next_key": (
             nav_items[index + 1]["key"] if index < len(nav_items) - 1 else ""
         ),
-        "current_profile_label": DemoProfile.ROOM_USER.label,
-        "current_user_reference": get_demo_user_reference(request),
         "active_notices": get_active_room_notices(),
     }
-
-
-def home(request):
-    form_data = {}
-    form_error = ""
-    if request.method == "POST":
-        profile = request.POST.get("profile", "")
-        payload = {"profile": profile}
-        form_data = request.POST.dict()
-        if profile == DemoProfile.ROOM_USER:
-            for field in (
-                "user_reference",
-                "affiliation_type",
-                "institutional_unit",
-            ):
-                if value := request.POST.get(field):
-                    payload[field] = value
-        serializer = DemoProfileSelectionSerializer(data=payload)
-        if serializer.is_valid():
-            selected = select_demo_profile(request, **serializer.validated_data)
-            if selected == DemoProfile.ROOM_USER:
-                return redirect("web:computers")
-            if selected == DemoProfile.ROOM_MONITOR:
-                return redirect("web:monitor-dashboard")
-            if selected == DemoProfile.LIBRARY_SUPERVISOR:
-                return redirect("web:supervisor-dashboard")
-            return redirect("web:profile-unavailable")
-        form_error = flatten_serializer_errors(serializer.errors)
-
-    current_profile = get_demo_profile(request)
-    current_profile_label = (
-        DemoProfile(current_profile).label if current_profile else "Nenhum perfil"
-    )
-    profiles = [
-        {
-            "value": value,
-            "label": label,
-            "is_room_user": value == DemoProfile.ROOM_USER,
-        }
-        for value, label in DemoProfile.choices
-    ]
-    return render(
-        request,
-        "home.html",
-        {
-            "profiles": profiles,
-            "affiliation_types": [
-                (value, label)
-                for value, label in AffiliationType.choices
-                if value != AffiliationType.NOT_INFORMED
-            ],
-            "active_notices": get_active_room_notices(),
-            "current_profile_label": current_profile_label,
-            "form_data": form_data,
-            "form_error": form_error,
-        },
-        status=400 if form_error else 200,
-    )
-
-
-def profile_unavailable(request):
-    profile = get_demo_profile(request)
-    if profile == DemoProfile.ROOM_USER:
-        return redirect("web:computers")
-    if profile == DemoProfile.ROOM_MONITOR:
-        return redirect("web:monitor-dashboard")
-    if profile == DemoProfile.LIBRARY_SUPERVISOR:
-        return redirect("web:supervisor-dashboard")
-    return render(
-        request,
-        "profile_unavailable.html",
-        {
-            "profile_label": (
-                DemoProfile(profile).label if profile else "Perfil não selecionado"
-            )
-        },
-    )
 
 
 @_room_user_required
@@ -253,7 +172,7 @@ def computers(request):
         summary, _ = get_computers_availability(
             target_date=target_date,
             computers=computer_list,
-            user_reference=get_demo_user_reference(request),
+            user_reference=get_actor_reference(request),
             now=now,
         )
         rows = computer_rows(summary=summary, computers=computer_list, query=query)
@@ -304,7 +223,7 @@ def _computer_detail_context(
     summary, slots_by_computer = get_computers_availability(
         target_date=target_date,
         computers=[computer],
-        user_reference=get_demo_user_reference(request),
+        user_reference=get_actor_reference(request),
         now=now,
         include_planned_end_options=True,
     )
@@ -425,10 +344,10 @@ def create_booking(request):
     try:
         create_reservation(
             **serializer.validated_data,
-            user_reference=get_demo_user_reference(request),
-            affiliation_type=get_demo_affiliation_type(request),
-            institutional_unit=get_demo_institutional_unit(request),
-            created_by_profile=get_demo_profile(request),
+            user_reference=get_actor_reference(request),
+            affiliation_type=get_actor_affiliation_type(request),
+            institutional_unit=get_actor_institutional_unit(request),
+            created_by_profile=get_actor_profile(request),
         )
     except APIException as error:
         return _computer_action_error_response(
@@ -448,7 +367,7 @@ def _user_reservation_or_404(request, pk):
     return get_object_or_404(
         Reservation.objects.select_related("computer", "booking_policy"),
         pk=pk,
-        user_reference=get_demo_user_reference(request),
+        user_reference=get_actor_reference(request),
     )
 
 
@@ -472,8 +391,8 @@ def cancel_booking(request, pk):
     try:
         cancel_reservation(
             reservation_id=reservation.pk,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
             **serializer.validated_data,
         )
     except APIException as error:
@@ -501,10 +420,10 @@ def check_in_booking(request, pk):
     try:
         start_usage_session(
             **serializer.validated_data,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
-            affiliation_type=get_demo_affiliation_type(request),
-            institutional_unit=get_demo_institutional_unit(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
+            affiliation_type=get_actor_affiliation_type(request),
+            institutional_unit=get_actor_institutional_unit(request),
         )
     except APIException as error:
         return _render_screen(
@@ -526,7 +445,7 @@ def _agenda_context(request, *, screen_error=""):
     now = timezone.now()
     reconcile_room_user_state(request, now=now)
     reservations = Reservation.objects.filter(
-        user_reference=get_demo_user_reference(request)
+        user_reference=get_actor_reference(request)
     ).select_related("computer", "booking_policy")
     confirmed_count = reservations.filter(status=Reservation.Status.CONFIRMED).count()
     if query:
@@ -628,10 +547,10 @@ def start_session(request):
     try:
         start_usage_session(
             **serializer.validated_data,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
-            affiliation_type=get_demo_affiliation_type(request),
-            institutional_unit=get_demo_institutional_unit(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
+            affiliation_type=get_actor_affiliation_type(request),
+            institutional_unit=get_actor_institutional_unit(request),
         )
     except APIException as error:
         return _computer_action_error_response(
@@ -653,7 +572,7 @@ def switch_session_computer(request, pk):
         UseSession,
         pk=pk,
         status=UseSession.Status.ACTIVE,
-        user_reference=get_demo_user_reference(request),
+        user_reference=get_actor_reference(request),
     )
     serializer = ComputerSwitchSerializer(
         data={
@@ -673,8 +592,8 @@ def switch_session_computer(request, pk):
     try:
         switch_computer(
             session_id=active_session.pk,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
             **serializer.validated_data,
         )
     except APIException as error:
@@ -695,7 +614,7 @@ def finish_session(request, pk):
     owned_session = get_object_or_404(
         UseSession,
         pk=pk,
-        user_reference=get_demo_user_reference(request),
+        user_reference=get_actor_reference(request),
     )
     serializer = UsageSessionFinishSerializer(
         data={"reason": request.POST.get("reason", "")}
@@ -713,8 +632,8 @@ def finish_session(request, pk):
     try:
         result = finish_usage_session(
             session_id=owned_session.pk,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
             **serializer.validated_data,
         )
     except APIException as error:
@@ -740,7 +659,7 @@ def finish_session(request, pk):
 def _problems_context(request, *, form_error="", form_data=None):
     query = request.GET.get("q", "").strip()
     occurrences = Occurrence.objects.filter(
-        reported_by_reference=get_demo_user_reference(request)
+        reported_by_reference=get_actor_reference(request)
     ).select_related("computer", "session", "allocation")
     if query:
         occurrences = occurrences.filter(
@@ -800,8 +719,8 @@ def problems(request):
             )
             try:
                 create_occurrence(
-                    actor_profile=get_demo_profile(request),
-                    actor_reference=get_demo_user_reference(request),
+                    actor_profile=get_actor_profile(request),
+                    actor_reference=get_actor_reference(request),
                     description=data["description"],
                     computer=computer,
                     session=active_session if link_active_session else None,

@@ -15,7 +15,7 @@ ADRs registram decisões arquiteturais, alternativas e consequências.
 - [0002 — Adotar monólito modular](0002-adotar-monolito-modular.md)
 - [0003 — Usar PostgreSQL como banco-alvo](0003-usar-postgresql.md)
 - [0004 — Usar Django Templates e JavaScript puro — substituída pela ADR 0023](0004-usar-templates-e-js.md)
-- [0005 — Adotar autorização simulada no MVP](0005-autorizacao-simulada.md)
+- [0005 — Adotar autorização simulada no MVP — substituída pela ADR 0027](0005-autorizacao-simulada.md)
 - [0006 — Versionar API em /api/v1 — substituída pela ADR 0018](0006-versionar-api-v1.md)
 - [0007 — Separar estado operacional e estado efetivo](0007-estados-do-computador.md)
 - [0008 — Separar sessão e alocação](0008-separar-sessao-e-alocacao.md)
@@ -37,3 +37,4 @@ ADRs registram decisões arquiteturais, alternativas e consequências.
 - [0024 — Ampliar a janela de check-in de reservas](0024-ampliar-janela-de-check-in-de-reservas.md)
 - [0025 — Escolher fim planejado no uso imediato](0025-escolher-fim-planejado-no-uso-imediato.md)
 - [0026 — Reconciliar prazos antes de consultas operacionais](0026-reconciliar-prazos-antes-de-consultas-operacionais.md)
+- [0027 — Autenticar contas operacionais por CPF ou matrícula](0027-autenticar-contas-por-identificador.md)

@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.exceptions import APIException
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import (
@@ -36,15 +37,12 @@ def days_payload(*, opens_at="08:00", closes_at="13:00"):
 
 
 class OperatingScheduleAPITest(APITestCase):
-    def select_profile(self, profile):
-        payload = {"profile": profile}
-        if profile == "ROOM_USER":
-            payload.update(
-                user_reference="aluno-calendario",
-                affiliation_type="STUDENT",
-                institutional_unit="Sistemas de Informação",
-            )
-        self.client.post("/api/demo/select-profile/", payload, format="json")
+    def login_profile(self, profile):
+        login_test_account(
+            self.client,
+            profile,
+            user_reference=("aluno-calendario" if profile == "ROOM_USER" else None),
+        )
 
     def temporary_payload(self, **overrides):
         payload = {
@@ -73,7 +71,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.assertIn("domingos", sunday.data["reason"])
 
     def test_room_user_reads_schedule_but_only_supervisor_creates(self):
-        self.select_profile("ROOM_USER")
+        self.login_profile("ROOM_USER")
         listed = self.client.get("/api/operating-schedules/")
         forbidden = self.client.post(
             "/api/operating-schedules/",
@@ -86,7 +84,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.assertEqual(forbidden.status_code, 403)
 
     def test_create_requires_exactly_seven_valid_days(self):
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/operating-schedules/",
@@ -99,7 +97,7 @@ class OperatingScheduleAPITest(APITestCase):
 
     def test_calendar_exception_rejects_past_date_without_side_effects(self):
         past_date = timezone.localdate() - timedelta(days=1)
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/calendar-exceptions/",
@@ -125,7 +123,7 @@ class OperatingScheduleAPITest(APITestCase):
             exception_type=CalendarException.ExceptionType.CLOSED,
             description="Registro histórico.",
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         with self.assertRaisesMessage(
             APIException,
@@ -150,7 +148,7 @@ class OperatingScheduleAPITest(APITestCase):
 
     def test_calendar_exception_accepts_today(self):
         today = timezone.localdate()
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/calendar-exceptions/",
@@ -167,7 +165,7 @@ class OperatingScheduleAPITest(APITestCase):
 
     def test_create_rejects_schedule_starting_today(self):
         today = timezone.localdate()
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/operating-schedules/",
@@ -188,7 +186,7 @@ class OperatingScheduleAPITest(APITestCase):
 
     def test_create_rejects_schedule_starting_in_the_past(self):
         today = timezone.localdate()
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/operating-schedules/",
@@ -209,7 +207,7 @@ class OperatingScheduleAPITest(APITestCase):
 
     def test_impact_preview_rejects_non_future_schedule(self):
         today = timezone.localdate()
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/operating-schedules/impact-preview/",
@@ -236,7 +234,7 @@ class OperatingScheduleAPITest(APITestCase):
             ends_at=starts_at + timedelta(hours=1),
             created_by_profile="ROOM_USER",
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         preview = self.client.post(
             "/api/operating-schedules/impact-preview/",
@@ -300,7 +298,7 @@ class OperatingScheduleAPITest(APITestCase):
             operating_schedule=schedule,
         )
         effective_from = today + timedelta(days=1)
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             f"/api/operating-schedules/{schedule.pk}/replace/",
@@ -326,7 +324,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.assertFalse(related_notice.is_active)
 
     def test_schedule_and_notice_are_created_in_one_transaction(self):
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
         visible_from = timezone.now()
 
         response = self.client.post(
@@ -348,7 +346,7 @@ class OperatingScheduleAPITest(APITestCase):
         self.assertEqual(notice.effective_from, date(2026, 12, 21))
 
     def test_schedule_rolls_back_when_linked_notice_fails(self):
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
         payload = self.temporary_payload(
             notify_users=True,
             notice={
@@ -426,11 +424,7 @@ class RoomNoticeAPITest(APITestCase):
         self.assertEqual([item["title"] for item in response.data], ["Aviso ativo"])
 
     def test_monitor_cannot_publish_notice(self):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
         response = self.client.post(
             "/api/room-notices/",

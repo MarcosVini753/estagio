@@ -8,15 +8,15 @@
 - models e migrations iniciais;
 - constraints básicas de sessão e alocação;
 - health check;
-- contexto de demonstração em sessão;
-- tela mínima de seleção de perfil;
+- autenticação Django por sessão com `AccessAccount` e identificadores CPF/matrícula;
+- endpoints de login, logout e contexto da conta autenticada;
 - OpenAPI, formato padronizado de erro, Ruff e CI.
 
 ## Concluído parcialmente na etapa 3
 
 - endpoints de computadores;
-- criação e edição de computadores pelo Supervisor ou Administrador;
-- alteração de estado operacional pelo Monitor da Sala, Supervisor ou Administrador;
+- criação e edição de computadores pelo Supervisor;
+- alteração de estado operacional pelo Monitor da Sala ou Supervisor;
 - histórico de mudanças do estado operacional;
 - endpoints de turnos e exceções de calendário;
 - consulta e versionamento da política de reservas;
@@ -26,7 +26,7 @@
 - descarte de slots iniciados no passado;
 - cálculo dos estados efetivos `OCCUPIED` e `RESERVED`;
 - precedência de `INACTIVE` e `MAINTENANCE`;
-- identificação de reserva pertencente ao usuário fictício atual;
+- identificação de reserva pertencente à referência opaca da conta atual;
 - seed idempotente para o ambiente de demonstração;
 - testes de API e regras de disponibilidade.
 - criação, listagem e cancelamento transacionais de reservas;
@@ -48,7 +48,7 @@
 
 ## Concluído na Pré-Etapa 4
 
-- contexto fictício ampliado para Usuário da Sala, com referência, vínculo e unidade institucional;
+- contas persistidas para os três perfis operacionais; Usuário da Sala possui vínculo e unidade institucional;
 - snapshots de vínculo e unidade em reservas e sessões de uso;
 - compatibilidade histórica para registros sem contexto, agrupáveis como `NOT_INFORMED`.
 - versionamento futuro de turnos, com substituição auditada e preservação dos turnos já usados.
@@ -90,7 +90,7 @@
 
 ## Concluído na normalização do domínio e indisponibilidade operacional
 
-- perfis persistidos e simulados usam `ROOM_MONITOR` e referência `demo-room-monitor`;
+- perfis de conta e auditoria usam os códigos conceituais `ROOM_USER`, `ROOM_MONITOR` e `LIBRARY_SUPERVISOR`;
 - reservas possuem somente `CONFIRMED`, `CANCELLED` e `USED`;
 - check-in expirado e mudança de calendário usam cancelamento administrativo comum;
 - `CalendarException` possui somente `CLOSED` e `SPECIAL_HOURS`;
@@ -102,8 +102,8 @@
 ## Concluído na entrega do frontend do Usuário da Sala
 
 - app de apresentação `web`, sem models, com páginas completas e partials HTMX;
-- seletor visual dos quatro perfis e identificação obrigatória para o Usuário da Sala;
-- proteção de todas as rotas `/sala/` pelo perfil armazenado na sessão;
+- login por CPF/matrícula e senha, sem escolha pública de perfil;
+- proteção das rotas `/sala/` pela conta autenticada e pelo papel nela persistido;
 - interface mobile-first de computadores, agenda, sessão e problemas;
 - disponibilidade real de hoje e amanhã, busca server-side e avisos operacionais;
 - reservas futuras para hoje e amanhã com opções consecutivas calculadas no servidor;
@@ -145,7 +145,7 @@
 - indicadores por turno, vínculo, unidade, computador, dia e bloco de 15 minutos;
 - taxa de ocupação calculada sobre calendário e histórico `AVAILABLE`, com corte
   em `now` e aviso para computadores com sequência histórica inconsistente;
-- API JSON completa para as quatro visões, restrita a Supervisor e Administrador;
+- API JSON completa para as quatro visões, acessível ao Supervisor autenticado;
 - exportação CSV, XLSX e PDF da mesma projeção, sem referências individuais;
 - interface responsiva do Supervisor com filtros server-side, HTMX progressivo,
   URLs navegáveis, tabelas acessíveis e downloads;
@@ -155,7 +155,9 @@
 ## Não implementado
 
 - interface funcional própria do Administrador;
-- autenticação real.
+- conta ou login para `SYSTEM_ADMIN`;
+- integração institucional/SSO, autocadastro e recuperação de senha;
+- uso com dados reais ou credenciais de demonstração em produção.
 
 ## Próxima fatia recomendada
 

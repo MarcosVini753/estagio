@@ -2,11 +2,13 @@
 
 ## Visão geral
 
-A primeira versão não possui autenticação real. O usuário escolhe um perfil na tela inicial e a aplicação passa a exibir as funcionalidades correspondentes.
+O login usa CPF ou matrícula e senha, autenticados pelo Django e mantidos em sessão. A conta determina o perfil; o navegador não escolhe nem envia um papel para obter autorização. A senha é armazenada como hash. Não há integração com identidade institucional nem autocadastro, portanto o sistema continua restrito a ambiente local ou controlado com dados fictícios.
 
-Essa autorização é apenas comportamental. Ela não garante identidade, sigilo ou segurança. O MVP deve operar somente com dados fictícios em ambiente local ou controlado.
+Contas possuem nome de exibição, perfil e referência interna estável sem relação com CPF. Cada conta pode ter um CPF, uma matrícula ou ambos; os identificadores são únicos no sistema. A interface não exibe CPF nem referência técnica da própria conta. Usuários da Sala também possuem vínculo e unidade institucional.
 
-Ao escolher Usuário da Sala, a área exige referência, vínculo e unidade institucional. Esses dados distinguem pessoas e agrupamentos analíticos, mas não comprovam identidade.
+O seed de desenvolvimento e testes cria estas credenciais compartilhadas: CPF `999.999.999-91` (Usuário da Sala), `999.999.999-92` (Monitor) e `999.999.999-93` (Supervisor), todas com senha `Senha123.`. Os CPFs de demonstração não passam na validação dos dígitos verificadores e são aceitos somente pelo seed local/teste. O seed não redefine senha nem perfil já alterados e é desativado em produção. Não use essas credenciais com dados reais.
+
+Contas futuras são provisionadas pelo comando interno `create_access_account`; ele solicita a senha sem exibi-la no terminal e não aceita o perfil `SYSTEM_ADMIN`.
 
 ## Usuário da Sala
 
@@ -84,7 +86,7 @@ Responsabilidades futuras:
 - consultar eventos de auditoria;
 - realizar manutenção administrativa.
 
-Na autorização simulada atual, o Administrador também pode executar as ações de configuração operacional disponíveis ao Supervisor. Isso não representa autenticação administrativa real.
+O papel permanece conceitual: não há conta `SYSTEM_ADMIN`, formulário de login para esse papel ou credenciais administrativas. Isso não representa uma autorização disponível na aplicação.
 
 Seus casos de uso detalhados permanecem fora do escopo documental funcional atual, mas nenhum desenho técnico deve assumir que Supervisor é o maior papel possível.
 
@@ -99,16 +101,16 @@ LIBRARY_SUPERVISOR
 SYSTEM_ADMIN
 ```
 
-A seleção pode ser armazenada temporariamente na sessão Django ou no estado local do frontend. O backend não deve tratar esse valor como prova de identidade.
+`AccessAccount` vincula um usuário Django a perfil, nome de exibição, referência interna e, para Usuário da Sala, vínculo e unidade. Os dados operacionais novos usam a referência estável da conta. Chaves `demo_*` de sessões antigas são ignoradas e removidas ao autenticar; elas nunca concedem acesso.
 
-Para Usuário da Sala, a sessão Django também armazena `demo_user_reference`, `demo_affiliation_type` e `demo_institutional_unit`. Os demais perfis usam apenas referências operacionais fixas.
+Registros operacionais legados permanecem nos relatórios, mas não são atribuídos às novas contas e não aparecem como registros “meus”: a referência antiga não comprova propriedade. Não há migração automática de titularidade.
 
 ## Evolução futura
 
-Quando autenticação real for implementada:
+Evoluções ainda fora do escopo:
 
-- usar o sistema de usuários, grupos e permissões do Django;
-- substituir o seletor de perfil por login;
-- preservar os mesmos identificadores conceituais de papel quando possível;
-- exigir novo ADR para definir o método de autenticação;
-- revisar todos os endpoints antes de permitir dados reais.
+- integrar identidade institucional ou SSO;
+- criar recuperação e alteração de senha pela interface;
+- definir provisionamento e revogação institucional em escala;
+- criar conta e interface para Administrador do Sistema;
+- revisar todos os controles antes de permitir dados reais.

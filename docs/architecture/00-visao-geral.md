@@ -10,7 +10,7 @@ Navegador
 ├── HTMX para interações com o servidor
 ├── Alpine.js para estado local de interface
 ├── Tailwind CSS para apresentação
-├── seletor de perfil
+├── login por CPF/matrícula e senha
 └── documentação OpenAPI
         │
         ▼
@@ -19,7 +19,7 @@ Django + DRF
 ├── API /api/
 ├── serviços de domínio
 ├── selectors e projeções
-└── autorização simulada em sessão
+└── autenticação por sessão Django e autorização pelo perfil da conta
         │
         ▼
 PostgreSQL
@@ -71,8 +71,9 @@ A stack de frontend acima está implementada para a área do Usuário da Sala, c
 - operações críticas são transacionais;
 - estados calculados não são persistidos;
 - relatórios consultam dados operacionais;
-- autorização simulada não é identidade;
-- não existe Django Admin ou autenticação real no MVP;
+- a identidade autenticada e o perfil vêm da conta persistida, nunca do payload ou de chaves de demonstração na sessão;
+- não existe integração institucional/SSO, autocadastro ou conta para `SYSTEM_ADMIN`;
+- credenciais compartilhadas de demonstração só podem ser usadas com dados fictícios em ambiente local/controlado;
 - HTML e JavaScript devem seguir progressive enhancement;
 - uma SPA separada exige nova decisão arquitetural.
 
@@ -86,10 +87,10 @@ A interface deve ser mobile-first e preparada para evolução posterior para PWA
 
 ## Estado atual
 
-O scaffold, apps, modelos, migrations, Compose, CI, health check e contexto de
-demonstração estão implementados. Os serviços operacionais e endpoints de
+O scaffold, apps, modelos, migrations, Compose, CI, health check e login local
+com contas persistidas estão implementados. Os serviços operacionais e endpoints de
 domínio também já existem: reservas, sessões, troca de computador, saída,
 ocorrências, calendário operacional, indisponibilidade de computador e
 relatórios diário, mensal, anual e de indicadores com exportação.
 
-O app de apresentação `web` entrega o seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca com Django Templates, HTMX, Alpine.js e Tailwind CSS. Somente a interface própria do Administrador permanece como evolução futura. Consulte `08-estado-implementacao.md` para o detalhamento.
+O app `access` autentica CPF ou matrícula com senha e mantém sessão Django; o perfil deriva da conta e não pode ser escolhido na tela. O seed local/teste cria três contas fictícias e não cria nem permite conta `SYSTEM_ADMIN`. O app de apresentação `web` entrega as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca com Django Templates, HTMX, Alpine.js e Tailwind CSS. A integração institucional e a administração própria permanecem fora do escopo. Consulte `08-estado-implementacao.md` para o detalhamento.

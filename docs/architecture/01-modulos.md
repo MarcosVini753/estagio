@@ -6,8 +6,8 @@ O backend será dividido em apps Django por domínio. A separação não implica
 
 Camada de apresentação HTML, sem models próprios, responsável por:
 
-- seletor dos quatro perfis de demonstração;
-- proteção das rotas do Usuário da Sala, Monitor e Supervisor pelo contexto salvo na sessão;
+- formulário de login por CPF/matrícula e senha, além de logout por POST;
+- proteção das rotas do Usuário da Sala, Monitor e Supervisor pela conta autenticada e seu perfil;
 - páginas e partials HTMX para os fluxos próprios, operacionais e gerenciais;
 - painel do Monitor com sessões ativas, estados dos computadores, ocorrências e correções de histórico;
 - gestão do Supervisor para inventário, turnos, calendários, exceções, avisos,
@@ -17,7 +17,7 @@ Camada de apresentação HTML, sem models próprios, responsável por:
 
 O app reutiliza serializers de entrada, selectors e serviços dos módulos de domínio. Não chama a API HTTP internamente e não contém regras de disponibilidade, duração ou transição de estado.
 
-Helpers compartilhados tratam somente autorização simulada, negociação de página/partial HTMX, redirects e mensagens de erro. Contextos e fluxos permanecem separados por área. As views do Supervisor são divididas entre painel, relatórios, inventário, configurações e calendários; regras transacionais continuam nos serviços dos domínios correspondentes.
+Helpers compartilhados tratam autorização por perfil, negociação de página/partial HTMX, redirects e mensagens de erro. Contextos e fluxos permanecem separados por área. As views do Supervisor são divididas entre painel, relatórios, inventário, configurações e calendários; regras transacionais continuam nos serviços dos domínios correspondentes.
 
 ## `core`
 
@@ -33,14 +33,17 @@ Não deve concentrar regras específicas de reservas, sessões ou relatórios.
 
 ## `access`
 
-Responsável, no MVP, por:
+Responsável por:
 
-- perfis de teste;
-- armazenamento temporário do perfil selecionado;
-- políticas de autorização simulada;
-- endpoint para consultar e alterar o contexto de demonstração.
+- contas vinculadas ao usuário padrão do Django, sem conta para `SYSTEM_ADMIN`;
+- identificadores CPF e matrícula, normalizados e únicos;
+- backend de autenticação por identificador e senha;
+- criação transacional de contas e leitura da identidade/perfil autenticados;
+- endpoints de login, logout e contexto da própria conta.
 
-A autenticação real será tratada em etapa futura. O nome `access` evita criar prematuramente um modelo de usuário definitivo.
+O seed de contas fictícias fica no comando local de dados e é desligado em
+produção. O nome `access` delimita o acesso e as permissões; o app usa o modelo
+de usuário padrão do Django, sem criar uma classe de usuário própria.
 
 ## `configuration`
 

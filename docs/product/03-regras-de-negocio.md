@@ -137,5 +137,5 @@ A disponibilidade sempre depende de data, hora ou intervalo. Não deve existir c
 ## Fora do domínio
 
 - Não existe fila de espera.
-- Não existe autenticação real no MVP.
+- O perfil operacional sempre vem da conta autenticada. Login institucional/SSO e dados reais permanecem fora do MVP.
 - Não existe integração com sistemas institucionais.

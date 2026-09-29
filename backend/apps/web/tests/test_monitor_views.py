@@ -4,10 +4,12 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.access.tests.helpers import login_test_account
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import OperatingSchedule, Weekday
 from apps.configuration.tests.factories import create_operating_schedule
+from apps.core.enums import DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.operations.availability import get_computers_availability
 from apps.operations.models import ComputerAllocation, UseSession
@@ -40,20 +42,10 @@ class RoomMonitorWebTest(TestCase):
         )
 
     def select_monitor(self):
-        response = self.client.post("/", {"profile": "ROOM_MONITOR"})
-        self.assertRedirects(
-            response,
-            "/monitor/",
-            fetch_redirect_response=False,
-        )
+        login_test_account(self.client, DemoProfile.ROOM_MONITOR)
 
     def select_supervisor(self):
-        response = self.client.post("/", {"profile": "LIBRARY_SUPERVISOR"})
-        self.assertRedirects(
-            response,
-            "/supervisor/",
-            fetch_redirect_response=False,
-        )
+        login_test_account(self.client, DemoProfile.LIBRARY_SUPERVISOR)
 
     def create_session(self, *, active=True):
         started_at = self.aware(time(8))
@@ -86,14 +78,10 @@ class RoomMonitorWebTest(TestCase):
 
         self.assertRedirects(anonymous, "/")
 
-        self.client.post(
-            "/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": "aluno-si-001",
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
+        login_test_account(
+            self.client,
+            DemoProfile.ROOM_USER,
+            user_reference="aluno-si-001",
         )
         incompatible = self.client.get("/monitor/")
 

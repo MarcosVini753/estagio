@@ -9,8 +9,8 @@ Centralizar a regra que determina se um computador pode ser consultado, utilizad
 - computador;
 - data;
 - instante ou intervalo;
-- perfil selecionado;
-- usuário selecionado, quando necessário.
+- perfil da conta autenticada;
+- referência estável da conta autenticada, quando necessário.
 
 ## Janela temporal
 

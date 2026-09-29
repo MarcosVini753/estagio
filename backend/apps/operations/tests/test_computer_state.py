@@ -7,6 +7,7 @@ from django.test import TransactionTestCase
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer, ComputerOperationalStateChange
 from apps.configuration.models import BookingPolicy, OperatingSchedule, Weekday
@@ -30,11 +31,7 @@ class ComputerOperationalStateAPITest(APITestCase):
         self.now = timezone.now()
         self.source = Computer.objects.create(code="PC-01")
         self.destination = Computer.objects.create(code="PC-02")
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
     def change_state(self, state="MAINTENANCE", reason="Falha no monitor"):
         with patch(

@@ -75,7 +75,7 @@ O papel existe na arquitetura, mas seus casos de uso detalhados serão documenta
 
 - fila de espera foi removida do escopo;
 - estados ocupado e reservado são calculados, não persistidos;
-- a tela inicial de escolha de perfil substitui autenticação real no MVP;
+- a tela inicial autentica por CPF ou matrícula e senha; o papel decorre da conta e não pode ser escolhido pelo usuário;
 - calendário operacional e turnos foram separados para impedir que classificação analítica altere a abertura da sala.
 - intervalos planejados foram separados dos horários reais para impedir sessões sem limite e preservar a tolerância operacional de três minutos.
 

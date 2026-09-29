@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.access.permissions import HasDemoProfile
+from apps.access.permissions import HasAccessRole
 from apps.configuration.models import ReportConfiguration
 from apps.core.enums import DemoProfile
 from apps.reports.exports import build_export_document, render_export
@@ -37,8 +37,8 @@ EXPORT_RESPONSES = {
 
 
 class ManagementReportAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = [
+    permission_classes = [HasAccessRole]
+    allowed_profiles = [
         DemoProfile.LIBRARY_SUPERVISOR,
         DemoProfile.SYSTEM_ADMIN,
     ]

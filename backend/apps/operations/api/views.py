@@ -6,12 +6,12 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.access.permissions import HasDemoProfile
+from apps.access.permissions import HasAccessRole
 from apps.access.services import (
-    get_demo_affiliation_type,
-    get_demo_institutional_unit,
-    get_demo_profile,
-    get_demo_user_reference,
+    get_actor_affiliation_type,
+    get_actor_institutional_unit,
+    get_actor_profile,
+    get_actor_reference,
 )
 from apps.computers.models import Computer
 from apps.core.api.pagination import StandardPageNumberPagination
@@ -47,10 +47,10 @@ OPERATIONAL_PROFILES = [
 
 def _reconcile_read(request, *, now=None):
     current = now or timezone.now()
-    reference = get_demo_user_reference(request)
+    reference = get_actor_reference(request)
     scope = (
         ReconcileScope(user_references=(reference,))
-        if get_demo_profile(request) == DemoProfile.ROOM_USER and reference
+        if get_actor_profile(request) == DemoProfile.ROOM_USER and reference
         else None
     )
     reconcile_deadlines(now=current, scope=scope)
@@ -58,12 +58,12 @@ def _reconcile_read(request, *, now=None):
 
 
 class ReservationListCreateAPIView(GenericAPIView):
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
     serializer_class = ReservationSerializer
     pagination_class = StandardPageNumberPagination
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             OPERATIONAL_PROFILES
             if self.request.method == "GET"
             else [DemoProfile.ROOM_USER]
@@ -90,10 +90,10 @@ class ReservationListCreateAPIView(GenericAPIView):
         get_object_or_404(Computer, pk=serializer.validated_data["computer_id"])
         reservation = create_reservation(
             **serializer.validated_data,
-            user_reference=get_demo_user_reference(request),
-            affiliation_type=get_demo_affiliation_type(request),
-            institutional_unit=get_demo_institutional_unit(request),
-            created_by_profile=get_demo_profile(request),
+            user_reference=get_actor_reference(request),
+            affiliation_type=get_actor_affiliation_type(request),
+            institutional_unit=get_actor_institutional_unit(request),
+            created_by_profile=get_actor_profile(request),
         )
         return Response(
             ReservationSerializer(reservation).data, status=status.HTTP_201_CREATED
@@ -101,8 +101,8 @@ class ReservationListCreateAPIView(GenericAPIView):
 
 
 class MyReservationListAPIView(GenericAPIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = [DemoProfile.ROOM_USER]
+    permission_classes = [HasAccessRole]
+    allowed_profiles = [DemoProfile.ROOM_USER]
     serializer_class = ReservationSerializer
     pagination_class = StandardPageNumberPagination
 
@@ -112,15 +112,15 @@ class MyReservationListAPIView(GenericAPIView):
     def get(self, request):
         _reconcile_read(request)
         reservations = Reservation.objects.filter(
-            user_reference=get_demo_user_reference(request)
+            user_reference=get_actor_reference(request)
         ).order_by("-starts_at", "-pk")
         page = self.paginate_queryset(reservations)
         return self.get_paginated_response(ReservationSerializer(page, many=True).data)
 
 
 class ReservationCancelAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = DemoProfile.values
+    permission_classes = [HasAccessRole]
+    allowed_profiles = DemoProfile.values
 
     @extend_schema(
         request=ReservationCancelSerializer,
@@ -133,23 +133,23 @@ class ReservationCancelAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         reservation = cancel_reservation(
             reservation_id=pk,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
             **serializer.validated_data,
         )
         return Response(ReservationSerializer(reservation).data)
 
 
 class CurrentUsageSessionAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = [DemoProfile.ROOM_USER]
+    permission_classes = [HasAccessRole]
+    allowed_profiles = [DemoProfile.ROOM_USER]
 
     @extend_schema(responses={200: UseSessionSerializer}, tags=["usage-sessions"])
     def get(self, request):
         _reconcile_read(request)
         session = (
             UseSession.objects.filter(
-                user_reference=get_demo_user_reference(request),
+                user_reference=get_actor_reference(request),
                 status=UseSession.Status.ACTIVE,
             )
             .prefetch_related("allocations")
@@ -159,8 +159,8 @@ class CurrentUsageSessionAPIView(APIView):
 
 
 class ActiveUsageSessionListAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = OPERATIONAL_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = OPERATIONAL_PROFILES
 
     @extend_schema(
         responses={200: UseSessionSerializer(many=True)}, tags=["usage-sessions"]
@@ -174,8 +174,8 @@ class ActiveUsageSessionListAPIView(APIView):
 
 
 class UsageSessionHistoryAPIView(GenericAPIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = DemoProfile.values
+    permission_classes = [HasAccessRole]
+    allowed_profiles = DemoProfile.values
     serializer_class = UseSessionSerializer
     pagination_class = StandardPageNumberPagination
 
@@ -185,8 +185,8 @@ class UsageSessionHistoryAPIView(GenericAPIView):
     def get(self, request):
         _reconcile_read(request)
         sessions = UseSession.objects.exclude(status=UseSession.Status.ACTIVE)
-        if get_demo_profile(request) == DemoProfile.ROOM_USER:
-            sessions = sessions.filter(user_reference=get_demo_user_reference(request))
+        if get_actor_profile(request) == DemoProfile.ROOM_USER:
+            sessions = sessions.filter(user_reference=get_actor_reference(request))
         sessions = sessions.prefetch_related("allocations").order_by(
             "-started_at", "-pk"
         )
@@ -195,8 +195,8 @@ class UsageSessionHistoryAPIView(GenericAPIView):
 
 
 class UsageSessionStartAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = DemoProfile.values
+    permission_classes = [HasAccessRole]
+    allowed_profiles = DemoProfile.values
 
     @extend_schema(
         request=UsageSessionStartSerializer,
@@ -214,14 +214,14 @@ class UsageSessionStartAPIView(APIView):
             computer_id=data["computer_id"],
             reservation_id=reservation_id,
             planned_ends_at=data.get("planned_ends_at"),
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
-            user_reference=data.get("user_reference", get_demo_user_reference(request)),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
+            user_reference=data.get("user_reference", get_actor_reference(request)),
             affiliation_type=data.get(
-                "affiliation_type", get_demo_affiliation_type(request)
+                "affiliation_type", get_actor_affiliation_type(request)
             ),
             institutional_unit=data.get(
-                "institutional_unit", get_demo_institutional_unit(request)
+                "institutional_unit", get_actor_institutional_unit(request)
             ),
         )
         return Response(
@@ -231,8 +231,8 @@ class UsageSessionStartAPIView(APIView):
 
 
 class UsageSessionSwitchAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = DemoProfile.values
+    permission_classes = [HasAccessRole]
+    allowed_profiles = DemoProfile.values
 
     @extend_schema(
         request=ComputerSwitchSerializer,
@@ -246,16 +246,16 @@ class UsageSessionSwitchAPIView(APIView):
         get_object_or_404(Computer, pk=serializer.validated_data["computer_id"])
         session = switch_computer(
             session_id=pk,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
             **serializer.validated_data,
         )
         return Response(UseSessionSerializer(session).data)
 
 
 class UsageSessionFinishAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = DemoProfile.values
+    permission_classes = [HasAccessRole]
+    allowed_profiles = DemoProfile.values
 
     @extend_schema(
         request=UsageSessionFinishSerializer,
@@ -268,16 +268,16 @@ class UsageSessionFinishAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         result = finish_usage_session(
             session_id=pk,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
             **serializer.validated_data,
         )
         return Response(UseSessionSerializer(result.session).data)
 
 
 class UsageSessionCorrectionAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = OPERATIONAL_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = OPERATIONAL_PROFILES
 
     @extend_schema(
         request=UsageSessionCorrectionSerializer,
@@ -290,7 +290,7 @@ class UsageSessionCorrectionAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         session = correct_usage_session(
             session_id=pk,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             **serializer.validated_data,
         )
         return Response(UseSessionSerializer(session).data)

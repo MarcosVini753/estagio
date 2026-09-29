@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.access.tests.helpers import login_test_account
 from apps.computers.models import Computer
 from apps.configuration.models import (
     BookingPolicy,
@@ -13,6 +14,7 @@ from apps.configuration.models import (
     Weekday,
 )
 from apps.configuration.tests.factories import create_operating_schedule
+from apps.core.enums import DemoProfile
 from apps.occurrences.models import Occurrence
 from apps.operations.models import Reservation, UseSession
 from apps.operations.tests.factories import create_reservation
@@ -50,38 +52,53 @@ class RoomUserWebTest(TestCase):
             timezone.get_current_timezone(),
         )
 
-    def select_room_user(self):
-        response = self.client.post(
-            "/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": "aluno-si-001",
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
+    def login_room_user(self):
+        return login_test_account(
+            self.client,
+            DemoProfile.ROOM_USER,
+            user_reference="aluno-si-001",
         )
-        self.assertRedirects(response, "/sala/computadores/")
 
-    def test_home_lists_four_profiles_and_requires_room_user_identity(self):
+    def test_login_page_does_not_disclose_roles_or_accept_profile_selection(self):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Escolha seu perfil")
-        self.assertContains(response, 'value="ROOM_USER"')
-        self.assertContains(response, 'value="ROOM_MONITOR"')
-        self.assertContains(response, 'value="LIBRARY_SUPERVISOR"')
-        self.assertContains(response, 'value="SYSTEM_ADMIN"')
-        self.assertNotContains(response, "Autorização simulada")
-        self.assertNotContains(response, "perfil de teste")
-        self.assertNotContains(response, "Ambiente de demonstração")
-        self.assertNotContains(response, "A escolha de perfil não é autenticação")
-        self.assertNotContains(response, "Use apenas dados fictícios")
+        self.assertContains(response, "CPF ou matrícula")
+        self.assertContains(response, "Senha")
+        self.assertContains(response, "Ambiente de demonstração")
+        self.assertNotContains(response, "Administrador do Sistema")
+        invalid = self.client.post("/", {"profile": "SYSTEM_ADMIN"})
+        self.assertEqual(invalid.status_code, 200)
+        self.assertFalse(self.client.session.get("demo_profile"))
 
-        invalid = self.client.post("/", {"profile": "ROOM_USER"})
-        self.assertEqual(invalid.status_code, 400)
-        self.assertContains(invalid, "obrigatório", status_code=400)
+    def test_html_login_uses_identifier_and_logout_clears_session(self):
+        account = self.login_room_user()
+        identifier = account.identifiers.get().normalized_value
+        self.client.logout()
 
-    def test_active_notice_is_visible_before_and_after_profile_selection(self):
+        response = self.client.post(
+            "/",
+            {"username": identifier, "password": "TestPassword123!"},
+        )
+
+        self.assertRedirects(
+            response, "/sala/computadores/", fetch_redirect_response=False
+        )
+        self.assertFalse(self.client.session.get("demo_profile"))
+        self.assertEqual(self.client.cookies["sessionid"]["expires"], "")
+        self.assertEqual(
+            self.client.get("/sala/computadores/").status_code,
+            200,
+        )
+        logged_out = self.client.post("/sair/")
+        self.assertRedirects(logged_out, "/", fetch_redirect_response=False)
+        self.assertRedirects(
+            self.client.get("/sala/computadores/"),
+            "/",
+            fetch_redirect_response=False,
+        )
+
+    def test_active_notice_is_visible_before_and_after_login(self):
         RoomNotice.objects.create(
             notice_type=RoomNotice.NoticeType.SPECIAL_HOURS,
             title="Horário especial hoje",
@@ -93,39 +110,40 @@ class RoomUserWebTest(TestCase):
         )
 
         home = self.client.get("/")
-        self.select_room_user()
+        self.login_room_user()
         computers = self.client.get("/sala/computadores/")
 
         self.assertContains(home, "Horário especial hoje")
         self.assertContains(computers, "Horário especial hoje")
 
     def test_monitor_reaches_its_functional_area(self):
-        response = self.client.post("/", {"profile": "ROOM_MONITOR"})
-
+        login_test_account(self.client, DemoProfile.ROOM_MONITOR)
+        response = self.client.get("/")
         self.assertRedirects(response, "/monitor/")
 
-    def test_unmigrated_profile_reaches_pending_profile_page(self):
-        response = self.client.post("/", {"profile": "SYSTEM_ADMIN"})
+    def test_admin_cannot_be_provisioned_as_an_access_account(self):
+        from apps.access.services import create_access_account
 
-        self.assertRedirects(response, "/perfil-indisponivel/")
-        pending = self.client.get("/perfil-indisponivel/")
-        self.assertContains(pending, "Administrador do Sistema")
-        self.assertContains(pending, "ainda não está disponível")
-        self.assertNotContains(pending, "Autorização simulada")
-        self.assertNotContains(pending, "demonstração")
+        with self.assertRaises(ValueError):
+            create_access_account(
+                profile=DemoProfile.SYSTEM_ADMIN,
+                display_name="Administrador",
+                password="TestPassword123!",
+                identifiers=[("MATRICULA", "admin-test")],
+            )
 
     def test_room_user_pages_require_compatible_profile(self):
         response = self.client.get("/sala/computadores/")
 
         self.assertRedirects(response, "/")
 
-        self.select_room_user()
-        self.client.post("/", {"profile": "ROOM_MONITOR"})
+        self.login_room_user()
+        login_test_account(self.client, DemoProfile.ROOM_MONITOR)
         changed_profile = self.client.get("/sala/computadores/")
         self.assertRedirects(changed_profile, "/")
 
     def test_computers_render_today_tomorrow_search_and_htmx_partial(self):
-        self.select_room_user()
+        self.login_room_user()
         with patch(
             "apps.operations.availability.timezone.now",
             return_value=self.fixed_now,
@@ -164,7 +182,7 @@ class RoomUserWebTest(TestCase):
         self.assertContains(detail, "30 min")
 
     def test_room_user_screen_hides_operational_tolerances_and_uses_planned_end(self):
-        self.select_room_user()
+        self.login_room_user()
         reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
@@ -192,7 +210,7 @@ class RoomUserWebTest(TestCase):
         self.assertNotContains(detail, 'name="slot_count"')
 
     def test_agenda_and_problems_paginate_without_losing_search(self):
-        self.select_room_user()
+        self.login_room_user()
         reservations = []
         for index in range(26):
             starts_at = self.fixed_now - timedelta(days=index + 1)
@@ -228,7 +246,7 @@ class RoomUserWebTest(TestCase):
         self.assertContains(problems, "Página 2 de 2")
 
     def test_computers_present_closed_room(self):
-        self.select_room_user()
+        self.login_room_user()
         OperatingSchedule.objects.all().delete()
         create_operating_schedule(
             valid_from=self.today - timedelta(days=1),
@@ -245,7 +263,7 @@ class RoomUserWebTest(TestCase):
         self.assertContains(response, "Sem funcionamento nesta data")
 
     def test_creates_reservations_for_today_and_tomorrow(self):
-        self.select_room_user()
+        self.login_room_user()
         today_start = self.aware(self.today, time(9))
         tomorrow_start = self.aware(self.tomorrow, time(9))
 
@@ -281,7 +299,7 @@ class RoomUserWebTest(TestCase):
         )
 
     def test_booking_conflict_returns_refreshed_modal_without_persisting(self):
-        self.select_room_user()
+        self.login_room_user()
         starts_at = self.aware(self.tomorrow, time(9))
         create_reservation(
             user_reference="outro-usuario",
@@ -309,7 +327,7 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(Reservation.objects.count(), 1)
 
     def test_agenda_lists_and_cancels_owned_booking(self):
-        self.select_room_user()
+        self.login_room_user()
         reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
@@ -328,7 +346,7 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(reservation.status, Reservation.Status.CANCELLED)
 
     def test_agenda_refreshes_entry_action_when_check_in_window_opens(self):
-        self.select_room_user()
+        self.login_room_user()
         create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
@@ -364,7 +382,7 @@ class RoomUserWebTest(TestCase):
         self.assertContains(refreshed, "Registrar entrada")
 
     def test_immediate_session_switch_and_finish_flow(self):
-        self.select_room_user()
+        self.login_room_user()
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
             return_value=self.fixed_now,
@@ -424,7 +442,7 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(active_session.allocations.count(), 2)
 
     def test_switch_after_planned_end_hides_operational_tolerance(self):
-        self.select_room_user()
+        self.login_room_user()
         planned_end = self.aware(self.today, time(8, 30))
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
@@ -467,7 +485,7 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(active_session.allocations.count(), 1)
 
     def test_confirmation_forms_keep_their_non_javascript_post_fallback(self):
-        self.select_room_user()
+        self.login_room_user()
         reservation = create_reservation(
             user_reference="aluno-si-001",
             computer=self.computer,
@@ -521,7 +539,7 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(active_session.status, UseSession.Status.FINISHED)
 
     def test_concurrent_immediate_start_refreshes_modal_with_error(self):
-        self.select_room_user()
+        self.login_room_user()
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
             return_value=self.fixed_now,
@@ -553,14 +571,14 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(UseSession.objects.count(), 1)
 
     def test_mutation_routes_reject_get(self):
-        self.select_room_user()
+        self.login_room_user()
 
         response = self.client.get("/sala/sessao/iniciar/")
 
         self.assertEqual(response.status_code, 405)
 
     def test_invalid_immediate_start_stays_in_accessible_modal(self):
-        self.select_room_user()
+        self.login_room_user()
 
         response = self.client.post(
             "/sala/sessao/iniciar/",
@@ -574,7 +592,7 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(UseSession.objects.count(), 0)
 
     def test_booking_check_in_starts_session(self):
-        self.select_room_user()
+        self.login_room_user()
         reservation = create_reservation(
             user_reference="aluno-si-001",
             affiliation_type="STUDENT",
@@ -599,7 +617,7 @@ class RoomUserWebTest(TestCase):
         self.assertEqual(session.started_at, self.aware(self.today, time(8, 57)))
 
     def test_problem_is_linked_to_matching_active_allocation(self):
-        self.select_room_user()
+        self.login_room_user()
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
             return_value=self.fixed_now,
@@ -641,7 +659,7 @@ class RoomUserWebTest(TestCase):
         self.assertNotContains(own_problems, "Ocorrência de outra pessoa.")
 
     def test_search_preserves_selected_day_parameter_via_oob_swap(self):
-        self.select_room_user()
+        self.login_room_user()
         with patch("django.utils.timezone.now", return_value=self.fixed_now):
             tomorrow_screen = self.client.get(
                 "/sala/computadores/?day=tomorrow",
@@ -659,7 +677,7 @@ class RoomUserWebTest(TestCase):
         self.assertContains(search_tomorrow, 'name="day" value="tomorrow"')
 
     def test_room_status_presentation_handles_special_hours_and_after_closing(self):
-        self.select_room_user()
+        self.login_room_user()
         CalendarException.objects.create(
             date=self.today,
             exception_type=CalendarException.ExceptionType.SPECIAL_HOURS,
@@ -690,7 +708,7 @@ class RoomUserWebTest(TestCase):
     def test_agenda_disables_cancellation_when_within_cancellation_limit_minutes(
         self,
     ):
-        self.select_room_user()
+        self.login_room_user()
         policy = BookingPolicy.objects.order_by("-valid_from").first()
         if policy:
             policy.cancellation_limit_minutes = 30

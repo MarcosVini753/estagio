@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import (
@@ -43,7 +44,7 @@ class UsageSessionAPITest(APITestCase):
             max_future_reservations_per_user=2,
             valid_from=self.today - timedelta(days=1),
         )
-        self.select_room_user()
+        self.login_room_user()
 
     def aware(self, value, target_date=None):
         return timezone.make_aware(
@@ -51,21 +52,18 @@ class UsageSessionAPITest(APITestCase):
             timezone.get_current_timezone(),
         )
 
-    def select_room_user(
+    def login_room_user(
         self,
         reference="aluno-si-001",
         affiliation_type="STUDENT",
         unit="Sistemas de Informação",
     ):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": reference,
-                "affiliation_type": affiliation_type,
-                "institutional_unit": unit,
-            },
-            format="json",
+        login_test_account(
+            self.client,
+            "ROOM_USER",
+            user_reference=reference,
+            affiliation_type=affiliation_type,
+            institutional_unit=unit,
         )
 
     def immediate_end(self, current, marks=4):
@@ -183,7 +181,7 @@ class UsageSessionAPITest(APITestCase):
             ends_at=self.aware(time(9, 0)),
             created_by_profile="ROOM_USER",
         )
-        self.select_room_user(
+        self.login_room_user(
             affiliation_type="PROFESSOR",
             unit="Ciência da Computação",
         )
@@ -351,7 +349,7 @@ class UsageSessionAPITest(APITestCase):
             code="PC-03",
             operational_state=Computer.OperationalState.MAINTENANCE,
         )
-        self.select_room_user("aluno-si-002")
+        self.login_room_user("aluno-si-002")
         maintenance_response = self.start({"computer_id": maintenance.pk})
 
         self.assertEqual(duplicate.status_code, 409)
@@ -458,7 +456,7 @@ class UsageSessionAPITest(APITestCase):
             sequence=1,
             started_at=self.aware(time(8)),
         )
-        self.select_room_user("aluno-si-002")
+        self.login_room_user("aluno-si-002")
 
         response = self.start(
             {
@@ -489,7 +487,7 @@ class UsageSessionAPITest(APITestCase):
             ends_at=self.aware(time(10)),
             created_by_profile="ROOM_USER",
         )
-        self.select_room_user("aluno-si-002")
+        self.login_room_user("aluno-si-002")
 
         response = self.start(
             {
@@ -543,11 +541,7 @@ class UsageSessionAPITest(APITestCase):
         self.assertEqual(sunday_response.data["code"], "ROOM_CLOSED")
 
     def test_operational_entry_requires_and_uses_identity_from_body(self):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
         missing_response = self.start({"computer_id": self.computer.pk})
         valid_response = self.start(
             {
@@ -801,11 +795,7 @@ class UsageSessionAPITest(APITestCase):
     def test_operational_finish_requires_reason_and_creates_audit_event(self):
         self.start()
         session = UseSession.objects.get()
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
         with patch(
             "apps.operations.services.usage_sessions.timezone.now",
@@ -847,11 +837,7 @@ class UsageSessionAPITest(APITestCase):
         ):
             room_active = self.client.get("/api/usage-sessions/active/")
             room_history = self.client.get("/api/usage-sessions/history/")
-            self.client.post(
-                "/api/demo/select-profile/",
-                {"profile": "ROOM_MONITOR"},
-                format="json",
-            )
+            login_test_account(self.client, "ROOM_MONITOR")
             operational_active = self.client.get("/api/usage-sessions/active/")
             operational_history = self.client.get("/api/usage-sessions/history/")
 

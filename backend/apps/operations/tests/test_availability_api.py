@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.computers.models import Computer
 from apps.configuration.models import (
     BookingPolicy,
@@ -39,15 +40,10 @@ class AvailabilityAPITest(APITestCase):
         BookingPolicy.objects.create(
             valid_from=self.today - timedelta(days=1),
         )
-        self.client.post(
-            "/api/demo/select-profile/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": "aluno-si-001",
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
-            format="json",
+        login_test_account(
+            self.client,
+            "ROOM_USER",
+            user_reference="aluno-si-001",
         )
 
     def aware(self, target_date, target_time):

@@ -1,12 +1,9 @@
 from django.urls import path
 
-from .views import DemoContextAPIView, DemoSelectProfileAPIView
+from .views import AuthContextAPIView, LoginAPIView, LogoutAPIView
 
 urlpatterns = [
-    path("context/", DemoContextAPIView.as_view(), name="demo-context"),
-    path(
-        "select-profile/",
-        DemoSelectProfileAPIView.as_view(),
-        name="demo-select-profile",
-    ),
+    path("login/", LoginAPIView.as_view(), name="login"),
+    path("logout/", LogoutAPIView.as_view(), name="logout"),
+    path("me/", AuthContextAPIView.as_view(), name="me"),
 ]

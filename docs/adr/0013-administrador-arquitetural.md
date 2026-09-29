@@ -10,7 +10,7 @@ Os casos de uso detalhados atuais concentram-se em Usuário da Sala, Monitor da 
 
 ## Decisão
 
-Manter `SYSTEM_ADMIN` como papel arquitetural, mesmo que sua autenticação real e seus casos de uso detalhados sejam implementados em etapa futura.
+Manter `SYSTEM_ADMIN` como papel arquitetural. Nesta etapa, ele não possui conta nem login; provisionamento de conta administrativa e seus casos de uso detalhados permanecem fora do escopo.
 
 ## Alternativas consideradas
 
@@ -26,6 +26,6 @@ Manter `SYSTEM_ADMIN` como papel arquitetural, mesmo que sua autenticação real
 
 ## Consequências negativas e riscos
 
-- o seletor de perfil pode exibir um papel ainda sem telas completas;
+- o código de papel permanece nos modelos de auditoria e regras arquiteturais, sem estar disponível como conta operacional;
 - a documentação deve distinguir capacidade arquitetural de funcionalidade entregue;
-- não se deve implementar autenticação real implicitamente sem novo ADR.
+- uma conta administrativa exige decisão e controles próprios; o login operacional não a cria implicitamente.

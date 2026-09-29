@@ -32,7 +32,8 @@ Construir um sistema web para registrar, acompanhar e analisar o uso dos computa
 - consulta limitada a hoje e amanhã;
 - uso imediato somente hoje;
 - reservas para horário futuro de hoje ou para amanhã;
-- sem autenticação real;
+- login local por CPF ou matrícula e senha, sem integração com identidade institucional;
+- contas fictícias compartilhadas apenas em ambiente local ou controlado;
 - sem integração institucional;
 - sem ator Técnico de Manutenção/TI;
 - sem lançamentos manuais de relatório.

@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, OperatingSchedule, Weekday
 from apps.configuration.tests.factories import create_operating_schedule
@@ -235,15 +236,10 @@ class AvailabilityReconciliationTest(TestCase):
             },
         )
         BookingPolicy.objects.create(valid_from=self.today - timedelta(days=1))
-        self.client.post(
-            "/api/demo/select-profile/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": "aluno-consultando",
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
-            content_type="application/json",
+        login_test_account(
+            self.client,
+            "ROOM_USER",
+            user_reference="aluno-consultando",
         )
 
     def aware(self, hour, minute=0):
@@ -335,16 +331,11 @@ class OperationalReadReconciliationAPITest(APITestCase):
         self.now = timezone.now()
         self.computer = Computer.objects.create(code="PC-01")
 
-    def select_room_user(self):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": "aluno-consultando",
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
-            format="json",
+    def login_room_user(self):
+        login_test_account(
+            self.client,
+            "ROOM_USER",
+            user_reference="aluno-consultando",
         )
 
     def expired_session(self, *, user_reference="aluno-consultando"):
@@ -365,7 +356,7 @@ class OperationalReadReconciliationAPITest(APITestCase):
         return session
 
     def test_current_session_read_reconciles_the_current_user(self):
-        self.select_room_user()
+        self.login_room_user()
         session = self.expired_session()
 
         with patch("apps.operations.api.views.timezone.now", return_value=self.now):
@@ -377,7 +368,7 @@ class OperationalReadReconciliationAPITest(APITestCase):
         self.assertEqual(session.status, UseSession.Status.FINISHED)
 
     def test_my_reservations_read_cancels_an_overdue_reservation(self):
-        self.select_room_user()
+        self.login_room_user()
         reservation = create_reservation(
             user_reference="aluno-consultando",
             computer=self.computer,
@@ -397,11 +388,7 @@ class OperationalReadReconciliationAPITest(APITestCase):
 
     def test_operational_active_list_reconciles_all_users(self):
         session = self.expired_session(user_reference="outro-aluno")
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
         with patch("apps.operations.api.views.timezone.now", return_value=self.now):
             response = self.client.get("/api/usage-sessions/active/")

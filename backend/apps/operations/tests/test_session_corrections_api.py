@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import Shift
@@ -29,11 +30,7 @@ class SessionCorrectionAPITest(APITestCase):
             sequence=1,
             started_at=self.aware(time(8, 0)),
         )
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
     def aware(self, value):
         return timezone.make_aware(
@@ -258,15 +255,10 @@ class SessionCorrectionAPITest(APITestCase):
         self.assertEqual(missing_reason.status_code, 400)
 
     def test_room_user_cannot_correct_session(self):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {
-                "profile": "ROOM_USER",
-                "user_reference": "aluno-si-001",
-                "affiliation_type": "STUDENT",
-                "institutional_unit": "Sistemas de Informação",
-            },
-            format="json",
+        login_test_account(
+            self.client,
+            "ROOM_USER",
+            user_reference="aluno-si-001",
         )
 
         response = self.correct(

@@ -5,8 +5,8 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.access.permissions import HasDemoProfile
-from apps.access.services import get_demo_profile
+from apps.access.permissions import HasAccessRole
+from apps.access.services import get_actor_profile
 from apps.configuration.calendar import room_status_payload
 from apps.configuration.models import (
     CalendarException,
@@ -63,10 +63,10 @@ MANAGEMENT_PROFILES = [
 class ShiftListCreateAPIView(generics.ListCreateAPIView):
     queryset = Shift.objects.all()
     serializer_class = ShiftSerializer
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
@@ -76,7 +76,7 @@ class ShiftListCreateAPIView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         shift = create_shift(
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
         return Response(ShiftSerializer(shift).data, status=status.HTTP_201_CREATED)
 
@@ -84,11 +84,11 @@ class ShiftListCreateAPIView(generics.ListCreateAPIView):
 class ShiftDetailAPIView(generics.RetrieveUpdateAPIView):
     queryset = Shift.objects.all()
     serializer_class = ShiftSerializer
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
     http_method_names = ["get", "patch", "head", "options"]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
@@ -104,14 +104,14 @@ class ShiftDetailAPIView(generics.RetrieveUpdateAPIView):
         shift = update_shift(
             shift_id=instance.pk,
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
         return Response(ShiftSerializer(shift).data)
 
 
 class ShiftReplaceAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = MANAGEMENT_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = MANAGEMENT_PROFILES
 
     @extend_schema(
         request=ShiftReplaceSerializer,
@@ -124,17 +124,17 @@ class ShiftReplaceAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         shift = replace_shift(
             shift_id=pk,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             **serializer.validated_data,
         )
         return Response(ShiftSerializer(shift).data, status=status.HTTP_201_CREATED)
 
 
 class CalendarExceptionListCreateAPIView(APIView):
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
@@ -162,7 +162,7 @@ class CalendarExceptionListCreateAPIView(APIView):
         notice = values.pop("notice", None)
         exception = apply_calendar_exception(
             values=values,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             confirm_cancellation=confirm_cancellation,
             notify_users=notify_users,
             notice=notice,
@@ -174,10 +174,10 @@ class CalendarExceptionListCreateAPIView(APIView):
 
 
 class CalendarExceptionDetailAPIView(APIView):
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
@@ -210,7 +210,7 @@ class CalendarExceptionDetailAPIView(APIView):
         exception = apply_calendar_exception(
             exception_id=pk,
             values=values,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             confirm_cancellation=confirm_cancellation,
             notify_users=notify_users,
             notice=notice,
@@ -219,10 +219,10 @@ class CalendarExceptionDetailAPIView(APIView):
 
 
 class OperatingScheduleListCreateAPIView(APIView):
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
@@ -244,7 +244,7 @@ class OperatingScheduleListCreateAPIView(APIView):
         serializer = OperatingScheduleCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         schedule = create_operating_schedule(
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             **serializer.validated_data,
         )
         return Response(
@@ -254,10 +254,10 @@ class OperatingScheduleListCreateAPIView(APIView):
 
 
 class OperatingScheduleDetailAPIView(APIView):
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
@@ -287,15 +287,15 @@ class OperatingScheduleDetailAPIView(APIView):
         schedule = update_future_operating_schedule(
             schedule_id=pk,
             values=values,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             confirm_cancellation=confirm_cancellation,
         )
         return Response(OperatingScheduleSerializer(schedule).data)
 
 
 class OperatingScheduleReplaceAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = MANAGEMENT_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = MANAGEMENT_PROFILES
 
     @extend_schema(
         request=OperatingScheduleReplaceSerializer,
@@ -308,7 +308,7 @@ class OperatingScheduleReplaceAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         schedule = replace_operating_schedule(
             schedule_id=pk,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             **serializer.validated_data,
         )
         return Response(
@@ -318,8 +318,8 @@ class OperatingScheduleReplaceAPIView(APIView):
 
 
 class OperatingScheduleImpactPreviewAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = MANAGEMENT_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = MANAGEMENT_PROFILES
 
     @extend_schema(
         request=OperatingScheduleImpactSerializer,
@@ -362,8 +362,8 @@ class ActiveRoomNoticeListAPIView(APIView):
 
 
 class RoomNoticeListCreateAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = MANAGEMENT_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = MANAGEMENT_PROFILES
 
     @extend_schema(
         responses={200: RoomNoticeSerializer(many=True)},
@@ -382,7 +382,7 @@ class RoomNoticeListCreateAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         notice = create_room_notice(
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
         return Response(
             RoomNoticeSerializer(notice).data,
@@ -391,8 +391,8 @@ class RoomNoticeListCreateAPIView(APIView):
 
 
 class RoomNoticeDetailAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = MANAGEMENT_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = MANAGEMENT_PROFILES
 
     @extend_schema(
         responses={200: RoomNoticeSerializer},
@@ -414,16 +414,16 @@ class RoomNoticeDetailAPIView(APIView):
         notice = update_room_notice(
             notice_id=pk,
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
         return Response(RoomNoticeSerializer(notice).data)
 
 
 class BookingPolicyAPIView(APIView):
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
@@ -445,6 +445,6 @@ class BookingPolicyAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         policy = update_current_booking_policy(
             values=serializer.validated_data,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
         )
         return Response(BookingPolicySerializer(policy).data)

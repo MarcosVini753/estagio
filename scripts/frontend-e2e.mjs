@@ -3,31 +3,40 @@ import { chromium } from "playwright";
 
 const baseURL = process.env.FRONTEND_BASE_URL || "http://127.0.0.1:8000";
 
-async function submitProfileSelection(page) {
+const demoAccounts = {
+  roomUser: "999.999.999-91",
+  monitor: "999.999.999-92",
+  supervisor: "999.999.999-93",
+};
+
+async function logoutIfNeeded(page) {
+  const logoutButton = page.locator('form[action="/sair/"] button[type="submit"]').first();
+  if (await logoutButton.count()) {
+    await logoutButton.click();
+    await page.waitForURL(baseURL);
+  }
+}
+
+async function login(page, identifier, destination) {
+  await logoutIfNeeded(page);
+  await page.goto(baseURL, { waitUntil: "networkidle" });
+  await page.locator('input[name="username"]').fill(identifier);
+  await page.locator('input[name="password"]').fill("Senha123.");
   await page.locator("form.profile-form button[type='submit']").click();
-}
-
-async function selectRoomUser(page, suffix, reference = `e2e-user-${suffix}`) {
-  await page.goto(baseURL, { waitUntil: "networkidle" });
-  await page
-    .locator("label.profile-option", { hasText: "Usuário da Sala" })
-    .click();
-  await page.locator('input[name="user_reference"]').fill(reference);
-  await page.locator('select[name="affiliation_type"]').selectOption("STUDENT");
-  await page
-    .locator('input[name="institutional_unit"]')
-    .fill("Sistemas de Informação");
-  await submitProfileSelection(page);
-  await page.waitForURL("**/sala/computadores/");
-}
-
-async function selectProfile(page, profileName, destination) {
-  await page.goto(baseURL, { waitUntil: "networkidle" });
-  await page
-    .locator("label.profile-option", { hasText: profileName })
-    .click();
-  await submitProfileSelection(page);
   await page.waitForURL(destination);
+}
+
+async function loginRoomUser(page) {
+  await login(page, demoAccounts.roomUser, "**/sala/computadores/");
+}
+
+async function loginRoleAccount(page, profileKey) {
+  const account = demoAccounts[profileKey];
+  const destination = {
+    monitor: "**/monitor/",
+    supervisor: "**/supervisor/",
+  }[profileKey];
+  await login(page, account, destination);
 }
 
 async function assertSidebarIsFixed(page, selector, contentSelector) {
@@ -103,7 +112,7 @@ try {
   });
   const mobilePage = await mobile.newPage();
   mobilePage.on("pageerror", (error) => pageErrors.push(error.message));
-  await selectRoomUser(mobilePage, "mobile");
+  await loginRoomUser(mobilePage);
 
   assert.equal(
     await mobilePage.locator(".app-header").evaluate(
@@ -183,7 +192,7 @@ try {
   });
   const monitorPage = await monitorMobile.newPage();
   monitorPage.on("pageerror", (error) => pageErrors.push(error.message));
-  await selectProfile(monitorPage, "Monitor da Sala", "**/monitor/");
+  await loginRoleAccount(monitorPage, "monitor");
   assert.equal(await monitorPage.locator(".staff-sidebar").isVisible(), false);
   assert.equal(
     await monitorPage.locator(".staff-mobile-navigation").isVisible(),
@@ -222,7 +231,7 @@ try {
   });
   const desktopPage = await desktop.newPage();
   desktopPage.on("pageerror", (error) => pageErrors.push(error.message));
-  await selectRoomUser(desktopPage, "desktop");
+  await loginRoomUser(desktopPage);
   assert.equal(await desktopPage.locator(".desktop-sidebar").isVisible(), true);
   assert.equal(await desktopPage.locator(".mobile-navigation").isVisible(), false);
   await assertSidebarIsFixed(
@@ -240,7 +249,7 @@ try {
   });
   const confirmationPage = await confirmations.newPage();
   confirmationPage.on("pageerror", (error) => pageErrors.push(error.message));
-  await selectRoomUser(confirmationPage, "modal", "e2e-modal-user");
+  await loginRoomUser(confirmationPage);
   await confirmationPage.goto(`${baseURL}/sala/sessao/`, {
     waitUntil: "networkidle",
   });
@@ -334,11 +343,7 @@ try {
   });
   const supervisorPage = await supervisorDesktop.newPage();
   supervisorPage.on("pageerror", (error) => pageErrors.push(error.message));
-  await selectProfile(
-    supervisorPage,
-    "Supervisor da Biblioteca",
-    "**/supervisor/",
-  );
+  await loginRoleAccount(supervisorPage, "supervisor");
   assert.equal(await supervisorPage.locator(".staff-sidebar").isVisible(), true);
   assert.equal(
     await supervisorPage.locator(".staff-mobile-navigation").isVisible(),
@@ -406,7 +411,7 @@ try {
   crossProfilePage.on("pageerror", (error) => pageErrors.push(error.message));
   const occurrenceDescription = `Ocorrência interligada E2E ${Date.now()}`;
 
-  await selectRoomUser(crossProfilePage, "interlinked");
+  await loginRoomUser(crossProfilePage);
   await crossProfilePage
     .locator('.desktop-sidebar [data-nav-key="problems"]')
     .click();
@@ -421,7 +426,7 @@ try {
   await crossProfilePage.waitForLoadState("networkidle");
   assert.ok(await crossProfilePage.getByText(occurrenceDescription).count());
 
-  await selectProfile(crossProfilePage, "Monitor da Sala", "**/monitor/");
+  await loginRoleAccount(crossProfilePage, "monitor");
   await crossProfilePage.goto(`${baseURL}/monitor/ocorrencias/`, {
     waitUntil: "networkidle",
   });
@@ -436,11 +441,7 @@ try {
   });
   assert.ok(await occurrenceRow.getByText("Em análise").count());
 
-  await selectProfile(
-    crossProfilePage,
-    "Supervisor da Biblioteca",
-    "**/supervisor/",
-  );
+  await loginRoleAccount(crossProfilePage, "supervisor");
   await crossProfilePage.goto(`${baseURL}/monitor/ocorrencias/`, {
     waitUntil: "networkidle",
   });
@@ -454,7 +455,7 @@ try {
   await occurrenceRow.getByRole("button", { name: "Atualizar" }).click();
   await crossProfilePage.waitForLoadState("networkidle");
 
-  await selectRoomUser(crossProfilePage, "interlinked");
+  await loginRoomUser(crossProfilePage);
   await crossProfilePage.goto(`${baseURL}/sala/problemas/`, {
     waitUntil: "networkidle",
   });
@@ -474,12 +475,12 @@ try {
     javaScriptEnabled: false,
   });
   const noScriptPage = await noScript.newPage();
-  await selectRoomUser(noScriptPage, "sem-javascript");
+  await loginRoomUser(noScriptPage);
   assert.equal(
     await noScriptPage.getByRole("link", { name: "Agenda" }).last().isVisible(),
     true,
   );
-  await selectProfile(noScriptPage, "Monitor da Sala", "**/monitor/");
+  await loginRoleAccount(noScriptPage, "monitor");
   await noScriptPage
     .getByRole("link", { name: "Computadores", exact: true })
     .last()
@@ -489,11 +490,7 @@ try {
     await noScriptPage.getByText("Alterar estado", { exact: true }).first().isVisible(),
     true,
   );
-  await selectProfile(
-    noScriptPage,
-    "Supervisor da Biblioteca",
-    "**/supervisor/",
-  );
+  await loginRoleAccount(noScriptPage, "supervisor");
   await noScriptPage
     .getByRole("link", { name: "Relatórios", exact: true })
     .last()

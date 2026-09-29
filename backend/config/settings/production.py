@@ -2,6 +2,7 @@ from .base import *  # noqa: F403
 from .base import env, env_bool, env_list
 
 DEBUG = False
+DEMO_ACCOUNTS_ENABLED = False
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("DJANGO_SECRET_KEY é obrigatória em produção.")

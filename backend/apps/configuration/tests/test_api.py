@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.audit.models import AuditEvent
 from apps.computers.models import Computer
 from apps.configuration.models import BookingPolicy, Shift
@@ -18,20 +19,11 @@ from apps.operations.tests.factories import create_reservation, create_use_sessi
 
 
 class ConfigurationAPITest(APITestCase):
-    def select_profile(self, profile):
-        payload = {"profile": profile}
-        if profile == "ROOM_USER":
-            payload.update(
-                {
-                    "user_reference": "aluno-si-001",
-                    "affiliation_type": "STUDENT",
-                    "institutional_unit": "Sistemas de Informação",
-                }
-            )
-        self.client.post(
-            "/api/demo/select-profile/",
-            payload,
-            format="json",
+    def login_profile(self, profile):
+        login_test_account(
+            self.client,
+            profile,
+            user_reference=("aluno-si-001" if profile == "ROOM_USER" else None),
         )
 
     def test_room_user_can_list_but_cannot_create_shift(self):
@@ -40,7 +32,7 @@ class ConfigurationAPITest(APITestCase):
             start_time=time(7, 0),
             end_time=time(12, 0),
         )
-        self.select_profile("ROOM_USER")
+        self.login_profile("ROOM_USER")
 
         list_response = self.client.get("/api/shifts/")
         create_response = self.client.post(
@@ -58,7 +50,7 @@ class ConfigurationAPITest(APITestCase):
         self.assertEqual(create_response.status_code, 403)
 
     def test_supervisor_can_create_shift(self):
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/shifts/",
@@ -85,7 +77,7 @@ class ConfigurationAPITest(APITestCase):
             start_time=time(7, 0),
             end_time=time(13, 0),
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             "/api/shifts/",
@@ -105,7 +97,7 @@ class ConfigurationAPITest(APITestCase):
         old_policy = BookingPolicy.objects.create(
             valid_from=previous_date,
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.patch(
             "/api/booking-policy/",
@@ -148,7 +140,7 @@ class ConfigurationAPITest(APITestCase):
             booking_policy=original,
             created_by_profile="ROOM_USER",
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.patch(
             "/api/booking-policy/",
@@ -169,7 +161,7 @@ class ConfigurationAPITest(APITestCase):
 
     def test_booking_policy_does_not_expose_fixed_slot_or_tolerance_rules(self):
         BookingPolicy.objects.create()
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         read_response = self.client.get("/api/booking-policy/")
         update_response = self.client.patch(
@@ -203,7 +195,7 @@ class ConfigurationAPITest(APITestCase):
             entry_recorded_by_profile="ROOM_USER",
         )
         effective_from = today + timedelta(days=1)
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             f"/api/shifts/{shift.pk}/replace/",
@@ -243,7 +235,7 @@ class ConfigurationAPITest(APITestCase):
             status=UseSession.Status.FINISHED,
             entry_recorded_by_profile="ROOM_USER",
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         time_response = self.client.patch(
             f"/api/shifts/{shift.pk}/",
@@ -267,7 +259,7 @@ class ConfigurationAPITest(APITestCase):
             end_time=time(12, 0),
             valid_from=timezone.localdate() + timedelta(days=1),
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.patch(
             f"/api/shifts/{shift.pk}/",
@@ -335,7 +327,7 @@ class ConfigurationAPITest(APITestCase):
             end_time=time(14, 0),
             valid_from=today + timedelta(days=1),
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             f"/api/shifts/{shift.pk}/replace/",
@@ -360,7 +352,7 @@ class ConfigurationAPITest(APITestCase):
             start_time=time(7, 0),
             end_time=time(12, 0),
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             f"/api/shifts/{shift.pk}/replace/",
@@ -385,7 +377,7 @@ class ConfigurationAPITest(APITestCase):
             end_time=time(12, 0),
             valid_from=effective_from,
         )
-        self.select_profile("LIBRARY_SUPERVISOR")
+        self.login_profile("LIBRARY_SUPERVISOR")
 
         response = self.client.post(
             f"/api/shifts/{shift.pk}/replace/",

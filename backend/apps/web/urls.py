@@ -1,12 +1,12 @@
 from django.urls import path
 
-from . import monitor_views, supervisor_views, views
+from . import auth_views, monitor_views, supervisor_views, views
 
 app_name = "web"
 
 urlpatterns = [
-    path("", views.home, name="home"),
-    path("perfil-indisponivel/", views.profile_unavailable, name="profile-unavailable"),
+    path("", auth_views.AccessLoginView.as_view(), name="home"),
+    path("sair/", auth_views.logout_view, name="logout"),
     path("monitor/", monitor_views.dashboard, name="monitor-dashboard"),
     path(
         "monitor/computadores/",

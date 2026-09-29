@@ -13,7 +13,7 @@ O diretório `prototipos/` contém a referência visual original em HTML, CSS e 
 
 - objetos de `localStorage` não definem o banco;
 - `statusToday`, `statusTomorrow`, `busy` e `reserved` não são campos persistidos;
-- escolha de perfil não é autenticação;
+- o seletor de perfil do protótipo é histórico e não representa autenticação; a aplicação atual usa login por CPF/matrícula e senha;
 - dados simulados não representam pessoas reais;
 - regras somente no frontend devem ser reimplementadas no backend;
 - a estrutura atual de arquivos CSS e JavaScript não define a arquitetura final do frontend.
@@ -51,6 +51,6 @@ A migração é incremental. Os fluxos do Usuário da Sala, Monitor da Sala e Su
 
 ## Estado atual
 
-O seletor dos quatro perfis e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca estão implementados no app Django `web`. Os fluxos usam dados e serviços reais do backend, preservam navegação convencional como alternativa a HTMX e Alpine.js e mostram o papel selecionado somente quando isso dá contexto ao fluxo.
+O login por CPF/matrícula e as áreas funcionais do Usuário da Sala, Monitor da Sala e Supervisor da Biblioteca estão implementados no app Django `web`. Os fluxos usam dados e serviços reais do backend, preservam navegação convencional como alternativa a HTMX e Alpine.js e mostram o nome e papel da conta autenticada.
 
-O Administrador continua exibindo uma página coerente de indisponibilidade. A CI compila os assets versionados e executa o E2E contra a aplicação Django real, com PostgreSQL, migrations e seed, cobrindo os três perfis migrados em mobile e desktop.
+O Administrador não aparece na tela de login e não possui conta nem tela funcional. A CI compila os assets versionados e executa o E2E contra a aplicação Django real, com PostgreSQL, migrations e seed, cobrindo os três perfis migrados em mobile e desktop.

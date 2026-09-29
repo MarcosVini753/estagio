@@ -10,7 +10,7 @@ Correções de registros, mudanças de estado operacional e alterações de conf
 
 ## Decisão
 
-Registrar eventos de auditoria para ações sensíveis, incluindo perfil de teste, entidade, valores anteriores e novos, justificativa e horário.
+Registrar eventos de auditoria para ações sensíveis, incluindo perfil autenticado, entidade, valores anteriores e novos, justificativa e horário.
 
 ## Alternativas consideradas
 
@@ -22,10 +22,10 @@ Registrar eventos de auditoria para ações sensíveis, incluindo perfil de test
 
 - facilita diagnóstico e validação;
 - mantém histórico de correções;
-- prepara o sistema para autenticação real futura.
+- preserva a trilha do perfil autenticado sem incluir senha ou identificadores de login.
 
 ## Consequências negativas e riscos
 
-- o perfil simulado não comprova identidade;
+- os eventos atuais registram o papel operacional e não devem ser tratados como diretório de contas;
 - valores antigos e novos devem evitar exposição desnecessária;
 - auditoria não deve ser usada para reconstruir regras que deveriam estar no domínio.

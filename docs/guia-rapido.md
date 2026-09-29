@@ -6,7 +6,7 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 
 ## Como funciona na prática
 
-1. O usuário abre a aplicação e escolhe o perfil que deseja acessar.
+1. A pessoa entra com CPF ou matrícula e senha; o perfil e as permissões vêm da conta, não de uma escolha na tela.
 2. Consulta a disponibilidade de **hoje** ou **amanhã**.
 3. **Hoje**: pode iniciar uso imediato em um computador livre, escolhendo a saída planejada em uma grade de 15 minutos.
 4. **Amanhã (ou horário futuro de hoje)**: pode reservar um ou mais slots consecutivos.
@@ -24,7 +24,14 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 5. Um usuário tem no máximo **uma sessão ativa**; um computador, **uma alocação ativa**.
 6. Trocar de computador **não cria nova sessão** nem apaga histórico.
 7. Relatórios são **projeções** dos registros operacionais — não há lançamento manual.
-8. O MVP não possui autenticação real; o perfil escolhido controla as funcionalidades disponíveis.
+8. O login usa sessão Django e senha armazenada com hash; integração institucional, autocadastro e conta de Administrador não fazem parte do MVP.
+
+No ambiente local, `make seed` cria três contas de demonstração: CPF
+`999.999.999-91` para Usuário da Sala, `999.999.999-92` para Monitor e
+`999.999.999-93` para Supervisor. Todas usam `Senha123.`. São credenciais
+compartilhadas e fictícias, exclusivas para ambiente local/controlado; nunca as
+use com dados reais. O seed não redefine contas alteradas e não cria essas
+contas em produção.
 
 ## Onde está cada coisa
 
@@ -38,9 +45,9 @@ Um sistema web para controlar o uso da Sala de Informática da Biblioteca da UFA
 | Entender decisões arquiteturais | `docs/adr/README.md` |
 | Ver diagramas de fluxo | `docs/diagrams/README.md` |
 | Rodar o backend | `docs/development/backend-setup.md` |
-| Usar a interface do Usuário da Sala | `/` e selecione `Usuário da Sala` |
-| Usar o painel operacional | `/` e selecione `Monitor da Sala` |
-| Usar configurações e relatórios | `/` e selecione `Supervisor da Biblioteca` |
+| Usar a interface do Usuário da Sala | Entre com o CPF de Usuário da Sala acima |
+| Usar o painel operacional | Entre com o CPF de Monitor acima |
+| Usar configurações e relatórios | Entre com o CPF de Supervisor acima |
 | Ver o protótipo visual | `prototipos/` |
 
 ## Como rodar o backend em 5 comandos

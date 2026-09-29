@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from rest_framework.exceptions import APIException
 
-from apps.access.services import get_demo_profile, get_demo_user_reference
+from apps.access.services import get_actor_profile, get_actor_reference
 from apps.computers.api.serializers import ComputerOperationalStateSerializer
 from apps.computers.models import Computer
 from apps.configuration.calendar import resolve_operating_day
@@ -80,10 +80,7 @@ MONITOR_SCREEN_META = {
 
 operational_profile_required = require_profiles(
     allowed_profiles=OPERATIONAL_PROFILES,
-    message=(
-        "Selecione o perfil Monitor da Sala ou um perfil superior para acessar "
-        "esta área."
-    ),
+    message=("Sua conta não tem permissão para acessar esta área operacional."),
 )
 
 
@@ -116,7 +113,7 @@ def _screen_context(request, *, screen, query="", search_url_name=None):
         {**item, "url": reverse(item["url_name"])} for item in MONITOR_NAV_ITEMS
     ]
     title, section_title, search_placeholder = MONITOR_SCREEN_META[screen]
-    profile = get_demo_profile(request)
+    profile = get_actor_profile(request)
     return {
         "area": "monitor",
         "screen": screen,
@@ -270,7 +267,7 @@ def change_computer_state(request, pk):
         result = change_computer_operational_state(
             computer_id=computer.pk,
             new_state=serializer.validated_data["operational_state"],
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             reason=serializer.validated_data.get("reason", ""),
         )
     except APIException as error:
@@ -364,8 +361,8 @@ def occurrences(request):
         data = serializer.validated_data
         try:
             create_occurrence(
-                actor_profile=get_demo_profile(request),
-                actor_reference=get_demo_user_reference(request),
+                actor_profile=get_actor_profile(request),
+                actor_reference=get_actor_reference(request),
                 description=data["description"],
                 computer=(
                     get_object_or_404(Computer, pk=data["computer_id"])
@@ -421,7 +418,7 @@ def transition_occurrence_view(request, pk):
         try:
             transition_occurrence(
                 occurrence_id=pk,
-                actor_profile=get_demo_profile(request),
+                actor_profile=get_actor_profile(request),
                 **serializer.validated_data,
             )
         except APIException as api_error:
@@ -557,8 +554,8 @@ def finish_active_session(request, pk):
     try:
         result = finish_usage_session(
             session_id=session.pk,
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
             **serializer.validated_data,
         )
     except APIException as error:
@@ -620,7 +617,7 @@ def correct_history(request, pk):
     try:
         correct_usage_session(
             session_id=session.pk,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             **serializer.validated_data,
         )
     except APIException as error:

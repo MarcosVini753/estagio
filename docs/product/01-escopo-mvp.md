@@ -1,21 +1,21 @@
 # Escopo do MVP
 
-## Seleção de perfil
+## Acesso por conta
 
-A aplicação permite escolher:
+O sistema autentica por CPF ou matrícula e senha. O perfil vem da conta provisionada e não pode ser escolhido na tela de login. Os três perfis operacionais disponíveis são:
 
 - Usuário da Sala;
 - Monitor da Sala;
 - Supervisor da Biblioteca;
-- Administrador do Sistema.
+- O Administrador do Sistema não possui conta nesta etapa.
 
-A seleção controla menus e autorizações conforme o perfil escolhido. Não existe autenticação real nesta etapa.
+Não há autocadastro. Contas futuras são criadas internamente por comando, com senha informada sem eco no terminal. O seed local/teste cria três contas fictícias para demonstração; não as cria em produção nem redefine contas existentes.
 
 ## Usuário da Sala
 
 - escolher hoje ou amanhã;
 - consultar o status e as janelas de funcionamento da sala;
-- visualizar avisos operacionais ativos antes e depois de escolher o perfil;
+- visualizar avisos operacionais ativos antes e depois do login;
 - consultar computadores e horários;
 - iniciar uso imediato hoje escolhendo a saída planejada na grade de 15 minutos;
 - reservar um ou mais slots consecutivos para horário futuro de hoje ou de amanhã;
@@ -56,7 +56,7 @@ O papel existe arquiteturalmente, mas contas, grupos, permissões e login reais 
 ## Excluído
 
 - fila de espera;
-- autenticação real e recuperação de senha;
+- integração institucional/SSO, autocadastro, recuperação ou alteração de senha pela interface;
 - Django Admin como interface do MVP;
 - SSO, LDAP ou integração institucional;
 - notificações externas por e-mail, SMS, push, WhatsApp ou serviço equivalente;
@@ -68,4 +68,4 @@ O papel existe arquiteturalmente, mas contas, grupos, permissões e login reais 
 
 ## Critério de conclusão
 
-O MVP estará funcional quando permitir selecionar perfil, consultar hoje e amanhã com explicação do funcionamento da sala, reservar somente intervalos consecutivos dentro do calendário operacional, iniciar uma sessão escolhendo o fim planejado sem invadir reservas ou fechamento, reconciliar prazos operacionais, encerrar sessão, trocar computador pelo intervalo restante, registrar ocorrência, configurar horários regulares ou temporários com impacto auditado, exibir avisos internos e visualizar relatórios derivados dos registros operacionais.
+O MVP estará funcional quando permitir autenticar as contas operacionais, consultar hoje e amanhã com explicação do funcionamento da sala, reservar somente intervalos consecutivos dentro do calendário operacional, iniciar uma sessão escolhendo o fim planejado sem invadir reservas ou fechamento, reconciliar prazos operacionais, encerrar sessão, trocar computador pelo intervalo restante, registrar ocorrência, configurar horários regulares ou temporários com impacto auditado, exibir avisos internos e visualizar relatórios derivados dos registros operacionais.

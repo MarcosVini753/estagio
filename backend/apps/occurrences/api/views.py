@@ -5,8 +5,8 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.access.permissions import HasDemoProfile
-from apps.access.services import get_demo_profile, get_demo_user_reference
+from apps.access.permissions import HasAccessRole
+from apps.access.services import get_actor_profile, get_actor_reference
 from apps.computers.models import Computer
 from apps.core.api.pagination import StandardPageNumberPagination
 from apps.core.enums import DemoProfile
@@ -29,16 +29,16 @@ OPERATIONAL_PROFILES = [
 
 def _visible_occurrences(request):
     occurrences = Occurrence.objects.all()
-    if get_demo_profile(request) == DemoProfile.ROOM_USER:
+    if get_actor_profile(request) == DemoProfile.ROOM_USER:
         occurrences = occurrences.filter(
-            reported_by_reference=get_demo_user_reference(request)
+            reported_by_reference=get_actor_reference(request)
         )
     return occurrences
 
 
 class OccurrenceListCreateAPIView(GenericAPIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = DemoProfile.values
+    permission_classes = [HasAccessRole]
+    allowed_profiles = DemoProfile.values
     serializer_class = OccurrenceSerializer
     pagination_class = StandardPageNumberPagination
 
@@ -60,8 +60,8 @@ class OccurrenceListCreateAPIView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         occurrence = create_occurrence(
-            actor_profile=get_demo_profile(request),
-            actor_reference=get_demo_user_reference(request),
+            actor_profile=get_actor_profile(request),
+            actor_reference=get_actor_reference(request),
             description=data["description"],
             computer=(
                 get_object_or_404(Computer, pk=data["computer_id"])
@@ -86,10 +86,10 @@ class OccurrenceListCreateAPIView(GenericAPIView):
 
 
 class OccurrenceDetailAPIView(APIView):
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             OPERATIONAL_PROFILES
             if self.request.method == "PATCH"
             else DemoProfile.values
@@ -112,7 +112,7 @@ class OccurrenceDetailAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         occurrence = transition_occurrence(
             occurrence_id=pk,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             **serializer.validated_data,
         )
         return Response(OccurrenceSerializer(occurrence).data)

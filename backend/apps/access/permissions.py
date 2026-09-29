@@ -1,13 +1,23 @@
 from rest_framework.permissions import BasePermission
 
-from .services import get_demo_profile
+from .services import get_actor_account, get_actor_profile
 
 
-class HasDemoProfile(BasePermission):
-    message = "Selecione um perfil de demonstração compatível com esta operação."
+class HasAccessRole(BasePermission):
+    message = "Entre com uma conta autorizada para esta operação."
 
     def has_permission(self, request, view):
-        allowed_profiles = getattr(view, "allowed_demo_profiles", None)
-        if not allowed_profiles:
-            return True
-        return get_demo_profile(request) in set(allowed_profiles)
+        allowed_profiles = getattr(view, "allowed_profiles", None)
+        account = get_actor_account(request)
+        if account is None:
+            return False
+        return not allowed_profiles or get_actor_profile(request) in set(
+            allowed_profiles
+        )
+
+
+class HasAccessAccount(BasePermission):
+    message = "Entre com uma conta válida para acessar este recurso."
+
+    def has_permission(self, request, view):
+        return get_actor_account(request) is not None

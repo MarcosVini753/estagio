@@ -17,6 +17,6 @@ flowchart LR
 ## Observações
 
 - O MVP não se integra a autenticação institucional.
-- A escolha de perfil é simulada dentro do próprio sistema.
+- O login local autentica contas por sessão; a aplicação ainda não se integra à identidade institucional.
 - Não existe fila de espera.
 - O sistema é a fonte de registro das sessões e projeções de relatório.

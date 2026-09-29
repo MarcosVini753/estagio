@@ -22,12 +22,13 @@ Esta pasta concentra a documentação funcional, arquitetural, operacional e his
 
 1. [Configuração do backend](development/backend-setup.md)
 2. [Visão geral da arquitetura](architecture/00-visao-geral.md)
-3. [Modelo de domínio](architecture/02-modelo-de-dominio.md)
-4. [Disponibilidade e agendamento](architecture/03-disponibilidade-e-agendamento.md)
-5. [API](architecture/04-api.md)
-6. [Integração contínua](development/ci.md)
-7. [Casos de teste interligados por perfil](development/casos-de-teste-perfis.md)
-8. [Estado da implementação](architecture/08-estado-implementacao.md)
+3. [Autenticação e autorização](architecture/05-autenticacao-e-autorizacao.md)
+4. [Modelo de domínio](architecture/02-modelo-de-dominio.md)
+5. [Disponibilidade e agendamento](architecture/03-disponibilidade-e-agendamento.md)
+6. [API](architecture/04-api.md)
+7. [Integração contínua](development/ci.md)
+8. [Casos de teste interligados por perfil](development/casos-de-teste-perfis.md)
+9. [Estado da implementação](architecture/08-estado-implementacao.md)
 
 ### Quero apresentar o projeto
 

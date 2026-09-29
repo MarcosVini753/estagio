@@ -7,6 +7,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APITestCase
 
+from apps.access.tests.helpers import login_test_account
 from apps.computers.models import Computer, ComputerOperationalStateChange
 from apps.configuration.models import (
     CalendarException,
@@ -69,11 +70,7 @@ class ConsolidatedReportsAPITest(APITestCase):
             ended_at=at(self.report_date, 9),
             end_reason=ComputerAllocation.EndReason.SESSION_FINISHED,
         )
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "LIBRARY_SUPERVISOR"},
-            format="json",
-        )
+        login_test_account(self.client, "LIBRARY_SUPERVISOR")
 
     def test_daily_report_uses_the_shared_summary_and_calendar(self):
         response = self.client.get(
@@ -255,11 +252,7 @@ class ConsolidatedReportsAPITest(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_monitor_cannot_read_or_export_reports(self):
-        self.client.post(
-            "/api/demo/select-profile/",
-            {"profile": "ROOM_MONITOR"},
-            format="json",
-        )
+        login_test_account(self.client, "ROOM_MONITOR")
 
         report = self.client.get(
             "/api/reports/daily/",

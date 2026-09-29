@@ -2,7 +2,7 @@
 
 ## Auditoria
 
-Mesmo com autorização simulada, ações sensíveis devem registrar o perfil selecionado, a operação, o alvo, valores anteriores e novos, justificativa e horário.
+Ações sensíveis devem registrar o perfil autenticado, a operação, o alvo, valores anteriores e novos, justificativa e horário. Eventos automáticos usam o perfil de sistema definido pelo serviço.
 
 Eventos mínimos:
 
@@ -16,7 +16,7 @@ Eventos mínimos:
 - alteração de parâmetros de relatório;
 - ações futuras de contas e permissões.
 
-O registro de auditoria não substitui autenticação. No MVP, ele demonstra rastreabilidade funcional, mas não comprova a identidade real do autor.
+Auditoria não substitui os controles de sessão e autorização; seus snapshots não devem incluir senha nem identificadores de login.
 
 ## Estratégia de testes
 
@@ -62,7 +62,7 @@ Cobrir:
 - contrato de respostas;
 - códigos de erro;
 - filtros e paginação;
-- acesso por perfil simulado;
+- autorização por papel da conta autenticada;
 - serialização temporal;
 - rotas e contratos documentados no OpenAPI.
 
@@ -85,7 +85,7 @@ Usar PostgreSQL para validar:
 
 Cobrir os fluxos principais do protótipo:
 
-1. escolher perfil;
+1. entrar com a conta correspondente ao perfil;
 2. consultar hoje;
 3. iniciar e encerrar sessão;
 4. trocar de computador;

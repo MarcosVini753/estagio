@@ -2,6 +2,8 @@
 
 ```mermaid
 erDiagram
+    DJANGO_USER ||--o| ACCESS_ACCOUNT : possui
+    ACCESS_ACCOUNT ||--o{ LOGIN_IDENTIFIER : identifica
     COMPUTER ||--o{ COMPUTER_OPERATIONAL_STATE_CHANGE : possui
     COMPUTER ||--o{ RESERVATION : recebe
     COMPUTER ||--o{ COMPUTER_ALLOCATION : recebe
@@ -16,6 +18,30 @@ erDiagram
     OPERATING_SCHEDULE_DAY ||--o{ OPERATING_WINDOW : possui
     OPERATING_SCHEDULE o|--o{ ROOM_NOTICE : comunica
     CALENDAR_EXCEPTION o|--o{ ROOM_NOTICE : comunica
+
+    DJANGO_USER {
+        bigint id
+        string username
+        string password_hashed
+        boolean is_active
+    }
+
+    ACCESS_ACCOUNT {
+        bigint id
+        bigint user_id
+        string profile
+        string display_name
+        string user_reference
+        string affiliation_type
+        string institutional_unit
+    }
+
+    LOGIN_IDENTIFIER {
+        bigint id
+        bigint account_id
+        string kind
+        string normalized_value
+    }
 
     COMPUTER {
         bigint id

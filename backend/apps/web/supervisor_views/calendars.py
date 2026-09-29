@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 from rest_framework.exceptions import APIException
 
-from apps.access.services import get_demo_profile
+from apps.access.services import get_actor_profile
 from apps.configuration.api.serializers import (
     CalendarExceptionSerializer,
     OperatingScheduleCreateSerializer,
@@ -158,7 +158,7 @@ def create_schedule(request):
         )
     try:
         create_operating_schedule(
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             expected_conflict_ids=preview["reservation_ids"],
             **serializer.validated_data,
         )
@@ -280,7 +280,7 @@ def replace_schedule(request, pk):
     try:
         replace_operating_schedule(
             schedule_id=schedule.pk,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             expected_conflict_ids=preview["reservation_ids"],
             **data,
         )
@@ -409,7 +409,7 @@ def exceptions(request):
         apply_calendar_exception(
             exception_id=instance.pk if instance else None,
             values=values,
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             confirm_cancellation=confirmed,
             expected_conflict_ids=preview["reservation_ids"],
         )

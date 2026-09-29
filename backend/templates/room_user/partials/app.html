@@ -23,14 +23,17 @@
         <p class="eyebrow">Biblioteca UFAC</p>
         <h1>{{ screen_title }}</h1>
       </div>
-      <a class="icon-button" href="{% url 'web:home' %}" title="Trocar perfil" aria-label="Trocar perfil">
-        {% include "components/icon.html" with name="switch" %}
-      </a>
+      <form method="post" action="{% url 'web:logout' %}">
+        {% csrf_token %}
+        <button class="icon-button" type="submit" title="Sair" aria-label="Sair">
+          {% include "components/icon.html" with name="switch" %}
+        </button>
+      </form>
     </div>
 
     <div class="profile-strip">
       <strong>{{ current_profile_label }}</strong>
-      <span>{{ current_user_reference }}</span>
+      <span>{{ current_user_display_name }}</span>
     </div>
 
     {% if search_placeholder %}

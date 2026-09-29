@@ -5,8 +5,8 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.access.permissions import HasDemoProfile
-from apps.access.services import get_demo_profile, get_demo_user_reference
+from apps.access.permissions import HasAccessRole
+from apps.access.services import get_actor_profile, get_actor_reference
 from apps.computers.models import Computer
 from apps.core.enums import DemoProfile
 from apps.operations.availability import (
@@ -40,10 +40,10 @@ OPERATIONAL_STATE_PROFILES = [
 
 class ComputerListCreateAPIView(generics.ListCreateAPIView):
     queryset = Computer.objects.all()
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
@@ -57,19 +57,19 @@ class ComputerListCreateAPIView(generics.ListCreateAPIView):
 class ComputerDetailAPIView(generics.RetrieveUpdateAPIView):
     queryset = Computer.objects.all()
     serializer_class = ComputerSerializer
-    permission_classes = [HasDemoProfile]
+    permission_classes = [HasAccessRole]
     http_method_names = ["get", "patch", "head", "options"]
 
     def get_permissions(self):
-        self.allowed_demo_profiles = (
+        self.allowed_profiles = (
             READ_PROFILES if self.request.method == "GET" else MANAGEMENT_PROFILES
         )
         return super().get_permissions()
 
 
 class ComputerOperationalStateAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = OPERATIONAL_STATE_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = OPERATIONAL_STATE_PROFILES
 
     @extend_schema(
         request=ComputerOperationalStateSerializer,
@@ -83,7 +83,7 @@ class ComputerOperationalStateAPIView(APIView):
         result = change_computer_operational_state(
             computer_id=pk,
             new_state=serializer.validated_data["operational_state"],
-            actor_profile=get_demo_profile(request),
+            actor_profile=get_actor_profile(request),
             reason=serializer.validated_data.get("reason", ""),
         )
         return Response(
@@ -94,8 +94,8 @@ class ComputerOperationalStateAPIView(APIView):
 
 
 class ComputerAvailabilityAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = READ_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = READ_PROFILES
 
     @extend_schema(
         parameters=[AvailabilityDateQuerySerializer],
@@ -107,7 +107,7 @@ class ComputerAvailabilityAPIView(APIView):
         query.is_valid(raise_exception=True)
         computers = list(Computer.objects.all())
         current = timezone.now()
-        reference = get_demo_user_reference(request)
+        reference = get_actor_reference(request)
         reconcile_deadlines(
             now=current,
             scope=ReconcileScope(
@@ -125,8 +125,8 @@ class ComputerAvailabilityAPIView(APIView):
 
 
 class ComputerSlotsAPIView(APIView):
-    permission_classes = [HasDemoProfile]
-    allowed_demo_profiles = READ_PROFILES
+    permission_classes = [HasAccessRole]
+    allowed_profiles = READ_PROFILES
 
     @extend_schema(
         parameters=[AvailabilityDateQuerySerializer],
@@ -138,7 +138,7 @@ class ComputerSlotsAPIView(APIView):
         query.is_valid(raise_exception=True)
         computer = get_object_or_404(Computer, pk=pk)
         current = timezone.now()
-        reference = get_demo_user_reference(request)
+        reference = get_actor_reference(request)
         reconcile_deadlines(
             now=current,
             scope=ReconcileScope(
